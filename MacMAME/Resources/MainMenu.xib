@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="22505" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
+    <dependencies>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="22505"/>
+    </dependencies>
+    <objects>
+        <customObject id="-2" userLabel="File's Owner" customClass="NSApplication"/>
+        <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
+        <customObject id="-3" userLabel="Application" customClass="NSObject"/>
+        <menu title="Main Menu" systemMenu="main" id="29">
+            <items>
+                <!-- Application Menu -->
+                <menuItem title="MacMAME" id="56">
+                    <menu key="submenu" title="MacMAME" systemMenu="apple" id="57">
+                        <items>
+                            <menuItem title="About MacMAME" id="58">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="orderFrontStandardAboutPanel:" target="-1" id="142"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="236"/>
+                            <menuItem title="Preferences…" keyEquivalent="," id="129">
+                                <connections>
+                                    <action selector="showPreferencesWindow:" target="-1" id="130"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="143"/>
+                            <menuItem title="Services" id="131">
+                                <menu key="submenu" title="Services" systemMenu="services" id="130"/>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="144"/>
+                            <menuItem title="Hide MacMAME" keyEquivalent="h" id="134">
+                                <connections>
+                                    <action selector="hide:" target="-1" id="152"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Hide Others" keyEquivalent="h" id="145">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="hideOtherApplications:" target="-1" id="146"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Show All" id="147">
+                                <connections>
+                                    <action selector="unhideAllApplications:" target="-1" id="148"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="149"/>
+                            <menuItem title="Quit MacMAME" keyEquivalent="q" id="136">
+                                <connections>
+                                    <action selector="terminate:" target="-1" id="139"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                
+                <!-- File Menu -->
+                <menuItem title="File" id="83">
+                    <menu key="submenu" title="File" id="81">
+                        <items>
+                            <menuItem title="Open Game…" keyEquivalent="o" id="72">
+                                <connections>
+                                    <action selector="openDocument:" target="-1" id="73"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="74"/>
+                            <menuItem title="Close" keyEquivalent="w" id="75">
+                                <connections>
+                                    <action selector="performClose:" target="-1" id="76"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                
+                <!-- Emulation Menu -->
+                <menuItem title="Emulation" id="200">
+                    <menu key="submenu" title="Emulation" id="201">
+                        <items>
+                            <menuItem title="Pause" keyEquivalent="p" id="202">
+                                <connections>
+                                    <action selector="togglePause:" target="-1" id="203"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Reset" keyEquivalent="r" id="204">
+                                <modifierMask key="keyEquivalentModifierMask" shift="YES" command="YES"/>
+                                <connections>
+                                    <action selector="resetGame:" target="-1" id="205"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="206"/>
+                            <menuItem title="Save State" id="207">
+                                <menu key="submenu" title="Save State" id="208">
+                                    <items>
+                                        <menuItem title="Slot 1" keyEquivalent="1" id="209">
+                                            <modifierMask key="keyEquivalentModifierMask" shift="YES" command="YES"/>
+                                            <connections>
+                                                <action selector="saveStateSlot1:" target="-1" id="210"/>
+                                            </connections>
+                                        </menuItem>
+                                        <menuItem title="Slot 2" keyEquivalent="2" id="211">
+                                            <modifierMask key="keyEquivalentModifierMask" shift="YES" command="YES"/>
+                                            <connections>
+                                                <action selector="saveStateSlot2:" target="-1" id="212"/>
+                                            </connections>
+                                        </menuItem>
+                                        <menuItem title="Slot 3" keyEquivalent="3" id="213">
+                                            <modifierMask key="keyEquivalentModifierMask" shift="YES" command="YES"/>
+                                            <connections>
+                                                <action selector="saveStateSlot3:" target="-1" id="214"/>
+                                            </connections>
+                                        </menuItem>
+                                    </items>
+                                </menu>
+                            </menuItem>
+                            <menuItem title="Load State" id="215">
+                                <menu key="submenu" title="Load State" id="216">
+                                    <items>
+                                        <menuItem title="Slot 1" keyEquivalent="1" id="217">
+                                            <connections>
+                                                <action selector="loadStateSlot1:" target="-1" id="218"/>
+                                            </connections>
+                                        </menuItem>
+                                        <menuItem title="Slot 2" keyEquivalent="2" id="219">
+                                            <connections>
+                                                <action selector="loadStateSlot2:" target="-1" id="220"/>
+                                            </connections>
+                                        </menuItem>
+                                        <menuItem title="Slot 3" keyEquivalent="3" id="221">
+                                            <connections>
+                                                <action selector="loadStateSlot3:" target="-1" id="222"/>
+                                            </connections>
+                                        </menuItem>
+                                    </items>
+                                </menu>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                
+                <!-- View Menu -->
+                <menuItem title="View" id="300">
+                    <menu key="submenu" title="View" id="301">
+                        <items>
+                            <menuItem title="Enter Full Screen" keyEquivalent="f" id="302">
+                                <modifierMask key="keyEquivalentModifierMask" control="YES" command="YES"/>
+                                <connections>
+                                    <action selector="toggleFullScreen:" target="-1" id="303"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="304"/>
+                            <menuItem title="Actual Size" keyEquivalent="1" id="305">
+                                <connections>
+                                    <action selector="actualSize:" target="-1" id="306"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Double Size" keyEquivalent="2" id="307">
+                                <connections>
+                                    <action selector="doubleSize:" target="-1" id="308"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Triple Size" keyEquivalent="3" id="309">
+                                <connections>
+                                    <action selector="tripleSize:" target="-1" id="310"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                
+                <!-- Window Menu -->
+                <menuItem title="Window" id="400">
+                    <menu key="submenu" title="Window" systemMenu="window" id="401">
+                        <items>
+                            <menuItem title="Minimize" keyEquivalent="m" id="402">
+                                <connections>
+                                    <action selector="performMiniaturize:" target="-1" id="403"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Zoom" id="404">
+                                <connections>
+                                    <action selector="performZoom:" target="-1" id="405"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="406"/>
+                            <menuItem title="Bring All to Front" id="407">
+                                <connections>
+                                    <action selector="arrangeInFront:" target="-1" id="408"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                
+                <!-- Help Menu -->
+                <menuItem title="Help" id="500">
+                    <menu key="submenu" title="Help" systemMenu="help" id="501">
+                        <items>
+                            <menuItem title="MacMAME Help" keyEquivalent="?" id="502">
+                                <connections>
+                                    <action selector="showHelp:" target="-1" id="503"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+            </items>
+        </menu>
+    </objects>
+</document>
