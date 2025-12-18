@@ -15,7 +15,7 @@ A native macOS arcade emulator built on [MAME](https://www.mamedev.org/), design
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 0 | ✅ Complete | Research & Constraints |
-| 1 | 🔲 Not started | Minimal macOS Shell |
+| 1 | ✅ Complete | Minimal macOS Shell |
 | 2 | 🔲 Not started | Mac-Native Windowing & Input |
 | 3 | 🔲 Not started | Drag-and-Drop Library |
 | 4 | 🔲 Not started | Polished UX + Save States |
