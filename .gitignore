@@ -1,0 +1,94 @@
+# macOS Build
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# MAME Build artifacts
+mame/build/
+mame/*.o
+mame/*.a
+MAMECore.framework/
+
+# Xcode
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+Packages/
+Package.resolved
+.swiftpm/
+
+# CocoaPods (if used)
+Pods/
+Podfile.lock
+
+# Carthage (if used)
+Carthage/Build/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Thumbnails
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+
+# Test artifacts
+*.xcresult/
+coverage/
+
+# Archives
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# App bundles (build output)
+*.app/
+
+# Provisioning profiles
+*.mobileprovision
+*.provisionprofile
+
+# Crash logs
+*.crash
+
+# Secrets / local config
+.env
+.env.local
+secrets.json
+
+# ROMs and BIOS (never commit!)
+roms/
+bios/
+*.zip
+!scripts/*.zip
+
+# Save states (user data)
+SaveStates/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
