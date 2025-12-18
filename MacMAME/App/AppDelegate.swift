@@ -8,7 +8,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     // MARK: - Application Lifecycle
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        print("AppDelegate: applicationDidFinishLaunching called")
         setupMainWindow()
+        print("AppDelegate: setupMainWindow completed")
         
         #if DEBUG
         print("MacMAME launched in DEBUG mode")
@@ -33,6 +35,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     private func setupMainWindow() {
         gameWindowController = GameWindowController()
         gameWindowController?.showWindow(self)
+        gameWindowController?.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
     
     // MARK: - Menu Actions

@@ -75,6 +75,12 @@ class MetalView: NSView {
         
         layer = metalLayer
         
+        // Set initial drawable size
+        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+        metalLayer.drawableSize = CGSize(width: bounds.width * scale, height: bounds.height * scale)
+        
+        print("Metal setup complete. Device: \(device.name)")
+        
         // Create render pipeline
         setupRenderPipeline()
         
@@ -150,6 +156,7 @@ class MetalView: NSView {
             pipelineDescriptor.colorAttachments[0].pixelFormat = metalLayer.pixelFormat
             
             pipelineState = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+            print("Render pipeline created successfully")
         } catch {
             print("Failed to create render pipeline: \(error)")
         }
