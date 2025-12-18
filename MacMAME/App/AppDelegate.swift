@@ -1,7 +1,7 @@
 import Cocoa
 
 @main
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     
     private var gameWindowController: GameWindowController?
     
@@ -66,7 +66,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     // MARK: - Menu Validation
     
-    override func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         guard let action = menuItem.action else { return true }
         
         switch action {
