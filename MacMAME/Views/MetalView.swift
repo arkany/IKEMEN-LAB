@@ -79,8 +79,6 @@ class MetalView: NSView {
         let scale = NSScreen.main?.backingScaleFactor ?? 2.0
         metalLayer.drawableSize = CGSize(width: bounds.width * scale, height: bounds.height * scale)
         
-        print("Metal setup complete. Device: \(device.name)")
-        
         // Create render pipeline
         setupRenderPipeline()
         
@@ -156,7 +154,6 @@ class MetalView: NSView {
             pipelineDescriptor.colorAttachments[0].pixelFormat = metalLayer.pixelFormat
             
             pipelineState = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
-            print("Render pipeline created successfully")
         } catch {
             print("Failed to create render pipeline: \(error)")
         }
@@ -252,12 +249,9 @@ class MetalView: NSView {
             frameCount = 0
             lastFPSUpdate = now
             
-            // Print FPS to console in debug builds
-            DispatchQueue.main.async { [weak self] in
-                if let fps = self?.currentFPS {
-                    print(String(format: "FPS: %.1f", fps))
-                }
-            }
+            // FPS is available via currentFPS property for overlay display
+            // Uncomment below for console logging:
+            // print(String(format: "FPS: %.1f", currentFPS))
         }
     }
     #endif

@@ -8,13 +8,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     // MARK: - Application Lifecycle
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        print("AppDelegate: applicationDidFinishLaunching called")
         setupMainWindow()
-        print("AppDelegate: setupMainWindow completed")
-        
-        #if DEBUG
-        print("MacMAME launched in DEBUG mode")
-        #endif
     }
     
     func applicationWillTerminate(_ notification: Notification) {
