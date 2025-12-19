@@ -1,336 +1,294 @@
-# Native macOS MAME App — Phased Project Plan
+# MacMugen — Native macOS MUGEN Experience
 
 ## Goal
 
-Create a **native macOS arcade emulator experience** built on MAME that:
+Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
-* Feels *Mac-first*, not a port
-* Uses drag-and-drop for ROM/library management
-* Is legally and technically viable for **Mac App Store distribution**
-* Can be developed incrementally without boiling the ocean
+* Provides a proper macOS `.app` experience (not just a bare executable)
+* Makes character/stage installation drag-and-drop simple
+* Handles content organization and discovery
+* Wraps Ikemen GO's netplay with a friendlier UI
+* Is viable for **Mac App Store distribution**
 
----
-
-## Guiding Principles
-
-* **Preservation first**: stay aligned with upstream MAME goals and licensing
-* **Mac-native UX**: AppKit/SwiftUI conventions over cross-platform lowest-common-denominator UI
-* **Incremental wins**: each phase should produce something runnable
-* **Legal by design**: no bundled ROMs, clear user ownership boundaries
+**Key insight:** Ikemen GO already exists and runs on macOS. We're not rebuilding the engine - we're building the **Mac-native UX layer** that's missing.
 
 ---
 
-## Phase 0 — Research & Constraints (Short but Critical)
+## Current Status (December 2024)
 
-**Outcome:** Clear architectural and legal guardrails before writing real code.
+### ✅ Completed
+- [x] Basic launcher UI with Launch/Stop buttons
+- [x] IkemenBridge for process management via NSWorkspace
+- [x] Character/stage counting and display
+- [x] Drag-and-drop installation (ZIP, RAR, 7z, folders)
+- [x] Auto-add to select.def with correct path detection
+- [x] Portrait size validation (warns on oversized)
+- [x] Homebrew dependencies (libxmp, sdl2, molten-vk, unrar)
+- [x] Visual character browser with thumbnails (SFF v1 portrait extraction)
 
-### Research Tasks (Completed)
+### 🔄 In Progress
+- [ ] Portrait fix tool (generate/resize 160x160 portraits)
 
-* Reviewed:
-  * MAME license structure (GPL-2.0 + BSD-3-Clause files)
-  * Apple App Store emulator precedents (Delta, PPSSPP, OpenEmu patterns)
-  * Sandbox + entitlement constraints on macOS
-  * Metal vs OpenGL on macOS (Metal required for App Store; OpenGL deprecated)
-  * BIOS/firmware management UI patterns in existing emulators
-  * Save state storage in sandboxed environments
-  * Benchmarking & latency profiling approaches
-
-### Architectural Decisions
-
-**Core Wrapper Strategy: Modular Framework Approach (Delta-inspired)**
-
-* Create `MAMECore.framework` wrapping MAME's C core
-* Establish middleware interface abstracting CPU/GPU backends (similar to DeltaCore)
-* Fork MAME's build system to generate macOS framework target
-* Embed framework in app (no subprocess spawning—lower latency, simpler sandboxing)
-* Benefits: Reusable, testable, isolation from app lifecycle, future-proof for alternative backends
-
-**Graphics Rendering: Metal-Only (App Store Mandatory)**
-
-* Metal is required; OpenGL deprecated/removed from App Store apps
-* Use MAME's existing BGFX backend to abstract Metal shaders
-* Document Metal rendering bridge for arcade effects (scanlines, blur, CRT simulation)
-* Achieves <16ms frame latency at 60Hz on Apple Silicon
-
-**BIOS/Firmware Management: Preferences-Driven with URL Search**
-
-* Create Preferences → "Firmware & BIOS" panel with file selection dialog
-* Allow users to add custom URLs; app searches and manages downloads within sandbox
-* Error messaging: show missing ROM set with SHA1, link to mamedev.org documentation
-* No direct download links (avoids piracy liability; users source responsibly)
-
-**Save State Storage: Sandboxed with Optional iCloud Sync (Phase 5)**
-
-* Store in `~/Library/Application Support/[BundleID]/SaveStates/[GameName]/`
-* Per-game state organization: `slot-1.state`, `slot-2.state`, etc.
-* Manual export via NSSavePanel (App Store safe)
-* Plan optional iCloud sync via `NSUbiquitousKeyValueStore` (metadata only) for Phase 5
-* State metadata: timestamp, screenshot preview, emulator version
-
-**UI Framework: AppKit (Recommended over SwiftUI)**
-
-* Better macOS conventions for fullscreen handling (critical for emulation)
-* Mature gamepad/input APIs via IOKit bridge
-* More predictable performance for resource-intensive rendering
-* Established patterns for menu bar integration
-
-**Benchmarking & Latency Profiling: Built-In for Phase 2**
-
-* Use MAME's native benchmark mode (`mame -b`) for regression testing in CI
-* Use macOS CVDisplayLink for frame-to-frame timing measurement
-* Target: <16ms input-to-display latency at 60Hz (1 frame overhead)
-* Developer overlay (hidden by default) showing frame count & latency metrics
-* Expose profiling data via Lua interface for custom performance validation
-
-### Terminology
-
-* Avoid "ROMs" in UI → use "Game Files" or "Cartridges"
-* Refer to emulation cores as "Emulators" or "Systems" (Arcade, NES, SNES, etc.)
-
-**Deliverables**
-
-* `docs/constraints.md` — Technical & legal constraints summary
-* `docs/legal-notes.md` — MAME licensing deep-dive, App Store policy review, BIOS liability scoping
-* `docs/macos-native-guidelines.md` — AppKit patterns, Metal rendering best practices, sandbox entitlements, accessibility baseline
-* `docs/architecture.md` — Framework wrapper design, Metal bridge specification, middleware interface contract
+### 📋 Planned
+- [ ] Visual stage browser with thumbnails
+- [ ] Auto-detect when Ikemen GO closes (update button state)
+- [ ] Settings panel (resolution, fullscreen, etc.)
+- [ ] Screenpack management
+- [ ] Netplay lobby UI
+- [ ] Bundle Ikemen GO inside the .app for distribution
+- [ ] App Store preparation (sandbox, signing)
 
 ---
 
-## Phase 1 — Minimal macOS Shell (Proof of Life)
+## What We're Building vs What Exists
 
-**Outcome:** A native macOS app that launches and runs MAME in some form.
+| Component | Ikemen GO (exists) | MacMugen (we build) |
+|-----------|-------------------|---------------------|
+| Fighting game engine | ✅ | — |
+| MUGEN compatibility | ✅ | — |
+| Rollback netplay | ✅ | — |
+| macOS binary | ✅ | — |
+| Mac `.app` bundle | ❌ | ✅ |
+| Content manager UI | ❌ | ✅ |
+| Drag-and-drop install | ❌ | ✅ |
+| Native preferences | ❌ | ✅ |
+| First-run wizard | ❌ | ✅ |
+| Menu bar integration | ❌ | ✅ |
+| App Store ready | ❌ | ✅ |
 
-### Scope
+---
 
-* Create a macOS app project in Xcode
-* No custom UI polish yet
-* Focus on:
+## Architecture
 
-  * Launching MAME
-  * Displaying video output
-  * Handling basic input
+```
+┌─────────────────────────────────────────────┐
+│              MacMugen.app                   │
+│  ┌───────────────────────────────────────┐  │
+│  │     Swift/AppKit UI Layer             │  │
+│  │  • Content Browser                    │  │
+│  │  • Preferences                        │  │
+│  │  • Netplay Lobby                      │  │
+│  └───────────────────────────────────────┘  │
+│                    │                        │
+│                    ▼                        │
+│  ┌───────────────────────────────────────┐  │
+│  │     IkemenBridge.swift                │  │
+│  │  • Launch/manage Ikemen process       │  │
+│  │  • Pass configuration                 │  │
+│  │  • Monitor status                     │  │
+│  └───────────────────────────────────────┘  │
+│                    │                        │
+│                    ▼                        │
+│  ┌───────────────────────────────────────┐  │
+│  │  Ikemen_GO (bundled binary)           │  │
+│  │  • Runs in own OpenGL window          │  │
+│  │  • Reads chars/, stages/, data/       │  │
+│  └───────────────────────────────────────┘  │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+## Phase 0 — Setup & Research ✅ (Mostly Complete)
+
+### Completed
+- [x] Xcode project structure  
+- [x] Basic AppKit shell (window, menu bar)
+- [x] Metal rendering foundation (may not need for wrapper approach)
+
+### Remaining  
+- [ ] Download and test Ikemen GO macOS build
+- [ ] Understand Ikemen GO's config files (mugen.cfg, select.def)
+- [ ] Document command-line arguments if any
+- [ ] Determine best way to bundle and launch
+
+---
+
+## Phase 1 — Minimal Wrapper (Proof of Life)
+
+**Outcome:** MacMugen.app launches Ikemen GO and it just works.
 
 ### Tasks
+- [ ] Download Ikemen GO macOS release
+- [ ] Bundle Ikemen_GO binary inside MacMugen.app
+- [ ] Create `IkemenBridge.swift` to launch subprocess
+- [ ] Handle process lifecycle (launch, quit, crash)
+- [ ] Set working directory to content folder
+- [ ] Basic "Launch Game" button in UI
 
-* Clone upstream MAME
-* Build MAME for macOS (CLI or library)
-* Wrap it with:
-
-  * App lifecycle
-  * Window creation
-  * Fullscreen handling
-* Hardcode a single test game path (local dev only)
-
-**Deliverables**
-
-* Runnable `.app`
-* `README.md` with build steps
-* `scripts/build-mame-macos.sh`
+### Deliverables
+- MacMugen.app that launches Ikemen GO
+- User can play if they manually add characters
 
 ---
 
-## Phase 2 — Mac-Native Windowing & Input
+## Phase 2 — Content Management
 
-**Outcome:** It *feels* like a Mac app, even if it's ugly.
+**Outcome:** Easy drag-and-drop character/stage installation.
 
-### Improvements
+### Features
+- [ ] Content directory setup (~/Library/Application Support/MacMugen/)
+- [ ] Drag-and-drop `.zip` installation for characters
+- [ ] Drag-and-drop `.zip` installation for stages  
+- [ ] Character browser with thumbnails (parse .sff for portrait)
+- [ ] Stage browser with previews
+- [ ] Automatic `select.def` generation/editing
+- [ ] Enable/disable characters without deleting
+- [ ] Delete characters with confirmation
 
-* Proper macOS fullscreen behavior
-* Retina scaling handled correctly
-* Gamepad + keyboard mapping via macOS APIs
-* Menu bar integration:
+### Content Structure
+```
+~/Library/Application Support/MacMugen/
+├── chars/           # Character folders
+├── stages/          # Stage folders  
+├── data/            # Ikemen config (we manage select.def)
+├── font/            # Fonts
+└── sound/           # Sound effects
+```
 
-  * Quit
-  * Pause
-  * Reset
-  * Toggle fullscreen
-
-### Benchmarking & Latency
-
-* Integrate CVDisplayLink-based frame timing measurement
-* Developer overlay for frame count & latency metrics (hidden by default)
-* Target: <16ms input-to-display latency at 60Hz
-
-### Key Decision
-
-* Decide how much MAME UI is exposed vs hidden
-
-  * Prefer hiding internal MAME menus where possible
-
-**Deliverables**
-
-* Stable fullscreen gameplay
-* Documented input mapping layer
-* Latency profiling infrastructure
+### Deliverables
+- Content browser window
+- Functional drag-and-drop installation
+- Characters appear in game after install
 
 ---
 
-## Phase 3 — Drag-and-Drop Library MVP
+## Phase 3 — Preferences & Configuration  
 
-**Outcome:** The "aha" moment for users.
+**Outcome:** Native macOS preferences for game settings.
 
-### UX Concept
+### Features
+- [ ] Video settings (resolution, fullscreen, vsync)
+- [ ] Audio settings (volume levels)
+- [ ] Input/controller configuration
+- [ ] Content paths configuration
+- [ ] Write settings to Ikemen's config files
+- [ ] Keyboard shortcut customization
 
-* User drags a game file onto:
-
-  * App icon **or**
-  * Main window
-* App:
-
-  * Copies file into sandboxed storage
-  * Indexes it
-  * Displays it in a simple library list/grid
-
-### Implementation Notes
-
-* Use macOS drag-and-drop APIs
-* Maintain:
-
-  * App-managed storage
-  * Metadata cache (SQLite or JSON initially)
-* No auto-download or scraping in v1
-
-**Deliverables**
-
-* Drag-and-drop support
-* Basic Library UI
-* Persistent game list between launches
+### Deliverables
+- Preferences window (⌘,)
+- Settings persist and apply to Ikemen GO
 
 ---
 
-## Phase 4 — Polished Mac UX + Save State Management (Still No Scope Creep)
+## Phase 4 — Netplay UI
 
-**Outcome:** Something you'd proudly demo.
+**Outcome:** Friendly interface for Ikemen GO's built-in netplay.
 
-### Enhancements
+### Features
+- [ ] Host game UI (shows your IP/port)
+- [ ] Join game UI (enter host IP/port)
+- [ ] Connection status display
+- [ ] Recent connections history
+- [ ] Optional: Simple relay/lobby server
 
-* Game artwork placeholders
-* "Recently Played" tracking
-* **Save State Management**:
-  * Per-game save slots (1–5, auto-indexed)
-  * Save/load UI accessible in-game (keyboard shortcuts + menu bar)
-  * State metadata display (timestamp, screenshot preview)
-  * Auto-backup of previous state before overwrite
-  * Clear state version/compatibility warnings (e.g., "saved on v0.250, current v0.251")
-* **Firmware/BIOS Management Panel**:
-  * Preferences → "Firmware & BIOS" with file browser
-  * Add/remove firmware files via NSSavePanel
-  * Display required vs optional system files with clear status indicators
-  * Error states with SHA1 hash mismatches
-* Per-game settings:
-  * Controls (button remapping, dead zones, force feedback options)
-  * Video options (scaling, effects, aspect ratio)
-* Clear error states (missing ROM set, unsupported files, incompatible BIOS versions)
+### Notes
+- Ikemen GO has GGPO rollback built-in
+- We just need to surface the connection UI nicely
+- May need to parse Ikemen's netplay config
 
-### UX Tone
-
-* Friendly
-* Non-technical
-* Never references piracy
-* Helpful & guiding (e.g., "Game Files hold your ROM collection; manage it like any other app data")
-
-**Deliverables**
-
-* Refined UI with save state UI and management panels
-* Firmware/BIOS management panel
-* State metadata architecture (JSON schema for state manifest)
-* UX copy pass (all user-facing text reviewed for tone)
-* Screenshots suitable for App Store submission
+### Deliverables
+- Netplay menu in MacMugen
+- Can host and join matches through UI
 
 ---
 
-## Phase 5 — App Store Compliance, Cloud Sync & Packaging
+## Phase 5 — Polish & Distribution
 
-**Outcome:** Ready to submit (even if you don't yet).
+**Outcome:** Ready for users (and potentially App Store).
 
-### Legal & Policy Checklist
+### Features
+- [ ] Custom app icon
+- [ ] First-run experience / setup wizard
+- [ ] "Get Characters" links to community resources
+- [ ] Sparkle auto-updater (for direct distribution)
+- [ ] Proper code signing and notarization
+- [ ] Sandboxing (if targeting App Store)
+- [ ] Crash reporting
+- [ ] Help documentation
 
-* ✓ No bundled ROMs
-* ✓ No direct download links to ROM sites (users add own sources)
-* ✓ Explicit user responsibility language (onboarding, help docs)
-* ✓ App sandbox enabled (all file access via sandboxed storage or file dialogs)
-* ✓ Hardened runtime (entitlements minimized, no code injection)
-* ✓ Notarization (build via automated notarization pipeline)
-* ✓ Entitlements audit (only request: file I/O, gamepad, audio, graphics)
+### Distribution Options
+1. **Direct download** (DMG) — Easier, full flexibility
+2. **App Store** — Wider reach, sandboxing constraints
 
-### Cloud & Sync Features
-
-* **Optional iCloud Sync for Save State Metadata** (via `NSUbiquitousKeyValueStore`)
-  * Syncs only state manifest (timestamps, screenshot previews), not large state files
-  * Version history tracking (restore save from previous day/week)
-  * Conflict resolution: device timestamp + hash comparison
-  * User opt-in only (checkbox in Preferences → "Cloud Sync")
-* **Manual Export of Save States** (user-initiated, not automatic)
-  * NSSavePanel for explicit user control over export destination
-  * Export format: ZIP with state files + metadata JSON
-  * App Store safe: zero surprise uploads
-
-### Store Strategy: Unified Codebase, Build-Time Variants
-
-**App Store Build** (Entitlements: Sandbox + iCloud Container)
-
-* Strict sandbox enforcement
-* All ROMs/firmware via drag-and-drop or file dialogs
-* iCloud metadata sync enabled
-* Safer, friction-free distribution
-
-**Direct Download Build** (Entitlements: Sandbox + File Access)
-
-* Same codebase, different entitlements
-* Users can optionally enable broader file access
-* Local filesystem browsing (if not on App Store)
-* Same metadata sync (optional iCloud)
-
-**Deliverables**
-
-* App Store–ready build with iCloud metadata sync
-* Direct download build variant (entitlements file)
-* `App Store Review Notes.md` (addressing potential reviewer concerns: no piracy facilitation, legality reasoning, open-source approach)
-* Clear "How to Add Your Games" onboarding screen
-* Privacy Policy & Terms of Use templates (for App Store submission)
+### Deliverables
+- Signed, notarized MacMugen.app
+- Website/landing page
+- User documentation
 
 ---
 
-## Phase 6 — Community & Sustainability (Optional but Smart)
+## Phase 6 — Nice-to-Haves (Future)
 
-**Outcome:** Project doesn't die after v1.
-
-* Stay close to upstream MAME
-* Document contribution guidelines
-* Decide:
-
-  * Fully open source fork
-  * Or thin Mac shell + upstream core
-* Optional:
-
-  * Telemetry (opt-in)
-  * Crash reporting
+- [ ] Character favorites and ratings
+- [ ] Play history and statistics  
+- [ ] Screenshot capture
+- [ ] Video recording
+- [ ] Twitch/streaming integration
+- [ ] Tournament bracket mode
+- [ ] Character tier list editor
+- [ ] Hitbox visualization toggle
 
 ---
 
-## What This Is *Not* (Intentionally)
+## Project Structure
 
-* ❌ A ROM marketplace
-* ❌ A PvP/netplay platform (initially)
-* ❌ A reskinned Windows port
-* ❌ A one-shot rewrite of MAME
+```
+MacMugen/
+├── MacMugen.xcodeproj
+├── MacMugen/
+│   ├── App/
+│   │   ├── AppDelegate.swift
+│   │   ├── MainWindowController.swift
+│   │   └── PreferencesWindowController.swift
+│   ├── Core/
+│   │   ├── IkemenBridge.swift          # Launch/manage Ikemen
+│   │   ├── ContentManager.swift        # Chars/stages management
+│   │   ├── ConfigManager.swift         # Read/write Ikemen configs
+│   │   └── SelectDefParser.swift       # Parse/edit select.def
+│   ├── Views/
+│   │   ├── ContentBrowserView.swift
+│   │   ├── CharacterGridView.swift
+│   │   ├── StageListView.swift
+│   │   └── NetplayView.swift
+│   ├── Models/
+│   │   ├── Character.swift
+│   │   ├── Stage.swift
+│   │   └── GameConfig.swift
+│   └── Resources/
+│       ├── Assets.xcassets
+│       └── MainMenu.xib
+├── Ikemen/                              # Bundled Ikemen GO
+│   └── (Ikemen_GO binary + base files)
+└── docs/
+    └── user-guide.md
+```
 
 ---
 
-## Why This Project Is Worth Doing
+## Success Metrics
 
-* MAME has never had a **great Mac-native experience**
-* Apple Silicon Macs are perfect for emulation
-* Apple's emulator policy has materially shifted
-* Drag-and-drop + Mac UX is an unsolved niche here
+1. **Phase 1**: App launches Ikemen GO successfully
+2. **Phase 2**: Can install a character via drag-and-drop, appears in game
+3. **Phase 3**: Can change resolution in preferences, applies to game
+4. **Phase 4**: Can host/join netplay match through UI
+5. **Phase 5**: Non-technical user can download, install, and play
 
 ---
 
-## Next Concrete Step (Do This First)
+## Resources
 
-1. Create repo ✓
-2. Add this file as `plan.md` ✓
-3. Start Phase 0 docs
-4. Get *anything* running on macOS, no matter how ugly
+- **Ikemen GO Releases**: https://github.com/ikemen-engine/Ikemen-GO/releases
+- **Ikemen GO Wiki**: https://github.com/ikemen-engine/Ikemen-GO/wiki
+- **MUGEN Archive**: https://mugenarchive.com/
+- **MUGEN Free For All**: https://mugenfreeforall.com/
 
-Momentum beats perfection.
+---
+
+## Why This Approach?
+
+1. **Leverage existing work** — Ikemen GO is mature, actively maintained
+2. **Focus on UX** — Our value-add is the Mac experience, not the engine
+3. **Faster to ship** — Wrapper approach = playable sooner
+4. **Stay current** — Can update bundled Ikemen GO as new versions release
+5. **Legal clarity** — Ikemen GO is MIT licensed, clean to bundle

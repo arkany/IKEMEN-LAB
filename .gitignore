@@ -92,3 +92,23 @@ SaveStates/
 tmp/
 temp/
 *.tmp
+
+# Ikemen GO / MUGEN (external - download separately)
+Ikemen-GO/
+MUGEN/
+mugen/
+
+# Character and stage files (user content)
+chars/
+stages/
+data/
+sound/
+font/
+*.sff
+*.snd
+*.act
+*.air
+*.cmd
+*.cns
+*.def
+*.st
