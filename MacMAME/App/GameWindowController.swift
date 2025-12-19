@@ -65,7 +65,7 @@ class GameWindowController: NSWindowController {
     }
     
     private func setupEmulator() {
-        emulatorBridge = EmulatorBridge()
+        emulatorBridge = EmulatorBridge.shared
         metalView.emulatorBridge = emulatorBridge
         
         // Start rendering test pattern immediately

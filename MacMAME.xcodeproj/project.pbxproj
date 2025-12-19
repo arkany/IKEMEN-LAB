@@ -17,6 +17,7 @@
 		008 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 202 /* MetalKit.framework */; };
 		009 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 203 /* QuartzCore.framework */; };
 		010 /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 204 /* GameController.framework */; };
+		011 /* LibretroCore.c in Sources */ = {isa = PBXBuildFile; fileRef = 110 /* LibretroCore.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +30,9 @@
 		107 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		108 /* MacMAME.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacMAME.entitlements; sourceTree = "<group>"; };
 		109 /* MacMAME.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMAME.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		110 /* LibretroCore.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = LibretroCore.c; sourceTree = "<group>"; };
+		111 /* LibretroCore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LibretroCore.h; sourceTree = "<group>"; };
+		112 /* MacMAME-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "MacMAME-Bridging-Header.h"; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -66,6 +70,7 @@
 				411 /* Views */,
 				412 /* Core */,
 				413 /* Resources */,
+				112 /* MacMAME-Bridging-Header.h */,
 			);
 			path = MacMAME;
 			sourceTree = "<group>";
@@ -110,6 +115,8 @@
 			isa = PBXGroup;
 			children = (
 				104 /* EmulatorBridge.swift */,
+				110 /* LibretroCore.c */,
+				111 /* LibretroCore.h */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -199,6 +206,7 @@
 				002 /* GameWindowController.swift in Sources */,
 				003 /* MetalView.swift in Sources */,
 				004 /* EmulatorBridge.swift in Sources */,
+				011 /* LibretroCore.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -346,6 +354,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.macmame.MacMAME;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "MacMAME/MacMAME-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -373,6 +382,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.macmame.MacMAME;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "MacMAME/MacMAME-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
