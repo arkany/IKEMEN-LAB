@@ -13,6 +13,13 @@ class MetalView: NSView {
     private var commandQueue: MTLCommandQueue!
     private var metalLayer: CAMetalLayer!
     private var pipelineState: MTLRenderPipelineState?
+    private var texturedPipelineState: MTLRenderPipelineState?
+    
+    // MARK: - Emulator Texture
+    
+    private var emulatorTexture: MTLTexture?
+    private var textureWidth: Int = 0
+    private var textureHeight: Int = 0
     
     // MARK: - Display Link
     
@@ -87,9 +94,7 @@ class MetalView: NSView {
     }
     
     private func setupRenderPipeline() {
-        // For now, use a simple passthrough shader
-        // This will be replaced with proper texture blitting when MAME integration happens
-        
+        // Shaders for rendering emulator output
         let shaderSource = """
         #include <metal_stdlib>
         using namespace metal;
@@ -121,15 +126,15 @@ class MetalView: NSView {
             return out;
         }
         
-        fragment float4 fragment_main(VertexOut in [[stage_in]],
-                                      texture2d<float> texture [[texture(0)]]) {
+        fragment float4 fragment_textured(VertexOut in [[stage_in]],
+                                          texture2d<float> texture [[texture(0)]]) {
             constexpr sampler s(filter::nearest);
             return texture.sample(s, in.texCoord);
         }
         
-        // Placeholder fragment shader (shows test pattern when no texture)
+        // Placeholder fragment shader (shows test pattern when no game loaded)
         fragment float4 fragment_placeholder(VertexOut in [[stage_in]]) {
-            // Classic test pattern - colored bars
+            // Classic SMPTE color bars test pattern
             float x = in.texCoord.x;
             
             if (x < 0.125) return float4(1, 1, 1, 1);      // White
@@ -146,14 +151,22 @@ class MetalView: NSView {
         do {
             let library = try device.makeLibrary(source: shaderSource, options: nil)
             let vertexFunction = library.makeFunction(name: "vertex_main")
-            let fragmentFunction = library.makeFunction(name: "fragment_placeholder")
+            let fragmentPlaceholder = library.makeFunction(name: "fragment_placeholder")
+            let fragmentTextured = library.makeFunction(name: "fragment_textured")
             
+            // Placeholder pipeline (test pattern)
             let pipelineDescriptor = MTLRenderPipelineDescriptor()
             pipelineDescriptor.vertexFunction = vertexFunction
-            pipelineDescriptor.fragmentFunction = fragmentFunction
+            pipelineDescriptor.fragmentFunction = fragmentPlaceholder
             pipelineDescriptor.colorAttachments[0].pixelFormat = metalLayer.pixelFormat
-            
             pipelineState = try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+            
+            // Textured pipeline (emulator output)
+            let texturedDescriptor = MTLRenderPipelineDescriptor()
+            texturedDescriptor.vertexFunction = vertexFunction
+            texturedDescriptor.fragmentFunction = fragmentTextured
+            texturedDescriptor.colorAttachments[0].pixelFormat = metalLayer.pixelFormat
+            texturedPipelineState = try device.makeRenderPipelineState(descriptor: texturedDescriptor)
         } catch {
             print("Failed to create render pipeline: \(error)")
         }
@@ -203,8 +216,13 @@ class MetalView: NSView {
         guard !isInTransition else { return }
         
         autoreleasepool {
+            // Run emulator frame if game is loaded
+            if let bridge = emulatorBridge, bridge.isGameLoaded {
+                bridge.runFrame()
+                updateEmulatorTexture()
+            }
+            
             guard let drawable = metalLayer.nextDrawable(),
-                  let pipelineState = pipelineState,
                   let commandBuffer = commandQueue.makeCommandBuffer() else {
                 return
             }
@@ -219,10 +237,18 @@ class MetalView: NSView {
                 return
             }
             
-            renderEncoder.setRenderPipelineState(pipelineState)
-            
-            // TODO: When emulator is integrated, get frame texture from emulatorBridge
-            // For now, draw the test pattern
+            // Use textured pipeline if we have emulator output, otherwise test pattern
+            if let texture = emulatorTexture,
+               let pipeline = texturedPipelineState,
+               emulatorBridge?.isGameLoaded == true {
+                renderEncoder.setRenderPipelineState(pipeline)
+                renderEncoder.setFragmentTexture(texture, index: 0)
+            } else if let pipeline = pipelineState {
+                renderEncoder.setRenderPipelineState(pipeline)
+            } else {
+                renderEncoder.endEncoding()
+                return
+            }
             
             renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
             renderEncoder.endEncoding()
@@ -234,6 +260,58 @@ class MetalView: NSView {
             updateFPSCounter()
             #endif
         }
+    }
+    
+    // MARK: - Texture Management
+    
+    private func updateEmulatorTexture() {
+        guard let bridge = emulatorBridge else { return }
+        
+        let framebuffer = bridge.getFramebuffer()
+        guard let data = framebuffer.data,
+              framebuffer.width > 0,
+              framebuffer.height > 0 else {
+            return
+        }
+        
+        // Create or recreate texture if size changed
+        if emulatorTexture == nil ||
+           textureWidth != framebuffer.width ||
+           textureHeight != framebuffer.height {
+            
+            textureWidth = framebuffer.width
+            textureHeight = framebuffer.height
+            
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .bgra8Unorm,  // XRGB8888 from libretro maps to BGRA
+                width: textureWidth,
+                height: textureHeight,
+                mipmapped: false
+            )
+            descriptor.usage = [.shaderRead]
+            descriptor.storageMode = .managed
+            
+            emulatorTexture = device.makeTexture(descriptor: descriptor)
+            
+            #if DEBUG
+            print("Created emulator texture: \(textureWidth)x\(textureHeight)")
+            #endif
+        }
+        
+        // Upload framebuffer data to texture
+        guard let texture = emulatorTexture else { return }
+        
+        let region = MTLRegion(
+            origin: MTLOrigin(x: 0, y: 0, z: 0),
+            size: MTLSize(width: textureWidth, height: textureHeight, depth: 1)
+        )
+        
+        texture.replace(
+            region: region,
+            mipmapLevel: 0,
+            withBytes: data,
+            bytesPerRow: framebuffer.pitch
+        )
     }
     
     // MARK: - Performance Monitoring
