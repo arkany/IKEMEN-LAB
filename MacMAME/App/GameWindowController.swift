@@ -75,6 +75,28 @@ class GameWindowController: NSWindowController {
         return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
     }
     
+    // MARK: - Icons
+    
+    private func loadIcon(named name: String, tintColor: NSColor? = nil) -> NSImage? {
+        guard let iconPath = Bundle.main.path(forResource: name, ofType: "svg", inDirectory: "Icons"),
+              let image = NSImage(contentsOfFile: iconPath) else {
+            return nil
+        }
+        
+        // If tint color specified, create a tinted copy
+        if let tint = tintColor {
+            let tinted = NSImage(size: image.size)
+            tinted.lockFocus()
+            image.draw(in: NSRect(origin: .zero, size: image.size))
+            tint.set()
+            NSRect(origin: .zero, size: image.size).fill(using: .sourceAtop)
+            tinted.unlockFocus()
+            return tinted
+        }
+        
+        return image
+    }
+    
     // MARK: - Initialization
     
     convenience init() {
@@ -128,30 +150,61 @@ class GameWindowController: NSWindowController {
         sidebarView.layer?.backgroundColor = bgColor.cgColor
         contentView.addSubview(sidebarView)
         
+        // === Launch Button Shadow (separate view) ===
+        let launchShadow = NSView()
+        launchShadow.translatesAutoresizingMaskIntoConstraints = false
+        launchShadow.wantsLayer = true
+        launchShadow.layer?.backgroundColor = NSColor(red: 15/255, green: 25/255, blue: 35/255, alpha: 1.0).cgColor // #0f1923
+        launchShadow.identifier = NSUserInterfaceItemIdentifier("launchShadow")
+        sidebarView.addSubview(launchShadow)
+        
         // === Launch Button ===
-        launchButton = NSButton(title: "LAUNCH", target: self, action: #selector(launchIkemen))
+        launchButton = NSButton()
         launchButton.translatesAutoresizingMaskIntoConstraints = false
+        launchButton.title = ""
         launchButton.isBordered = false
+        launchButton.target = self
+        launchButton.action = #selector(launchIkemen)
         launchButton.wantsLayer = true
         launchButton.layer?.backgroundColor = greenAccent.cgColor
-        launchButton.layer?.cornerRadius = 8
         
-        // Shadow effect (12px 12px black)
-        launchButton.shadow = NSShadow()
-        launchButton.layer?.shadowColor = NSColor.black.cgColor
-        launchButton.layer?.shadowOffset = CGSize(width: 8, height: -8)
-        launchButton.layer?.shadowOpacity = 1.0
-        launchButton.layer?.shadowRadius = 0
+        // Create content stack with icon + text
+        let launchStack = NSStackView()
+        launchStack.translatesAutoresizingMaskIntoConstraints = false
+        launchStack.orientation = .horizontal
+        launchStack.spacing = 10
+        launchStack.alignment = .centerY
+        launchStack.identifier = NSUserInterfaceItemIdentifier("launchStack")
         
-        // Custom attributed title for proper font/color
-        let launchTitle = NSAttributedString(
-            string: "LAUNCH",
-            attributes: [
-                .font: jerseyFont(size: 36),
-                .foregroundColor: NSColor.black
-            ]
-        )
-        launchButton.attributedTitle = launchTitle
+        // Arcade icon (black tinted for green background)
+        let launchIcon = NSImageView()
+        launchIcon.translatesAutoresizingMaskIntoConstraints = false
+        launchIcon.identifier = NSUserInterfaceItemIdentifier("launchIcon")
+        if let image = loadIcon(named: "arcade", tintColor: .black) {
+            launchIcon.image = image
+        }
+        NSLayoutConstraint.activate([
+            launchIcon.widthAnchor.constraint(equalToConstant: 32),
+            launchIcon.heightAnchor.constraint(equalToConstant: 32),
+        ])
+        launchStack.addArrangedSubview(launchIcon)
+        
+        // Text label
+        let launchLabel = NSTextField(labelWithString: "Start IKEMEN GO")
+        launchLabel.font = jerseyFont(size: 36)
+        launchLabel.textColor = .black
+        launchLabel.isEditable = false
+        launchLabel.isBordered = false
+        launchLabel.backgroundColor = .clear
+        launchLabel.identifier = NSUserInterfaceItemIdentifier("launchLabel")
+        launchStack.addArrangedSubview(launchLabel)
+        
+        launchButton.addSubview(launchStack)
+        NSLayoutConstraint.activate([
+            launchStack.centerXAnchor.constraint(equalTo: launchButton.centerXAnchor),
+            launchStack.centerYAnchor.constraint(equalTo: launchButton.centerYAnchor),
+        ])
+        
         sidebarView.addSubview(launchButton)
         
         // === Stats Row ===
@@ -187,17 +240,6 @@ class GameWindowController: NSWindowController {
             navStack.addArrangedSubview(button)
         }
         
-        // === Arcade Icon (decorative) ===
-        let arcadeIcon = NSImageView()
-        arcadeIcon.translatesAutoresizingMaskIntoConstraints = false
-        arcadeIcon.imageScaling = .scaleProportionallyUpOrDown
-        if let iconPath = Bundle.main.path(forResource: "arcade", ofType: "svg", inDirectory: "Icons"),
-           let image = NSImage(contentsOfFile: iconPath) {
-            arcadeIcon.image = image
-            arcadeIcon.contentTintColor = grayText.withAlphaComponent(0.3)
-        }
-        sidebarView.addSubview(arcadeIcon)
-        
         // === Status Label ===
         statusLabel = NSTextField(labelWithString: "Ready")
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -206,8 +248,17 @@ class GameWindowController: NSWindowController {
         statusLabel.alignment = .left
         sidebarView.addSubview(statusLabel)
         
+        // Get reference to shadow view
+        guard let launchShadow = sidebarView.subviews.first(where: { $0.identifier?.rawValue == "launchShadow" }) else { return }
+        
         // Sidebar internal constraints
         NSLayoutConstraint.activate([
+            // Launch shadow (offset 12px right and down from button)
+            launchShadow.topAnchor.constraint(equalTo: sidebarView.topAnchor, constant: sidebarPadding + 12),
+            launchShadow.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding + 12),
+            launchShadow.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding + 4),
+            launchShadow.heightAnchor.constraint(equalToConstant: 60),
+            
             // Launch button
             launchButton.topAnchor.constraint(equalTo: sidebarView.topAnchor, constant: sidebarPadding),
             launchButton.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
@@ -222,12 +273,6 @@ class GameWindowController: NSWindowController {
             navStack.topAnchor.constraint(equalTo: statsStack.bottomAnchor, constant: 32),
             navStack.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
             navStack.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding),
-            
-            // Arcade icon (bottom right of sidebar)
-            arcadeIcon.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding),
-            arcadeIcon.bottomAnchor.constraint(equalTo: statusLabel.topAnchor, constant: -16),
-            arcadeIcon.widthAnchor.constraint(equalToConstant: 80),
-            arcadeIcon.heightAnchor.constraint(equalToConstant: 80),
             
             // Status
             statusLabel.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
@@ -244,10 +289,8 @@ class GameWindowController: NSWindowController {
         // Icon
         let iconView = NSImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
-        if let iconPath = Bundle.main.path(forResource: iconName, ofType: "svg", inDirectory: "Icons"),
-           let image = NSImage(contentsOfFile: iconPath) {
+        if let image = loadIcon(named: iconName, tintColor: grayText) {
             iconView.image = image
-            iconView.contentTintColor = grayText
         }
         NSLayoutConstraint.activate([
             iconView.widthAnchor.constraint(equalToConstant: 24),
@@ -267,6 +310,7 @@ class GameWindowController: NSWindowController {
     private func createNavButton(for item: NavItem) -> (NSButton, NSTextField) {
         let button = NSButton()
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.title = ""  // Remove default "Button" text
         button.isBordered = false
         button.bezelStyle = .inline
         button.target = self
@@ -297,10 +341,9 @@ class GameWindowController: NSWindowController {
         // Icon
         let iconView = NSImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
-        if let iconPath = Bundle.main.path(forResource: item.iconName, ofType: "svg", inDirectory: "Icons"),
-           let image = NSImage(contentsOfFile: iconPath) {
+        iconView.identifier = NSUserInterfaceItemIdentifier("navIcon")
+        if let image = loadIcon(named: item.iconName, tintColor: grayText) {
             iconView.image = image
-            iconView.contentTintColor = grayText
         }
         NSLayoutConstraint.activate([
             iconView.widthAnchor.constraint(equalToConstant: 32),
@@ -390,8 +433,11 @@ class GameWindowController: NSWindowController {
             // Find the stack view and update colors
             if let stack = container.subviews.compactMap({ $0 as? NSStackView }).first {
                 for view in stack.arrangedSubviews {
-                    if let iconView = view as? NSImageView {
-                        iconView.contentTintColor = isSelected ? redAccent : grayText
+                    if let iconView = view as? NSImageView, iconView.identifier?.rawValue == "navIcon" {
+                        // Reload icon with new tint color
+                        if let image = loadIcon(named: navItem.iconName, tintColor: isSelected ? redAccent : grayText) {
+                            iconView.image = image
+                        }
                     }
                     if let label = view as? NSTextField {
                         label.textColor = isSelected ? redAccent : grayText
@@ -524,44 +570,59 @@ class GameWindowController: NSWindowController {
     private func updateUI(for state: EngineState) {
         switch state {
         case .idle:
-            updateLaunchButton(title: "LAUNCH", enabled: true)
+            updateLaunchButton(title: "Start IKEMEN GO", enabled: true, isRunning: false)
             statusLabel.stringValue = "Ready"
             statusLabel.textColor = greenAccent
             
         case .launching:
-            updateLaunchButton(title: "LAUNCHING...", enabled: false)
+            updateLaunchButton(title: "Starting...", enabled: false, isRunning: false)
             statusLabel.stringValue = "Starting..."
             statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
             
         case .running:
-            updateLaunchButton(title: "STOP", enabled: true)
+            updateLaunchButton(title: "Stop IKEMEN GO", enabled: true, isRunning: true)
             statusLabel.stringValue = "Running"
             statusLabel.textColor = greenAccent
             
         case .terminated(let exitCode):
-            updateLaunchButton(title: "LAUNCH", enabled: true)
+            updateLaunchButton(title: "Start IKEMEN GO", enabled: true, isRunning: false)
             statusLabel.stringValue = exitCode == 0 ? "Ready" : "Exited (\(exitCode))"
             statusLabel.textColor = exitCode == 0 ? greenAccent : redAccent
             
         case .error(let error):
-            updateLaunchButton(title: "LAUNCH", enabled: true)
+            updateLaunchButton(title: "Start IKEMEN GO", enabled: true, isRunning: false)
             statusLabel.stringValue = "Error"
             statusLabel.textColor = redAccent
             showError("Error", detail: error.localizedDescription)
         }
     }
     
-    private func updateLaunchButton(title: String, enabled: Bool) {
-        let attributedTitle = NSAttributedString(
-            string: title,
-            attributes: [
-                .font: jerseyFont(size: 36),
-                .foregroundColor: NSColor.black
-            ]
-        )
-        launchButton.attributedTitle = attributedTitle
+    private func updateLaunchButton(title: String, enabled: Bool, isRunning: Bool = false) {
+        // Find the stack, icon, and label
+        if let launchStack = launchButton.subviews.first(where: { $0.identifier?.rawValue == "launchStack" }) as? NSStackView {
+            for view in launchStack.arrangedSubviews {
+                if let label = view as? NSTextField, label.identifier?.rawValue == "launchLabel" {
+                    label.stringValue = title
+                }
+                if let iconView = view as? NSImageView, iconView.identifier?.rawValue == "launchIcon" {
+                    // Use stop (skull) icon when running, arcade icon otherwise
+                    let iconName = isRunning ? "stop" : "arcade"
+                    if let image = loadIcon(named: iconName, tintColor: .black) {
+                        iconView.image = image
+                    }
+                }
+            }
+        }
         launchButton.isEnabled = enabled
-        launchButton.layer?.backgroundColor = enabled ? greenAccent.cgColor : grayText.cgColor
+        
+        // Green for start/idle, red for running/stop
+        if isRunning {
+            launchButton.layer?.backgroundColor = redAccent.cgColor
+        } else if enabled {
+            launchButton.layer?.backgroundColor = greenAccent.cgColor
+        } else {
+            launchButton.layer?.backgroundColor = grayText.cgColor
+        }
     }
     
     // MARK: - Actions
@@ -697,7 +758,12 @@ class DropZoneView: NSView {
     }
     
     private var label: NSTextField!
+    private var sublineLabel: NSTextField!
     private var dashedBorderLayer: CAShapeLayer?
+    
+    private func jerseyFont(size: CGFloat) -> NSFont {
+        return NSFont(name: "Jersey10-Regular", size: size) ?? NSFont.systemFont(ofSize: size, weight: .medium)
+    }
     private var borderColor: NSColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
     private var textColor: NSColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
     
@@ -728,20 +794,34 @@ class DropZoneView: NSView {
         // Register for drag types
         registerForDraggedTypes([.fileURL])
         
-        // Label
-        label = NSTextField(labelWithString: "Drop characters, stages,\nor other content here")
-        label.font = NSFont.systemFont(ofSize: 18, weight: .medium)
-        label.textColor = textColor
+        // Cream text color per Figma
+        let creamColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
+        
+        // Main label - Jersey 10 at 28px per Figma
+        label = NSTextField(labelWithString: "Drop characters or\nstages here")
+        label.font = jerseyFont(size: 28)
+        label.textColor = creamColor
         label.alignment = .center
-        label.maximumNumberOfLines = 3
+        label.maximumNumberOfLines = 2
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
         
+        // Subline label - Jersey 10 at 20px per Figma
+        sublineLabel = NSTextField(labelWithString: "(.zip, .rar, .7z or folder)")
+        sublineLabel.font = jerseyFont(size: 20)
+        sublineLabel.textColor = creamColor
+        sublineLabel.alignment = .center
+        sublineLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(sublineLabel)
+        
         NSLayoutConstraint.activate([
             label.centerXAnchor.constraint(equalTo: centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -12),
             label.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 40),
             label.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -40),
+            
+            sublineLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            sublineLabel.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 8),
         ])
     }
     
@@ -759,8 +839,12 @@ class DropZoneView: NSView {
         self.textColor = textColor
         
         dashedBorderLayer?.strokeColor = borderColor.cgColor
-        label.textColor = textColor
-        label.font = font
+        // Keep cream color for text per Figma
+        let creamColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
+        label.textColor = creamColor
+        label.font = jerseyFont(size: 28)
+        sublineLabel.textColor = creamColor
+        sublineLabel.font = jerseyFont(size: 20)
     }
     
     override func draw(_ dirtyRect: NSRect) {

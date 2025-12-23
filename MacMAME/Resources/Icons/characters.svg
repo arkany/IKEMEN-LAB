@@ -1,33 +1,33 @@
 <svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g id="Group">
-<path id="Vector" d="M32 1.53H30.48V7.62H32V1.53Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_2" d="M30.48 7.62H28.96V9.15H30.48V7.62Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_3" d="M3.05 13.72V22.86H4.58V25.91H6.1V28.96H7.62V30.48H10.67V32H21.34V30.48H24.39V28.96H25.91V25.91H27.43V22.86H28.96V13.72H27.43V16.77H25.91V18.29H24.39V15.24H22.86V13.72H9.15V15.24H7.62V18.29H6.1V16.77H4.58V13.72H3.05ZM9.15 19.81H10.67V16.77H15.24V15.24H16.77V16.77H21.34V18.29H22.86V22.86H21.34V24.38H18.29V22.86H13.72V24.38H10.67V22.86H9.15V19.81Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_4" d="M28.96 9.15H27.43V10.67H28.96V9.15Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_5" d="M27.43 4.57H25.91V6.1H27.43V4.57Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_6" d="M27.43 10.67H21.34V12.19H27.43V10.67Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_7" d="M25.91 6.1H24.39V7.62H25.91V6.1Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_8" d="M24.39 7.62H22.86V9.15H24.39V7.62Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_9" d="M24.39 3.05H22.86V4.57H24.39V3.05Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_10" d="M22.86 4.57H21.34V6.1H22.86V4.57Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_11" d="M21.34 9.15H19.81V10.67H21.34V9.15Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_12" d="M30.48 0H18.29V1.53H30.48V0Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_13" d="M19.81 18.29H18.29V19.81H19.81V18.29Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_14" d="M19.81 7.62H18.29V9.15H19.81V7.62Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_15" d="M18.29 1.53H16.77V3.05H15.24V1.53H13.72V7.62H15.24V4.57H16.77V7.62H18.29V1.53Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_16" d="M18.29 19.81H15.24V21.34H18.29V19.81Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_17" d="M18.29 10.67H13.72V12.19H18.29V10.67Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_18" d="M13.72 7.62H12.2V9.15H13.72V7.62Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_19" d="M12.2 9.15H10.67V10.67H12.2V9.15Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_20" d="M10.67 4.57H9.15V6.1H10.67V4.57Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_21" d="M10.67 10.67H4.58V12.19H10.67V10.67Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_22" d="M9.15 6.1H7.62V7.62H9.15V6.1Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_23" d="M7.62 7.62H6.1V9.15H7.62V7.62Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_24" d="M7.62 3.05H6.1V4.57H7.62V3.05Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_25" d="M6.1 4.57H4.58V6.1H6.1V4.57Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_26" d="M4.58 9.15H3.05V10.67H4.58V9.15Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_27" d="M13.72 0H1.53V1.53H13.72V0Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_28" d="M3.05 7.62H1.53V9.15H3.05V7.62Z" fill="var(--fill-0, #7A848F)"/>
-<path id="Vector_29" d="M1.53 1.53H0V7.62H1.53V1.53Z" fill="var(--fill-0, #7A848F)"/>
+<path id="Vector" d="M32 1.53H30.48V7.62H32V1.53Z" fill="white"/>
+<path id="Vector_2" d="M30.48 7.62H28.96V9.15H30.48V7.62Z" fill="white"/>
+<path id="Vector_3" d="M3.05 13.72V22.86H4.58V25.91H6.1V28.96H7.62V30.48H10.67V32H21.34V30.48H24.39V28.96H25.91V25.91H27.43V22.86H28.96V13.72H27.43V16.77H25.91V18.29H24.39V15.24H22.86V13.72H9.15V15.24H7.62V18.29H6.1V16.77H4.58V13.72H3.05ZM9.15 19.81H10.67V16.77H15.24V15.24H16.77V16.77H21.34V18.29H22.86V22.86H21.34V24.38H18.29V22.86H13.72V24.38H10.67V22.86H9.15V19.81Z" fill="white"/>
+<path id="Vector_4" d="M28.96 9.15H27.43V10.67H28.96V9.15Z" fill="white"/>
+<path id="Vector_5" d="M27.43 4.57H25.91V6.1H27.43V4.57Z" fill="white"/>
+<path id="Vector_6" d="M27.43 10.67H21.34V12.19H27.43V10.67Z" fill="white"/>
+<path id="Vector_7" d="M25.91 6.1H24.39V7.62H25.91V6.1Z" fill="white"/>
+<path id="Vector_8" d="M24.39 7.62H22.86V9.15H24.39V7.62Z" fill="white"/>
+<path id="Vector_9" d="M24.39 3.05H22.86V4.57H24.39V3.05Z" fill="white"/>
+<path id="Vector_10" d="M22.86 4.57H21.34V6.1H22.86V4.57Z" fill="white"/>
+<path id="Vector_11" d="M21.34 9.15H19.81V10.67H21.34V9.15Z" fill="white"/>
+<path id="Vector_12" d="M30.48 0H18.29V1.53H30.48V0Z" fill="white"/>
+<path id="Vector_13" d="M19.81 18.29H18.29V19.81H19.81V18.29Z" fill="white"/>
+<path id="Vector_14" d="M19.81 7.62H18.29V9.15H19.81V7.62Z" fill="white"/>
+<path id="Vector_15" d="M18.29 1.53H16.77V3.05H15.24V1.53H13.72V7.62H15.24V4.57H16.77V7.62H18.29V1.53Z" fill="white"/>
+<path id="Vector_16" d="M18.29 19.81H15.24V21.34H18.29V19.81Z" fill="white"/>
+<path id="Vector_17" d="M18.29 10.67H13.72V12.19H18.29V10.67Z" fill="white"/>
+<path id="Vector_18" d="M13.72 7.62H12.2V9.15H13.72V7.62Z" fill="white"/>
+<path id="Vector_19" d="M12.2 9.15H10.67V10.67H12.2V9.15Z" fill="white"/>
+<path id="Vector_20" d="M10.67 4.57H9.15V6.1H10.67V4.57Z" fill="white"/>
+<path id="Vector_21" d="M10.67 10.67H4.58V12.19H10.67V10.67Z" fill="white"/>
+<path id="Vector_22" d="M9.15 6.1H7.62V7.62H9.15V6.1Z" fill="white"/>
+<path id="Vector_23" d="M7.62 7.62H6.1V9.15H7.62V7.62Z" fill="white"/>
+<path id="Vector_24" d="M7.62 3.05H6.1V4.57H7.62V3.05Z" fill="white"/>
+<path id="Vector_25" d="M6.1 4.57H4.58V6.1H6.1V4.57Z" fill="white"/>
+<path id="Vector_26" d="M4.58 9.15H3.05V10.67H4.58V9.15Z" fill="white"/>
+<path id="Vector_27" d="M13.72 0H1.53V1.53H13.72V0Z" fill="white"/>
+<path id="Vector_28" d="M3.05 7.62H1.53V9.15H3.05V7.62Z" fill="white"/>
+<path id="Vector_29" d="M1.53 1.53H0V7.62H1.53V1.53Z" fill="white"/>
 </g>
 </svg>
