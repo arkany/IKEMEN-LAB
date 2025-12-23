@@ -2,6 +2,25 @@ import Cocoa
 import Combine
 import UniformTypeIdentifiers
 
+/// Navigation item for the sidebar
+enum NavItem: String, CaseIterable {
+    case collections = "Collections"
+    case characters = "Characters"
+    case stages = "Stages"
+    case lifebars = "Lifebars"
+    case addons = "Add-ons"
+    
+    var iconName: String {
+        switch self {
+        case .collections: return "collections"
+        case .characters: return "characters"
+        case .stages: return "stages"
+        case .lifebars: return "lifebars"
+        case .addons: return "addons"
+        }
+    }
+}
+
 /// Main game window controller
 /// Manages the launcher UI and coordinates with Ikemen GO
 class GameWindowController: NSWindowController {
@@ -9,32 +28,58 @@ class GameWindowController: NSWindowController {
     private var ikemenBridge: IkemenBridge!
     private var cancellables = Set<AnyCancellable>()
     
-    // UI Elements
+    // Colors from Figma design
+    private let bgColor = NSColor(red: 0x11/255.0, green: 0x1d/255.0, blue: 0x29/255.0, alpha: 1.0)
+    private let greenAccent = NSColor(red: 0x4e/255.0, green: 0xfd/255.0, blue: 0x60/255.0, alpha: 1.0)
+    private let redAccent = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
+    private let grayText = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
+    private let creamText = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
+    
+    // Layout constants
+    private let sidebarWidth: CGFloat = 320
+    private let sidebarPadding: CGFloat = 24
+    
+    // UI Elements - Sidebar
     private var contentView: NSView!
-    private var dropZoneView: DropZoneView!
+    private var sidebarView: NSView!
+    private var mainAreaView: NSView!
     private var launchButton: NSButton!
     private var statusLabel: NSTextField!
-    private var charactersLabel: NSTextField!
-    private var stagesLabel: NSTextField!
+    private var charactersCountLabel: NSTextField!
+    private var stagesCountLabel: NSTextField!
+    private var navButtons: [NavItem: NSButton] = [:]
+    private var selectedNavItem: NavItem? = nil
     
-    // Character Browser
+    // UI Elements - Main Area
+    private var dropZoneView: DropZoneView!
     private var characterBrowserView: CharacterBrowserView!
-    private var browserToggleButton: NSButton!
-    private var isBrowserVisible = false
-    private var mainContentContainer: NSView!
-    private var browserHeightConstraint: NSLayoutConstraint!
     
     // MARK: - State
     
     var isGameLoaded: Bool { ikemenBridge.isEngineRunning }
-    var isPaused: Bool = false  // Not applicable for Ikemen GO
+    var isPaused: Bool = false
+    
+    // MARK: - Fonts
+    
+    private func jerseyFont(size: CGFloat) -> NSFont {
+        // Try Jersey 15 first (has more character coverage)
+        if let font = NSFont(name: "Jersey15-Regular", size: size) {
+            return font
+        }
+        // Try Jersey 10
+        if let font = NSFont(name: "Jersey10-Regular", size: size) {
+            return font
+        }
+        // Fallback to monospace system font for retro feel
+        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+    }
     
     // MARK: - Initialization
     
     convenience init() {
         // Create window programmatically
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 1100, height: 700),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -54,13 +99,8 @@ class GameWindowController: NSWindowController {
         
         window.title = "Ikemen Load"
         window.center()
-        
-        // Appearance
-        window.backgroundColor = NSColor(calibratedRed: 0.1, green: 0.1, blue: 0.15, alpha: 1.0)
-        
-        // Minimum size
-        window.minSize = NSSize(width: 500, height: 400)
-        
+        window.backgroundColor = bgColor
+        window.minSize = NSSize(width: 900, height: 600)
         window.delegate = self
     }
     
@@ -70,141 +110,318 @@ class GameWindowController: NSWindowController {
         contentView = NSView(frame: window.contentView?.bounds ?? .zero)
         contentView.autoresizingMask = [.width, .height]
         contentView.wantsLayer = true
-        contentView.layer?.backgroundColor = NSColor(calibratedRed: 0.1, green: 0.1, blue: 0.15, alpha: 1.0).cgColor
+        contentView.layer?.backgroundColor = bgColor.cgColor
+        window.contentView = contentView
         
-        // Title Label
-        let titleLabel = NSTextField(labelWithString: "Ikemen Load")
-        titleLabel.font = NSFont.systemFont(ofSize: 32, weight: .bold)
-        titleLabel.textColor = .white
-        titleLabel.alignment = .center
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(titleLabel)
+        setupSidebar()
+        setupMainArea()
+        setupConstraints()
+    }
+    
+    // MARK: - Sidebar Setup
+    
+    private func setupSidebar() {
+        sidebarView = NSView()
+        sidebarView.translatesAutoresizingMaskIntoConstraints = false
+        sidebarView.wantsLayer = true
+        sidebarView.layer?.backgroundColor = bgColor.cgColor
+        contentView.addSubview(sidebarView)
         
-        // Subtitle
-        let subtitleLabel = NSTextField(labelWithString: "MUGEN/Ikemen GO Launcher")
-        subtitleLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        subtitleLabel.textColor = NSColor(white: 0.6, alpha: 1.0)
-        subtitleLabel.alignment = .center
-        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(subtitleLabel)
+        // === Launch Button ===
+        launchButton = NSButton(title: "LAUNCH", target: self, action: #selector(launchIkemen))
+        launchButton.translatesAutoresizingMaskIntoConstraints = false
+        launchButton.isBordered = false
+        launchButton.wantsLayer = true
+        launchButton.layer?.backgroundColor = greenAccent.cgColor
+        launchButton.layer?.cornerRadius = 8
         
-        // Stats container (horizontal)
-        let statsContainer = NSStackView()
-        statsContainer.orientation = .horizontal
-        statsContainer.spacing = 20
-        statsContainer.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(statsContainer)
+        // Shadow effect (12px 12px black)
+        launchButton.shadow = NSShadow()
+        launchButton.layer?.shadowColor = NSColor.black.cgColor
+        launchButton.layer?.shadowOffset = CGSize(width: 8, height: -8)
+        launchButton.layer?.shadowOpacity = 1.0
+        launchButton.layer?.shadowRadius = 0
         
-        // Characters count
-        charactersLabel = NSTextField(labelWithString: "Characters: 0")
-        charactersLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        charactersLabel.textColor = NSColor(calibratedRed: 0.4, green: 0.8, blue: 0.4, alpha: 1.0)
-        charactersLabel.alignment = .center
-        statsContainer.addArrangedSubview(charactersLabel)
+        // Custom attributed title for proper font/color
+        let launchTitle = NSAttributedString(
+            string: "LAUNCH",
+            attributes: [
+                .font: jerseyFont(size: 36),
+                .foregroundColor: NSColor.black
+            ]
+        )
+        launchButton.attributedTitle = launchTitle
+        sidebarView.addSubview(launchButton)
         
-        // Stages count
-        stagesLabel = NSTextField(labelWithString: "Stages: 0")
-        stagesLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        stagesLabel.textColor = NSColor(calibratedRed: 0.4, green: 0.6, blue: 0.9, alpha: 1.0)
-        stagesLabel.alignment = .center
-        statsContainer.addArrangedSubview(stagesLabel)
+        // === Stats Row ===
+        let statsStack = NSStackView()
+        statsStack.translatesAutoresizingMaskIntoConstraints = false
+        statsStack.orientation = .horizontal
+        statsStack.spacing = 24
+        statsStack.alignment = .centerY
+        sidebarView.addSubview(statsStack)
         
-        // Buttons container (horizontal)
-        let buttonsContainer = NSStackView()
-        buttonsContainer.orientation = .horizontal
-        buttonsContainer.spacing = 12
-        buttonsContainer.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(buttonsContainer)
+        // Characters stat
+        let charsStack = createStatView(icon: "characters", label: "0")
+        charactersCountLabel = charsStack.arrangedSubviews.last as? NSTextField
+        statsStack.addArrangedSubview(charsStack)
         
-        // Launch Button
-        launchButton = NSButton(title: "Launch Ikemen GO", target: self, action: #selector(launchIkemen))
-        launchButton.bezelStyle = .rounded
-        launchButton.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
-        launchButton.controlSize = .large
-        buttonsContainer.addArrangedSubview(launchButton)
+        // Stages stat
+        let stagesStack = createStatView(icon: "stages", label: "0")
+        stagesCountLabel = stagesStack.arrangedSubviews.last as? NSTextField
+        statsStack.addArrangedSubview(stagesStack)
         
-        // Browse Characters Button
-        browserToggleButton = NSButton(title: "Browse Characters", target: self, action: #selector(toggleBrowser))
-        browserToggleButton.bezelStyle = .rounded
-        browserToggleButton.font = NSFont.systemFont(ofSize: 14, weight: .medium)
-        browserToggleButton.controlSize = .large
-        buttonsContainer.addArrangedSubview(browserToggleButton)
+        // === Navigation Items ===
+        let navStack = NSStackView()
+        navStack.translatesAutoresizingMaskIntoConstraints = false
+        navStack.orientation = .vertical
+        navStack.spacing = 8
+        navStack.alignment = .leading
+        sidebarView.addSubview(navStack)
         
-        // Status Label
+        for item in NavItem.allCases {
+            let button = createNavButton(for: item)
+            navButtons[item] = button
+            navStack.addArrangedSubview(button)
+        }
+        
+        // === Arcade Icon (decorative) ===
+        let arcadeIcon = NSImageView()
+        arcadeIcon.translatesAutoresizingMaskIntoConstraints = false
+        arcadeIcon.imageScaling = .scaleProportionallyUpOrDown
+        if let iconPath = Bundle.main.path(forResource: "arcade", ofType: "svg", inDirectory: "Icons"),
+           let image = NSImage(contentsOfFile: iconPath) {
+            arcadeIcon.image = image
+            arcadeIcon.contentTintColor = grayText.withAlphaComponent(0.3)
+        }
+        sidebarView.addSubview(arcadeIcon)
+        
+        // === Status Label ===
         statusLabel = NSTextField(labelWithString: "Ready")
-        statusLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
-        statusLabel.textColor = NSColor(white: 0.5, alpha: 1.0)
-        statusLabel.alignment = .center
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(statusLabel)
+        statusLabel.font = jerseyFont(size: 32)
+        statusLabel.textColor = greenAccent
+        statusLabel.alignment = .left
+        sidebarView.addSubview(statusLabel)
         
-        // Drop Zone
+        // Sidebar internal constraints
+        NSLayoutConstraint.activate([
+            // Launch button
+            launchButton.topAnchor.constraint(equalTo: sidebarView.topAnchor, constant: sidebarPadding),
+            launchButton.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
+            launchButton.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding - 8), // Account for shadow
+            launchButton.heightAnchor.constraint(equalToConstant: 60),
+            
+            // Stats
+            statsStack.topAnchor.constraint(equalTo: launchButton.bottomAnchor, constant: 24),
+            statsStack.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
+            
+            // Navigation
+            navStack.topAnchor.constraint(equalTo: statsStack.bottomAnchor, constant: 32),
+            navStack.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
+            navStack.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding),
+            
+            // Arcade icon (bottom right of sidebar)
+            arcadeIcon.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding),
+            arcadeIcon.bottomAnchor.constraint(equalTo: statusLabel.topAnchor, constant: -16),
+            arcadeIcon.widthAnchor.constraint(equalToConstant: 80),
+            arcadeIcon.heightAnchor.constraint(equalToConstant: 80),
+            
+            // Status
+            statusLabel.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
+            statusLabel.bottomAnchor.constraint(equalTo: sidebarView.bottomAnchor, constant: -sidebarPadding),
+        ])
+    }
+    
+    private func createStatView(icon iconName: String, label: String) -> NSStackView {
+        let stack = NSStackView()
+        stack.orientation = .horizontal
+        stack.spacing = 8
+        stack.alignment = .centerY
+        
+        // Icon
+        let iconView = NSImageView()
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        if let iconPath = Bundle.main.path(forResource: iconName, ofType: "svg", inDirectory: "Icons"),
+           let image = NSImage(contentsOfFile: iconPath) {
+            iconView.image = image
+            iconView.contentTintColor = grayText
+        }
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 24),
+            iconView.heightAnchor.constraint(equalToConstant: 24),
+        ])
+        stack.addArrangedSubview(iconView)
+        
+        // Label
+        let textLabel = NSTextField(labelWithString: label)
+        textLabel.font = jerseyFont(size: 24)
+        textLabel.textColor = grayText
+        stack.addArrangedSubview(textLabel)
+        
+        return stack
+    }
+    
+    private func createNavButton(for item: NavItem) -> NSButton {
+        let button = NSButton()
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.isBordered = false
+        button.bezelStyle = .inline
+        button.target = self
+        button.action = #selector(navItemClicked(_:))
+        button.wantsLayer = true
+        
+        // Create horizontal stack for icon + text
+        let stack = NSStackView()
+        stack.orientation = .horizontal
+        stack.spacing = 12
+        stack.alignment = .centerY
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Icon
+        let iconView = NSImageView()
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        if let iconPath = Bundle.main.path(forResource: item.iconName, ofType: "svg", inDirectory: "Icons"),
+           let image = NSImage(contentsOfFile: iconPath) {
+            iconView.image = image
+            iconView.contentTintColor = grayText
+        }
+        NSLayoutConstraint.activate([
+            iconView.widthAnchor.constraint(equalToConstant: 32),
+            iconView.heightAnchor.constraint(equalToConstant: 32),
+        ])
+        stack.addArrangedSubview(iconView)
+        
+        // Label
+        let label = NSTextField(labelWithString: item.rawValue)
+        label.font = jerseyFont(size: 32)
+        label.textColor = grayText
+        label.isEditable = false
+        label.isBordered = false
+        label.backgroundColor = .clear
+        stack.addArrangedSubview(label)
+        
+        button.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: button.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: button.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: button.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: button.bottomAnchor),
+            button.heightAnchor.constraint(equalToConstant: 48),
+        ])
+        
+        // Store item reference
+        button.tag = NavItem.allCases.firstIndex(of: item) ?? 0
+        
+        return button
+    }
+    
+    @objc private func navItemClicked(_ sender: NSButton) {
+        let item = NavItem.allCases[sender.tag]
+        selectNavItem(item)
+    }
+    
+    private func selectNavItem(_ item: NavItem?) {
+        selectedNavItem = item
+        
+        // Update button appearances
+        for (navItem, button) in navButtons {
+            let isSelected = navItem == item
+            if let stack = button.subviews.first as? NSStackView {
+                for view in stack.arrangedSubviews {
+                    if let iconView = view as? NSImageView {
+                        iconView.contentTintColor = isSelected ? creamText : grayText
+                    }
+                    if let label = view as? NSTextField {
+                        label.textColor = isSelected ? creamText : grayText
+                    }
+                }
+            }
+        }
+        
+        // Update main area content
+        updateMainAreaContent()
+    }
+    
+    // MARK: - Main Area Setup
+    
+    private func setupMainArea() {
+        mainAreaView = NSView()
+        mainAreaView.translatesAutoresizingMaskIntoConstraints = false
+        mainAreaView.wantsLayer = true
+        mainAreaView.layer?.backgroundColor = NSColor.clear.cgColor
+        contentView.addSubview(mainAreaView)
+        
+        // Drop Zone (visible in empty state)
         dropZoneView = DropZoneView(frame: .zero)
         dropZoneView.translatesAutoresizingMaskIntoConstraints = false
         dropZoneView.onFilesDropped = { [weak self] urls in
             self?.handleDroppedFiles(urls)
         }
-        contentView.addSubview(dropZoneView)
+        // Apply Figma styling
+        dropZoneView.applyFigmaStyle(borderColor: redAccent, textColor: grayText, font: jerseyFont(size: 24))
+        mainAreaView.addSubview(dropZoneView)
         
-        // Character Browser
+        // Character Browser (hidden initially)
         characterBrowserView = CharacterBrowserView(frame: .zero)
         characterBrowserView.translatesAutoresizingMaskIntoConstraints = false
         characterBrowserView.isHidden = true
-        characterBrowserView.wantsLayer = true
-        characterBrowserView.layer?.cornerRadius = 12
         characterBrowserView.onCharacterSelected = { [weak self] character in
-            self?.statusLabel.stringValue = "Selected: \(character.displayName) by \(character.author)"
+            self?.statusLabel.stringValue = character.displayName
         }
-        contentView.addSubview(characterBrowserView)
+        mainAreaView.addSubview(characterBrowserView)
         
-        window.contentView = contentView
-        
-        // Browser height constraint (for collapsed state only)
-        browserHeightConstraint = characterBrowserView.heightAnchor.constraint(equalToConstant: 0)
-        
-        // Browser bottom constraint (for expanded state - fills to status bar)
-        let browserBottomConstraint = characterBrowserView.bottomAnchor.constraint(equalTo: statusLabel.topAnchor, constant: -15)
-        browserBottomConstraint.priority = .defaultLow // Lower priority when collapsed
-        
-        // Layout
         NSLayoutConstraint.activate([
-            // Title
-            titleLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 30),
+            // Drop zone fills main area with padding
+            dropZoneView.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
+            dropZoneView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
+            dropZoneView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
+            dropZoneView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
             
-            // Subtitle
-            subtitleLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
-            
-            // Stats
-            statsContainer.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            statsContainer.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 20),
-            
-            // Buttons
-            buttonsContainer.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            buttonsContainer.topAnchor.constraint(equalTo: statsContainer.bottomAnchor, constant: 20),
-            
-            // Drop Zone
-            dropZoneView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 30),
-            dropZoneView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -30),
-            dropZoneView.topAnchor.constraint(equalTo: buttonsContainer.bottomAnchor, constant: 20),
-            dropZoneView.heightAnchor.constraint(equalToConstant: 70),
-            
-            // Character Browser - expands to fill space below drop zone
-            characterBrowserView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            characterBrowserView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            characterBrowserView.topAnchor.constraint(equalTo: dropZoneView.bottomAnchor, constant: 15),
-            browserBottomConstraint, // Fills to status bar
-            browserHeightConstraint, // Overrides when collapsed (height = 0)
-            
-            // Status - anchor to bottom
-            statusLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            statusLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -15),
+            // Character browser fills main area
+            characterBrowserView.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
+            characterBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
+            characterBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
+            characterBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
         ])
-        
-        // Set initial state - browser collapsed
-        browserHeightConstraint.isActive = true
     }
+    
+    private func updateMainAreaContent() {
+        // Show/hide appropriate views based on selection
+        switch selectedNavItem {
+        case .characters:
+            dropZoneView.isHidden = true
+            characterBrowserView.isHidden = false
+        case .stages, .lifebars, .addons, .collections:
+            // TODO: Implement other browsers
+            dropZoneView.isHidden = false
+            characterBrowserView.isHidden = true
+        case nil:
+            // Empty state - show drop zone
+            dropZoneView.isHidden = false
+            characterBrowserView.isHidden = true
+        }
+    }
+    
+    // MARK: - Layout Constraints
+    
+    private func setupConstraints() {
+        NSLayoutConstraint.activate([
+            // Sidebar - fixed width on left
+            sidebarView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            sidebarView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            sidebarView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            sidebarView.widthAnchor.constraint(equalToConstant: sidebarWidth),
+            
+            // Main area - fills remaining space
+            mainAreaView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            mainAreaView.leadingAnchor.constraint(equalTo: sidebarView.trailingAnchor),
+            mainAreaView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            mainAreaView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+        ])
+    }
+    
+    // MARK: - Bridge Setup
     
     private func setupBridge() {
         ikemenBridge = IkemenBridge.shared
@@ -220,14 +437,14 @@ class GameWindowController: NSWindowController {
         ikemenBridge.$characters
             .receive(on: DispatchQueue.main)
             .sink { [weak self] characters in
-                self?.charactersLabel.stringValue = "Characters: \(characters.count)"
+                self?.charactersCountLabel?.stringValue = "\(characters.count)"
             }
             .store(in: &cancellables)
         
         ikemenBridge.$stages
             .receive(on: DispatchQueue.main)
             .sink { [weak self] stages in
-                self?.stagesLabel.stringValue = "Stages: \(stages.count)"
+                self?.stagesCountLabel?.stringValue = "\(stages.count)"
             }
             .store(in: &cancellables)
     }
@@ -235,39 +452,44 @@ class GameWindowController: NSWindowController {
     private func updateUI(for state: EngineState) {
         switch state {
         case .idle:
-            launchButton.title = "Launch Ikemen GO"
-            launchButton.isEnabled = true
+            updateLaunchButton(title: "LAUNCH", enabled: true)
             statusLabel.stringValue = "Ready"
-            statusLabel.textColor = NSColor(white: 0.5, alpha: 1.0)
+            statusLabel.textColor = greenAccent
             
         case .launching:
-            launchButton.title = "Launching..."
-            launchButton.isEnabled = false
-            statusLabel.stringValue = "Starting Ikemen GO..."
+            updateLaunchButton(title: "LAUNCHING...", enabled: false)
+            statusLabel.stringValue = "Starting..."
             statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
             
         case .running:
-            launchButton.title = "Stop Ikemen GO"
-            launchButton.isEnabled = true
-            statusLabel.stringValue = "Ikemen GO is running"
-            statusLabel.textColor = NSColor(calibratedRed: 0.4, green: 0.8, blue: 0.4, alpha: 1.0)
+            updateLaunchButton(title: "STOP", enabled: true)
+            statusLabel.stringValue = "Running"
+            statusLabel.textColor = greenAccent
             
         case .terminated(let exitCode):
-            launchButton.title = "Launch Ikemen GO"
-            launchButton.isEnabled = true
-            if exitCode == 0 {
-                statusLabel.stringValue = "Ikemen GO closed normally"
-            } else {
-                statusLabel.stringValue = "Ikemen GO exited with code \(exitCode)"
-            }
-            statusLabel.textColor = NSColor(white: 0.5, alpha: 1.0)
+            updateLaunchButton(title: "LAUNCH", enabled: true)
+            statusLabel.stringValue = exitCode == 0 ? "Ready" : "Exited (\(exitCode))"
+            statusLabel.textColor = exitCode == 0 ? greenAccent : redAccent
             
         case .error(let error):
-            launchButton.title = "Launch Ikemen GO"
-            launchButton.isEnabled = true
-            statusLabel.stringValue = "Error: \(error.localizedDescription)"
-            statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.3, blue: 0.3, alpha: 1.0)
+            updateLaunchButton(title: "LAUNCH", enabled: true)
+            statusLabel.stringValue = "Error"
+            statusLabel.textColor = redAccent
+            showError("Error", detail: error.localizedDescription)
         }
+    }
+    
+    private func updateLaunchButton(title: String, enabled: Bool) {
+        let attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [
+                .font: jerseyFont(size: 36),
+                .foregroundColor: NSColor.black
+            ]
+        )
+        launchButton.attributedTitle = attributedTitle
+        launchButton.isEnabled = enabled
+        launchButton.layer?.backgroundColor = enabled ? greenAccent.cgColor : grayText.cgColor
     }
     
     // MARK: - Actions
@@ -284,51 +506,11 @@ class GameWindowController: NSWindowController {
         }
     }
     
-    @objc private func toggleBrowser() {
-        isBrowserVisible.toggle()
-        
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.25
-            context.allowsImplicitAnimation = true
-            
-            if isBrowserVisible {
-                characterBrowserView.isHidden = false
-                browserHeightConstraint.isActive = false // Disable height constraint, let bottom constraint take over
-                browserToggleButton.title = "Hide Characters"
-                
-                // Expand window if needed
-                if let window = window {
-                    var frame = window.frame
-                    let minHeight: CGFloat = 550
-                    if frame.size.height < minHeight {
-                        let diff = minHeight - frame.size.height
-                        frame.size.height = minHeight
-                        frame.origin.y -= diff
-                        window.setFrame(frame, display: true, animate: true)
-                    }
-                }
-            } else {
-                browserHeightConstraint.isActive = true // Enable height=0 constraint to collapse
-                browserHeightConstraint.constant = 0
-                browserToggleButton.title = "Browse Characters"
-            }
-            
-            contentView.layoutSubtreeIfNeeded()
-        }, completionHandler: { [weak self] in
-            if !(self?.isBrowserVisible ?? true) {
-                self?.characterBrowserView.isHidden = true
-            }
-        })
-    }
-    
     // MARK: - Game Control (Legacy API compatibility)
     
     func loadGame(at url: URL) {
-        // For now, just launch Ikemen GO
-        // Future: Install content from zip files
         if url.pathExtension.lowercased() == "zip" {
-            // TODO: Install character/stage from zip
-            showError("Content Installation", detail: "Drag & drop content installation coming soon!")
+            handleDroppedFiles([url])
         } else {
             do {
                 try ikemenBridge.launchEngine()
@@ -372,40 +554,42 @@ class GameWindowController: NSWindowController {
     }
     
     private func installFromArchive(_ url: URL) {
-        statusLabel.stringValue = "Installing \(url.lastPathComponent)..."
+        statusLabel.stringValue = "Installing..."
         statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
                 let result = try self?.ikemenBridge.installContent(from: url)
                 DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = result ?? "Installed successfully!"
-                    self?.statusLabel.textColor = NSColor(calibratedRed: 0.4, green: 0.8, blue: 0.4, alpha: 1.0)
+                    self?.statusLabel.stringValue = result ?? "Installed!"
+                    self?.statusLabel.textColor = self?.greenAccent
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = "Install failed: \(error.localizedDescription)"
-                    self?.statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.3, blue: 0.3, alpha: 1.0)
+                    self?.statusLabel.stringValue = "Failed"
+                    self?.statusLabel.textColor = self?.redAccent
+                    self?.showError("Install Failed", detail: error.localizedDescription)
                 }
             }
         }
     }
     
     private func installFromFolder(_ url: URL) {
-        statusLabel.stringValue = "Installing \(url.lastPathComponent)..."
+        statusLabel.stringValue = "Installing..."
         statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
                 let result = try self?.ikemenBridge.installContentFolder(from: url)
                 DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = result ?? "Installed successfully!"
-                    self?.statusLabel.textColor = NSColor(calibratedRed: 0.4, green: 0.8, blue: 0.4, alpha: 1.0)
+                    self?.statusLabel.stringValue = result ?? "Installed!"
+                    self?.statusLabel.textColor = self?.greenAccent
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = "Install failed: \(error.localizedDescription)"
-                    self?.statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.3, blue: 0.3, alpha: 1.0)
+                    self?.statusLabel.stringValue = "Failed"
+                    self?.statusLabel.textColor = self?.redAccent
+                    self?.showError("Install Failed", detail: error.localizedDescription)
                 }
             }
         }
@@ -441,6 +625,9 @@ class DropZoneView: NSView {
     }
     
     private var label: NSTextField!
+    private var dashedBorderLayer: CAShapeLayer?
+    private var borderColor: NSColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
+    private var textColor: NSColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
     
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -454,37 +641,65 @@ class DropZoneView: NSView {
     
     private func setup() {
         wantsLayer = true
-        layer?.cornerRadius = 12
-        layer?.borderWidth = 2
-        layer?.borderColor = NSColor(white: 0.3, alpha: 1.0).cgColor
-        layer?.backgroundColor = NSColor(white: 0.15, alpha: 1.0).cgColor
+        layer?.cornerRadius = 16
+        layer?.backgroundColor = NSColor.clear.cgColor
+        
+        // Create dashed border using a shape layer
+        let dashedBorder = CAShapeLayer()
+        dashedBorder.strokeColor = borderColor.cgColor
+        dashedBorder.fillColor = nil
+        dashedBorder.lineDashPattern = [12, 8]
+        dashedBorder.lineWidth = 4
+        layer?.addSublayer(dashedBorder)
+        self.dashedBorderLayer = dashedBorder
         
         // Register for drag types
         registerForDraggedTypes([.fileURL])
         
         // Label
-        label = NSTextField(labelWithString: "Drop characters or stages here (.zip, .rar, .7z or folder)")
-        label.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        label.textColor = NSColor(white: 0.5, alpha: 1.0)
+        label = NSTextField(labelWithString: "Drop characters, stages,\nor other content here")
+        label.font = NSFont.systemFont(ofSize: 18, weight: .medium)
+        label.textColor = textColor
         label.alignment = .center
+        label.maximumNumberOfLines = 3
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
         
         NSLayoutConstraint.activate([
             label.centerXAnchor.constraint(equalTo: centerXAnchor),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 40),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -40),
         ])
+    }
+    
+    override func layout() {
+        super.layout()
+        
+        // Update dashed border path to match bounds
+        let path = CGPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), cornerWidth: 16, cornerHeight: 16, transform: nil)
+        dashedBorderLayer?.path = path
+        dashedBorderLayer?.frame = bounds
+    }
+    
+    func applyFigmaStyle(borderColor: NSColor, textColor: NSColor, font: NSFont) {
+        self.borderColor = borderColor
+        self.textColor = textColor
+        
+        dashedBorderLayer?.strokeColor = borderColor.cgColor
+        label.textColor = textColor
+        label.font = font
     }
     
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         
         if isDragging {
-            layer?.borderColor = NSColor(calibratedRed: 0.4, green: 0.7, blue: 1.0, alpha: 1.0).cgColor
-            layer?.backgroundColor = NSColor(calibratedRed: 0.2, green: 0.3, blue: 0.4, alpha: 0.5).cgColor
+            dashedBorderLayer?.strokeColor = NSColor(calibratedRed: 0.4, green: 0.8, blue: 0.4, alpha: 1.0).cgColor
+            layer?.backgroundColor = NSColor(calibratedRed: 0.2, green: 0.3, blue: 0.2, alpha: 0.2).cgColor
         } else {
-            layer?.borderColor = NSColor(white: 0.3, alpha: 1.0).cgColor
-            layer?.backgroundColor = NSColor(white: 0.15, alpha: 1.0).cgColor
+            dashedBorderLayer?.strokeColor = borderColor.cgColor
+            layer?.backgroundColor = NSColor.clear.cgColor
         }
     }
     
