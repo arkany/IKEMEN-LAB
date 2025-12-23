@@ -1214,43 +1214,75 @@ class IkemenBridge: ObservableObject {
         
         // Scan the folder to determine content type
         let contents = try fileManager.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
-        let fileNames = contents.map { $0.lastPathComponent.lowercased() }
+        let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
         
-        // Check for character files (.def, .sff, .air, .cmd, .cns)
-        let hasCharacterFiles = fileNames.contains { name in
-            name.hasSuffix(".sff") || name.hasSuffix(".air") || name.hasSuffix(".cmd") || name.hasSuffix(".cns")
-        }
-        
-        // Check for stage files (stage .def files typically have stage-related content)
-        let hasStageMarkers = fileNames.contains { name in
-            name.contains("stage") || name.hasSuffix(".sff") && !hasCharacterFiles
-        }
-        
-        // Determine content type
-        let isCharacter = hasCharacterFiles || fileNames.contains { $0.hasSuffix(".def") && !$0.contains("stage") }
-        let isStage = !isCharacter && fileNames.contains { $0.hasSuffix(".def") }
-        
-        if isCharacter {
-            return try installCharacterFolder(from: folderURL, to: workingDir)
-        } else if isStage {
-            return try installStageFolder(from: folderURL, to: workingDir)
-        } else {
-            // Try to detect by folder structure
-            let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
-            if !defFiles.isEmpty {
-                // Assume character if has .def file
-                return try installCharacterFolder(from: folderURL, to: workingDir)
+        // Read DEF file to determine content type
+        for defFile in defFiles {
+            if let defContent = try? String(contentsOf: defFile, encoding: .utf8).lowercased() {
+                // Stage DEF files have [StageInfo] section or bgdef/spr entries
+                let isStageFile = defContent.contains("[stageinfo]") || 
+                                  defContent.contains("[bg ") ||
+                                  defContent.contains("bgdef") ||
+                                  (defContent.contains("spr") && !defContent.contains("[files]"))
+                
+                // Character DEF files have [Files] section with cmd, cns, air, etc.
+                let isCharacterFile = defContent.contains("[files]") && 
+                                     (defContent.contains(".cmd") || defContent.contains(".cns") || defContent.contains(".air"))
+                
+                if isStageFile && !isCharacterFile {
+                    return try installStageFolder(from: folderURL, to: workingDir)
+                } else if isCharacterFile {
+                    return try installCharacterFolder(from: folderURL, to: workingDir)
+                }
             }
-            throw IkemenError.invalidContent("Could not determine content type. Ensure the folder contains .def, .sff, .air files for characters, or .def files for stages.")
         }
+        
+        // Fallback: check for character-specific files
+        let fileNames = contents.map { $0.lastPathComponent.lowercased() }
+        let hasCharacterFiles = fileNames.contains { name in
+            name.hasSuffix(".air") || name.hasSuffix(".cmd") || name.hasSuffix(".cns")
+        }
+        
+        if hasCharacterFiles {
+            return try installCharacterFolder(from: folderURL, to: workingDir)
+        } else if !defFiles.isEmpty {
+            // Default to stage if only has .def and .sff
+            return try installStageFolder(from: folderURL, to: workingDir)
+        }
+        
+        throw IkemenError.invalidContent("Could not determine content type. Ensure the folder contains character files (.def, .sff, .air, .cmd, .cns) or stage files (.def, .sff).")
     }
     
     private func installCharacterFolder(from source: URL, to workingDir: URL) throws -> String {
         let fileManager = FileManager.default
         let charsDir = workingDir.appendingPathComponent("chars")
         
-        // Use the folder name as the character name
-        let charName = source.lastPathComponent
+        // Find the .def file to get the proper character name
+        let contents = try fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
+        let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
+        
+        // Determine character name from DEF file or folder
+        var charName = source.lastPathComponent
+        var displayName = charName
+        
+        if let defFile = defFiles.first {
+            // Use DEF filename as the folder name (standard convention)
+            charName = defFile.deletingPathExtension().lastPathComponent
+            
+            // Try to read the "name" field from DEF file for display
+            if let defContent = try? String(contentsOf: defFile, encoding: .utf8) {
+                for line in defContent.components(separatedBy: .newlines) {
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    if trimmed.lowercased().hasPrefix("name") && !trimmed.lowercased().hasPrefix("displayname") {
+                        if let value = trimmed.split(separator: "=").last {
+                            displayName = String(value).trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\"", with: "")
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        
         let destPath = charsDir.appendingPathComponent(charName)
         
         // Check if character already exists
@@ -1278,9 +1310,9 @@ class IkemenBridge: ObservableObject {
         loadCharacters()
         
         if !warnings.isEmpty {
-            return "Installed character: \(charName) ⚠️ \(warnings.joined(separator: ", "))"
+            return "Installed character: \(displayName) ⚠️ \(warnings.joined(separator: ", "))"
         }
-        return "Installed character: \(charName)"
+        return "Installed character: \(displayName)"
     }
     
     /// Validate character portrait and return any warnings
@@ -1569,7 +1601,13 @@ class IkemenBridge: ObservableObject {
         // Reload stages
         loadStages()
         
-        return "Installed \(installedStages.count) stage(s)"
+        if installedStages.count == 1 {
+            return "Installed stage: \(installedStages[0])"
+        } else if installedStages.count > 1 {
+            return "Installed \(installedStages.count) stages: \(installedStages.joined(separator: ", "))"
+        } else {
+            return "No stages found to install"
+        }
     }
     
     private func addStageToSelectDef(_ stageName: String, in workingDir: URL) throws {
