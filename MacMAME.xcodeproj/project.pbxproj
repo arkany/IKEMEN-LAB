@@ -18,6 +18,8 @@
 		009 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 203 /* QuartzCore.framework */; };
 		010 /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 204 /* GameController.framework */; };
 		011 /* CharacterBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 113 /* CharacterBrowserView.swift */; };
+		012 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 114 /* Fonts */; };
+		013 /* Icons in Resources */ = {isa = PBXBuildFile; fileRef = 115 /* Icons */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +34,8 @@
 		109 /* MacMAME.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMAME.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		112 /* MacMAME-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "MacMAME-Bridging-Header.h"; sourceTree = "<group>"; };
 		113 /* CharacterBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterBrowserView.swift; sourceTree = "<group>"; };
+		114 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
+		115 /* Icons */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Icons; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -126,6 +130,8 @@
 				106 /* Assets.xcassets */,
 				107 /* Info.plist */,
 				108 /* MacMAME.entitlements */,
+				114 /* Fonts */,
+				115 /* Icons */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -198,6 +204,8 @@
 			files = (
 				005 /* MainMenu.xib in Resources */,
 				006 /* Assets.xcassets in Resources */,
+				012 /* Fonts in Resources */,
+				013 /* Icons in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
