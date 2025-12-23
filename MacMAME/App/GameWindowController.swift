@@ -48,6 +48,7 @@ class GameWindowController: NSWindowController {
     private var charactersCountLabel: NSTextField!
     private var stagesCountLabel: NSTextField!
     private var navButtons: [NavItem: NSButton] = [:]
+    private var navLabels: [NavItem: NSTextField] = [:]  // For updating counts
     private var selectedNavItem: NavItem? = nil
     
     // UI Elements - Main Area
@@ -180,8 +181,9 @@ class GameWindowController: NSWindowController {
         sidebarView.addSubview(navStack)
         
         for item in NavItem.allCases {
-            let button = createNavButton(for: item)
+            let (button, label) = createNavButton(for: item)
             navButtons[item] = button
+            navLabels[item] = label
             navStack.addArrangedSubview(button)
         }
         
@@ -262,7 +264,7 @@ class GameWindowController: NSWindowController {
         return stack
     }
     
-    private func createNavButton(for item: NavItem) -> NSButton {
+    private func createNavButton(for item: NavItem) -> (NSButton, NSTextField) {
         let button = NSButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.isBordered = false
@@ -270,6 +272,20 @@ class GameWindowController: NSWindowController {
         button.target = self
         button.action = #selector(navItemClicked(_:))
         button.wantsLayer = true
+        
+        // Container for gradient background and left border
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.wantsLayer = true
+        button.addSubview(container)
+        
+        // Left border indicator
+        let leftBorder = NSView()
+        leftBorder.translatesAutoresizingMaskIntoConstraints = false
+        leftBorder.wantsLayer = true
+        leftBorder.layer?.backgroundColor = NSColor.clear.cgColor
+        leftBorder.identifier = NSUserInterfaceItemIdentifier("leftBorder")
+        container.addSubview(leftBorder)
         
         // Create horizontal stack for icon + text
         let stack = NSStackView()
@@ -292,28 +308,42 @@ class GameWindowController: NSWindowController {
         ])
         stack.addArrangedSubview(iconView)
         
-        // Label
+        // Label with count placeholder
         let label = NSTextField(labelWithString: item.rawValue)
         label.font = jerseyFont(size: 32)
         label.textColor = grayText
         label.isEditable = false
         label.isBordered = false
         label.backgroundColor = .clear
+        label.identifier = NSUserInterfaceItemIdentifier("navLabel")
         stack.addArrangedSubview(label)
         
-        button.addSubview(stack)
+        container.addSubview(stack)
+        
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: button.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: button.trailingAnchor),
-            stack.topAnchor.constraint(equalTo: button.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: button.bottomAnchor),
-            button.heightAnchor.constraint(equalToConstant: 48),
+            container.leadingAnchor.constraint(equalTo: button.leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: button.trailingAnchor),
+            container.topAnchor.constraint(equalTo: button.topAnchor),
+            container.bottomAnchor.constraint(equalTo: button.bottomAnchor),
+            
+            // Left border - 4px wide, full height
+            leftBorder.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            leftBorder.topAnchor.constraint(equalTo: container.topAnchor),
+            leftBorder.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            leftBorder.widthAnchor.constraint(equalToConstant: 4),
+            
+            // Stack with padding
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
+            stack.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            
+            button.heightAnchor.constraint(equalToConstant: 50),
         ])
         
         // Store item reference
         button.tag = NavItem.allCases.firstIndex(of: item) ?? 0
         
-        return button
+        return (button, label)
     }
     
     @objc private func navItemClicked(_ sender: NSButton) {
@@ -327,13 +357,44 @@ class GameWindowController: NSWindowController {
         // Update button appearances
         for (navItem, button) in navButtons {
             let isSelected = navItem == item
-            if let stack = button.subviews.first as? NSStackView {
+            
+            // Find the container view (first subview)
+            guard let container = button.subviews.first else { continue }
+            
+            // Find the left border
+            if let leftBorder = container.subviews.first(where: { $0.identifier?.rawValue == "leftBorder" }) {
+                leftBorder.layer?.backgroundColor = isSelected ? redAccent.cgColor : NSColor.clear.cgColor
+            }
+            
+            // Apply gradient background for selected state
+            if isSelected {
+                // Create gradient layer
+                let gradient = CAGradientLayer()
+                gradient.colors = [
+                    redAccent.withAlphaComponent(0.4).cgColor,
+                    NSColor.clear.cgColor
+                ]
+                gradient.locations = [0, 0.09135]
+                gradient.startPoint = CGPoint(x: 0, y: 0.5)
+                gradient.endPoint = CGPoint(x: 1, y: 0.5)
+                gradient.frame = container.bounds
+                
+                // Remove old gradient if any
+                container.layer?.sublayers?.filter { $0 is CAGradientLayer }.forEach { $0.removeFromSuperlayer() }
+                container.layer?.insertSublayer(gradient, at: 0)
+            } else {
+                // Remove gradient
+                container.layer?.sublayers?.filter { $0 is CAGradientLayer }.forEach { $0.removeFromSuperlayer() }
+            }
+            
+            // Find the stack view and update colors
+            if let stack = container.subviews.compactMap({ $0 as? NSStackView }).first {
                 for view in stack.arrangedSubviews {
                     if let iconView = view as? NSImageView {
-                        iconView.contentTintColor = isSelected ? creamText : grayText
+                        iconView.contentTintColor = isSelected ? redAccent : grayText
                     }
                     if let label = view as? NSTextField {
-                        label.textColor = isSelected ? creamText : grayText
+                        label.textColor = isSelected ? redAccent : grayText
                     }
                 }
             }
@@ -438,6 +499,7 @@ class GameWindowController: NSWindowController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] characters in
                 self?.charactersCountLabel?.stringValue = "\(characters.count)"
+                self?.updateNavItemCount(.characters, count: characters.count)
             }
             .store(in: &cancellables)
         
@@ -445,8 +507,18 @@ class GameWindowController: NSWindowController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] stages in
                 self?.stagesCountLabel?.stringValue = "\(stages.count)"
+                self?.updateNavItemCount(.stages, count: stages.count)
             }
             .store(in: &cancellables)
+    }
+    
+    private func updateNavItemCount(_ item: NavItem, count: Int) {
+        guard let label = navLabels[item] else { return }
+        if count > 0 {
+            label.stringValue = "\(item.rawValue) (\(count))"
+        } else {
+            label.stringValue = item.rawValue
+        }
     }
     
     private func updateUI(for state: EngineState) {
