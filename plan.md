@@ -25,13 +25,14 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 - [x] Portrait size validation (warns on oversized)
 - [x] Homebrew dependencies (libxmp, sdl2, molten-vk, unrar)
 - [x] Visual character browser with thumbnails (SFF v1 portrait extraction)
+- [x] Auto-detect when Ikemen GO closes (update button state)
 
 ### 🔄 In Progress
 - [ ] Portrait fix tool (generate/resize 160x160 portraits)
+- [ ] Drag-and-drop feedback UI - show success/failure message inside the drop zone area (needs design)
 
 ### 📋 Planned
 - [ ] Visual stage browser with thumbnails
-- [ ] Auto-detect when Ikemen GO closes (update button state)
 - [ ] Settings panel (resolution, fullscreen, etc.)
 - [ ] Screenpack management
 - [ ] Netplay lobby UI

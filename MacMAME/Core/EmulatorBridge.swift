@@ -859,6 +859,10 @@ class IkemenBridge: ObservableObject {
     private var enginePath: URL?
     private var engineWorkingDirectory: URL?
     
+    // For tracking the launched app
+    private var launchedAppPID: pid_t?
+    private var terminationObserver: NSObjectProtocol?
+    
     // MARK: - Initialization
     
     private init() {
@@ -878,6 +882,7 @@ class IkemenBridge: ObservableObject {
         createDirectoriesIfNeeded()
         findEngine()
         loadContent()
+        setupTerminationObserver()
         
         print("IkemenBridge initialized")
         print("Content path: \(contentPath.path)")
@@ -887,7 +892,41 @@ class IkemenBridge: ObservableObject {
     }
     
     deinit {
+        if let observer = terminationObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
         terminateEngine()
+    }
+    
+    // MARK: - Termination Observer
+    
+    private func setupTerminationObserver() {
+        terminationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleAppTermination(notification)
+        }
+    }
+    
+    private func handleAppTermination(_ notification: Notification) {
+        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
+            return
+        }
+        
+        // Check if this is the Ikemen GO app we launched
+        if let launchedPID = launchedAppPID, app.processIdentifier == launchedPID {
+            print("Ikemen GO terminated (PID: \(launchedPID))")
+            launchedAppPID = nil
+            engineState = .idle
+        } else if let executableURL = app.executableURL,
+                  executableURL.lastPathComponent.contains("Ikemen") {
+            // Fallback check by name
+            print("Ikemen GO terminated: \(app.localizedName ?? "unknown")")
+            launchedAppPID = nil
+            engineState = .idle
+        }
     }
     
     // MARK: - Directory Setup
@@ -1060,10 +1099,13 @@ class IkemenBridge: ObservableObject {
                 print("Failed to launch Ikemen GO: \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     self?.engineState = .error(error)
+                    self?.launchedAppPID = nil
                 }
             } else if let app = runningApp {
-                print("Ikemen GO launched successfully: \(app.localizedName ?? "unknown")")
-                // We could monitor the app's termination via NSWorkspace notifications if needed
+                print("Ikemen GO launched successfully: \(app.localizedName ?? "unknown") (PID: \(app.processIdentifier))")
+                DispatchQueue.main.async {
+                    self?.launchedAppPID = app.processIdentifier
+                }
             }
         }
     }
@@ -1091,6 +1133,7 @@ class IkemenBridge: ObservableObject {
         }
         
         ikemenProcess = nil
+        launchedAppPID = nil
         
         if terminated {
             DispatchQueue.main.async {
