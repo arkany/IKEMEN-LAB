@@ -9,6 +9,7 @@ enum NavItem: String, CaseIterable {
     case stages = "Stages"
     case lifebars = "Lifebars"
     case addons = "Add-ons"
+    case settings = "Settings"
     
     var iconName: String {
         switch self {
@@ -17,6 +18,7 @@ enum NavItem: String, CaseIterable {
         case .stages: return "stages"
         case .lifebars: return "lifebars"
         case .addons: return "addons"
+        case .settings: return "settings"
         }
     }
 }
@@ -54,6 +56,11 @@ class GameWindowController: NSWindowController {
     // UI Elements - Main Area
     private var dropZoneView: DropZoneView!
     private var characterBrowserView: CharacterBrowserView!
+    private var stageBrowserView: StageBrowserView!
+    private var viewModeToggle: NSSegmentedControl!
+    
+    // View mode state
+    private var currentViewMode: BrowserViewMode = .grid
     
     // MARK: - State
     
@@ -308,7 +315,7 @@ class GameWindowController: NSWindowController {
     }
     
     private func createNavButton(for item: NavItem) -> (NSButton, NSTextField) {
-        let button = NSButton()
+        let button = NavButton()
         button.translatesAutoresizingMaskIntoConstraints = false
         button.title = ""  // Remove default "Button" text
         button.isBordered = false
@@ -316,11 +323,13 @@ class GameWindowController: NSWindowController {
         button.target = self
         button.action = #selector(navItemClicked(_:))
         button.wantsLayer = true
+        button.focusRingType = .exterior
         
         // Container for gradient background and left border
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.wantsLayer = true
+        container.identifier = NSUserInterfaceItemIdentifier("navContainer")
         button.addSubview(container)
         
         // Left border indicator
@@ -386,12 +395,40 @@ class GameWindowController: NSWindowController {
         // Store item reference
         button.tag = NavItem.allCases.firstIndex(of: item) ?? 0
         
+        // Setup hover handling
+        button.onHoverChanged = { [weak self, weak button] isHovered in
+            guard let self = self, let button = button else { return }
+            self.updateNavButtonAppearance(button, for: item, isHovered: isHovered)
+        }
+        
         return (button, label)
+    }
+    
+    private func updateNavButtonAppearance(_ button: NSButton, for item: NavItem, isHovered: Bool) {
+        let isSelected = selectedNavItem == item
+        
+        // Don't show hover on selected items (they already have the highlight)
+        let showHover = isHovered && !isSelected
+        
+        guard let container = button.subviews.first(where: { $0.identifier?.rawValue == "navContainer" }) else { return }
+        
+        // Apply hover background
+        if showHover {
+            container.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.08).cgColor
+        } else if !isSelected {
+            container.layer?.backgroundColor = NSColor.clear.cgColor
+        }
+        // Selected state is handled by selectNavItem
     }
     
     @objc private func navItemClicked(_ sender: NSButton) {
         let item = NavItem.allCases[sender.tag]
         selectNavItem(item)
+    }
+    
+    /// Public method to select the Settings nav item (called from menu)
+    func selectSettingsNavItem() {
+        selectNavItem(.settings)
     }
     
     private func selectNavItem(_ item: NavItem?) {
@@ -401,16 +438,19 @@ class GameWindowController: NSWindowController {
         for (navItem, button) in navButtons {
             let isSelected = navItem == item
             
-            // Find the container view (first subview)
-            guard let container = button.subviews.first else { continue }
+            // Find the container view
+            guard let container = button.subviews.first(where: { $0.identifier?.rawValue == "navContainer" }) else { continue }
             
             // Find the left border
             if let leftBorder = container.subviews.first(where: { $0.identifier?.rawValue == "leftBorder" }) {
                 leftBorder.layer?.backgroundColor = isSelected ? redAccent.cgColor : NSColor.clear.cgColor
             }
             
-            // Apply gradient background for selected state
+            // Apply gradient background for selected state, clear hover background
             if isSelected {
+                // Clear any hover background
+                container.layer?.backgroundColor = NSColor.clear.cgColor
+                
                 // Create gradient layer
                 let gradient = CAGradientLayer()
                 gradient.colors = [
@@ -426,8 +466,9 @@ class GameWindowController: NSWindowController {
                 container.layer?.sublayers?.filter { $0 is CAGradientLayer }.forEach { $0.removeFromSuperlayer() }
                 container.layer?.insertSublayer(gradient, at: 0)
             } else {
-                // Remove gradient
+                // Remove gradient and clear background
                 container.layer?.sublayers?.filter { $0 is CAGradientLayer }.forEach { $0.removeFromSuperlayer() }
+                container.layer?.backgroundColor = NSColor.clear.cgColor
             }
             
             // Find the stack view and update colors
@@ -469,6 +510,13 @@ class GameWindowController: NSWindowController {
         dropZoneView.applyFigmaStyle(borderColor: redAccent, textColor: grayText, font: jerseyFont(size: 24))
         mainAreaView.addSubview(dropZoneView)
         
+        // View Mode Toggle (Grid/List)
+        viewModeToggle = NSSegmentedControl(labels: ["Grid", "List"], trackingMode: .selectOne, target: self, action: #selector(viewModeToggled(_:)))
+        viewModeToggle.translatesAutoresizingMaskIntoConstraints = false
+        viewModeToggle.selectedSegment = 0
+        viewModeToggle.isHidden = true
+        mainAreaView.addSubview(viewModeToggle)
+        
         // Character Browser (hidden initially)
         characterBrowserView = CharacterBrowserView(frame: .zero)
         characterBrowserView.translatesAutoresizingMaskIntoConstraints = false
@@ -478,35 +526,396 @@ class GameWindowController: NSWindowController {
         }
         mainAreaView.addSubview(characterBrowserView)
         
+        // Stage Browser (hidden initially)
+        stageBrowserView = StageBrowserView(frame: .zero)
+        stageBrowserView.translatesAutoresizingMaskIntoConstraints = false
+        stageBrowserView.isHidden = true
+        stageBrowserView.onStageSelected = { [weak self] stage in
+            self?.statusLabel.stringValue = stage.name
+        }
+        mainAreaView.addSubview(stageBrowserView)
+        
         NSLayoutConstraint.activate([
+            // View mode toggle in top-right
+            viewModeToggle.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
+            viewModeToggle.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
+            
             // Drop zone fills main area with padding
             dropZoneView.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
             dropZoneView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             dropZoneView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             dropZoneView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
             
-            // Character browser fills main area
-            characterBrowserView.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
+            // Character browser fills main area (below toggle)
+            characterBrowserView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
             characterBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             characterBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             characterBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
+            
+            // Stage browser fills main area (below toggle)
+            stageBrowserView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
+            stageBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
+            stageBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
+            stageBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
         ])
     }
     
+    @objc private func viewModeToggled(_ sender: NSSegmentedControl) {
+        currentViewMode = sender.selectedSegment == 0 ? .grid : .list
+        characterBrowserView.viewMode = currentViewMode
+        stageBrowserView.viewMode = currentViewMode
+    }
+    
     private func updateMainAreaContent() {
+        // Remove settings view if not on settings tab
+        if selectedNavItem != .settings {
+            mainAreaView.subviews.filter { $0.identifier?.rawValue == "settingsView" }.forEach { $0.removeFromSuperview() }
+        }
+        
+        // Show/hide view mode toggle for content browsers
+        let showToggle = selectedNavItem == .characters || selectedNavItem == .stages
+        viewModeToggle.isHidden = !showToggle
+        
         // Show/hide appropriate views based on selection
         switch selectedNavItem {
         case .characters:
             dropZoneView.isHidden = true
             characterBrowserView.isHidden = false
-        case .stages, .lifebars, .addons, .collections:
+            stageBrowserView.isHidden = true
+            characterBrowserView.viewMode = currentViewMode
+        case .stages:
+            dropZoneView.isHidden = true
+            characterBrowserView.isHidden = true
+            stageBrowserView.isHidden = false
+            stageBrowserView.viewMode = currentViewMode
+        case .settings:
+            // Show settings panel
+            dropZoneView.isHidden = true
+            characterBrowserView.isHidden = true
+            stageBrowserView.isHidden = true
+            showSettingsContent()
+        case .lifebars, .addons, .collections:
             // TODO: Implement other browsers
             dropZoneView.isHidden = false
             characterBrowserView.isHidden = true
+            stageBrowserView.isHidden = true
         case nil:
             // Empty state - show drop zone
             dropZoneView.isHidden = false
             characterBrowserView.isHidden = true
+            stageBrowserView.isHidden = true
+        }
+    }
+    
+    private func showSettingsContent() {
+        // Remove any existing settings view
+        mainAreaView.subviews.filter { $0.identifier?.rawValue == "settingsView" }.forEach { $0.removeFromSuperview() }
+        
+        let settingsView = createSettingsView()
+        settingsView.identifier = NSUserInterfaceItemIdentifier("settingsView")
+        mainAreaView.addSubview(settingsView)
+        
+        NSLayoutConstraint.activate([
+            settingsView.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
+            settingsView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
+            settingsView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
+            settingsView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
+        ])
+    }
+    
+    private func createSettingsView() -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.wantsLayer = true
+        
+        let scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.drawsBackground = false
+        container.addSubview(scrollView)
+        
+        let contentView = NSView()
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.documentView = contentView
+        
+        let stackView = NSStackView()
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.orientation = .vertical
+        stackView.spacing = 32
+        stackView.alignment = .leading
+        contentView.addSubview(stackView)
+        
+        // Title
+        let titleLabel = NSTextField(labelWithString: "Settings")
+        titleLabel.font = jerseyFont(size: 48)
+        titleLabel.textColor = creamText
+        stackView.addArrangedSubview(titleLabel)
+        
+        // Video Settings Section
+        let videoSection = createSettingsSection(title: "Video", settings: [
+            createResolutionSetting(),
+            createToggleSetting(label: "Fullscreen", key: "Fullscreen", section: "Video"),
+            createToggleSetting(label: "VSync", key: "VSync", section: "Video"),
+            createToggleSetting(label: "Borderless", key: "Borderless", section: "Video"),
+        ])
+        stackView.addArrangedSubview(videoSection)
+        
+        // Audio Settings Section
+        let audioSection = createSettingsSection(title: "Audio", settings: [
+            createVolumeSetting(label: "Master Volume", key: "MasterVolume"),
+            createVolumeSetting(label: "Music Volume", key: "BGMVolume"),
+            createVolumeSetting(label: "Sound Effects", key: "WavVolume"),
+        ])
+        stackView.addArrangedSubview(audioSection)
+        
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            
+            stackView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+        ])
+        
+        return container
+    }
+    
+    private func createSettingsSection(title: String, settings: [NSView]) -> NSView {
+        let section = NSStackView()
+        section.orientation = .vertical
+        section.spacing = 16
+        section.alignment = .leading
+        
+        let sectionTitle = NSTextField(labelWithString: title)
+        sectionTitle.font = jerseyFont(size: 32)
+        sectionTitle.textColor = grayText
+        section.addArrangedSubview(sectionTitle)
+        
+        for setting in settings {
+            section.addArrangedSubview(setting)
+        }
+        
+        return section
+    }
+    
+    private func createResolutionSetting() -> NSView {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.spacing = 16
+        row.alignment = .centerY
+        
+        let label = NSTextField(labelWithString: "Resolution")
+        label.font = jerseyFont(size: 24)
+        label.textColor = creamText
+        label.widthAnchor.constraint(equalToConstant: 150).isActive = true
+        row.addArrangedSubview(label)
+        
+        let popup = NSPopUpButton()
+        popup.addItems(withTitles: [
+            "640×480 (4:3 SD)",
+            "1280×720 (720p HD)",
+            "1920×1080 (1080p Full HD)",
+            "2560×1440 (1440p QHD)",
+        ])
+        popup.tag = 1000
+        popup.target = self
+        popup.action = #selector(resolutionChanged(_:))
+        
+        // Load current value
+        if let config = loadIkemenConfig(),
+           let width = config["Video"]?["GameWidth"],
+           let height = config["Video"]?["GameHeight"] {
+            let resString = "\(width)×\(height)"
+            for (index, title) in popup.itemTitles.enumerated() {
+                if title.hasPrefix(resString) {
+                    popup.selectItem(at: index)
+                    break
+                }
+            }
+        }
+        
+        row.addArrangedSubview(popup)
+        return row
+    }
+    
+    private func createToggleSetting(label: String, key: String, section: String) -> NSView {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.spacing = 16
+        row.alignment = .centerY
+        
+        let labelField = NSTextField(labelWithString: label)
+        labelField.font = jerseyFont(size: 24)
+        labelField.textColor = creamText
+        labelField.widthAnchor.constraint(equalToConstant: 150).isActive = true
+        row.addArrangedSubview(labelField)
+        
+        let toggle = NSSwitch()
+        toggle.target = self
+        toggle.action = #selector(toggleSettingChanged(_:))
+        toggle.identifier = NSUserInterfaceItemIdentifier("\(section).\(key)")
+        
+        // Load current value
+        if let config = loadIkemenConfig(),
+           let value = config[section]?[key] {
+            toggle.state = value == "1" ? .on : .off
+        }
+        
+        row.addArrangedSubview(toggle)
+        return row
+    }
+    
+    private func createVolumeSetting(label: String, key: String) -> NSView {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.spacing = 16
+        row.alignment = .centerY
+        
+        let labelField = NSTextField(labelWithString: label)
+        labelField.font = jerseyFont(size: 24)
+        labelField.textColor = creamText
+        labelField.widthAnchor.constraint(equalToConstant: 150).isActive = true
+        row.addArrangedSubview(labelField)
+        
+        let slider = NSSlider()
+        slider.minValue = 0
+        slider.maxValue = 100
+        slider.intValue = 100
+        slider.widthAnchor.constraint(equalToConstant: 200).isActive = true
+        slider.target = self
+        slider.action = #selector(volumeSliderChanged(_:))
+        slider.identifier = NSUserInterfaceItemIdentifier("Sound.\(key)")
+        
+        // Load current value
+        if let config = loadIkemenConfig(),
+           let value = config["Sound"]?[key],
+           let intValue = Int(value) {
+            slider.intValue = Int32(intValue)
+        }
+        
+        let valueLabel = NSTextField(labelWithString: "\(slider.intValue)%")
+        valueLabel.font = jerseyFont(size: 20)
+        valueLabel.textColor = grayText
+        valueLabel.widthAnchor.constraint(equalToConstant: 50).isActive = true
+        valueLabel.identifier = NSUserInterfaceItemIdentifier("Sound.\(key).label")
+        
+        row.addArrangedSubview(slider)
+        row.addArrangedSubview(valueLabel)
+        return row
+    }
+    
+    // MARK: - Settings Actions
+    
+    @objc private func resolutionChanged(_ sender: NSPopUpButton) {
+        let resolutions = [(640, 480), (1280, 720), (1920, 1080), (2560, 1440)]
+        let selected = resolutions[sender.indexOfSelectedItem]
+        saveIkemenConfigValue(section: "Video", key: "GameWidth", value: "\(selected.0)")
+        saveIkemenConfigValue(section: "Video", key: "GameHeight", value: "\(selected.1)")
+    }
+    
+    @objc private func toggleSettingChanged(_ sender: NSSwitch) {
+        guard let id = sender.identifier?.rawValue else { return }
+        let parts = id.split(separator: ".")
+        guard parts.count == 2 else { return }
+        let section = String(parts[0])
+        let key = String(parts[1])
+        saveIkemenConfigValue(section: section, key: key, value: sender.state == .on ? "1" : "0")
+    }
+    
+    @objc private func volumeSliderChanged(_ sender: NSSlider) {
+        guard let id = sender.identifier?.rawValue else { return }
+        let parts = id.split(separator: ".")
+        guard parts.count == 2 else { return }
+        let section = String(parts[0])
+        let key = String(parts[1])
+        
+        // Update label
+        let labelId = NSUserInterfaceItemIdentifier("\(section).\(key).label")
+        if let label = mainAreaView.viewWithIdentifier(labelId) as? NSTextField {
+            label.stringValue = "\(sender.intValue)%"
+        }
+        
+        saveIkemenConfigValue(section: section, key: key, value: "\(sender.intValue)")
+    }
+    
+    // MARK: - Config File Helpers
+    
+    private var ikemenConfigPath: URL {
+        URL(fileURLWithPath: "/Users/davidphillips/Sites/macmame/Ikemen-GO/save/config.ini")
+    }
+    
+    private func loadIkemenConfig() -> [String: [String: String]]? {
+        guard FileManager.default.fileExists(atPath: ikemenConfigPath.path) else { return nil }
+        
+        do {
+            let content = try String(contentsOf: ikemenConfigPath, encoding: .utf8)
+            var config: [String: [String: String]] = [:]
+            var currentSection = ""
+            
+            for line in content.components(separatedBy: .newlines) {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.isEmpty || trimmed.hasPrefix(";") { continue }
+                
+                if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+                    currentSection = String(trimmed.dropFirst().dropLast())
+                    if config[currentSection] == nil {
+                        config[currentSection] = [:]
+                    }
+                    continue
+                }
+                
+                if let equalsIndex = trimmed.firstIndex(of: "=") {
+                    let key = trimmed[..<equalsIndex].trimmingCharacters(in: .whitespaces)
+                    let value = trimmed[trimmed.index(after: equalsIndex)...].trimmingCharacters(in: .whitespaces)
+                    config[currentSection]?[key] = value
+                }
+            }
+            return config
+        } catch {
+            print("Error loading config: \(error)")
+            return nil
+        }
+    }
+    
+    private func saveIkemenConfigValue(section: String, key: String, value: String) {
+        guard FileManager.default.fileExists(atPath: ikemenConfigPath.path) else { return }
+        
+        do {
+            var content = try String(contentsOf: ikemenConfigPath, encoding: .utf8)
+            var lines = content.components(separatedBy: "\n")
+            var inSection = false
+            
+            for i in 0..<lines.count {
+                let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
+                
+                if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+                    let sectionName = String(trimmed.dropFirst().dropLast())
+                    inSection = (sectionName == section)
+                    continue
+                }
+                
+                if inSection && trimmed.hasPrefix(key) {
+                    if let equalsIndex = trimmed.firstIndex(of: "=") {
+                        let keyPart = trimmed[..<equalsIndex].trimmingCharacters(in: .whitespaces)
+                        if keyPart == key {
+                            let leadingWhitespace = String(lines[i].prefix(while: { $0 == " " || $0 == "\t" }))
+                            lines[i] = "\(leadingWhitespace)\(key) = \(value)"
+                            break
+                        }
+                    }
+                }
+            }
+            
+            content = lines.joined(separator: "\n")
+            try content.write(to: ikemenConfigPath, atomically: true, encoding: .utf8)
+        } catch {
+            print("Error saving config: \(error)")
         }
     }
     
@@ -745,6 +1154,57 @@ class GameWindowController: NSWindowController {
     }
 }
 
+// MARK: - Nav Button with Hover Support
+
+class NavButton: NSButton {
+    
+    var isHovered = false {
+        didSet {
+            if isHovered != oldValue {
+                onHoverChanged?(isHovered)
+            }
+        }
+    }
+    
+    var onHoverChanged: ((Bool) -> Void)?
+    
+    private var trackingArea: NSTrackingArea?
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+    }
+    
+    override var acceptsFirstResponder: Bool { true }
+    
+    override func drawFocusRingMask() {
+        bounds.fill()
+    }
+    
+    override var focusRingMaskBounds: NSRect {
+        return bounds
+    }
+}
+
 // MARK: - Drop Zone View
 
 class DropZoneView: NSView {
@@ -937,5 +1397,19 @@ extension GameWindowController: NSWindowDelegate {
     
     func windowWillClose(_ notification: Notification) {
         stopEmulation()
+    }
+}
+
+// MARK: - NSView Extension
+
+extension NSView {
+    func viewWithIdentifier(_ identifier: NSUserInterfaceItemIdentifier) -> NSView? {
+        if self.identifier == identifier { return self }
+        for subview in subviews {
+            if let found = subview.viewWithIdentifier(identifier) {
+                return found
+            }
+        }
+        return nil
     }
 }

@@ -784,6 +784,29 @@ struct StageInfo: Identifiable, Hashable {
     let name: String
     let author: String
     let defFile: URL
+    let boundLeft: Int      // Camera left bound (negative = wider stage)
+    let boundRight: Int     // Camera right bound (positive = wider stage)
+    
+    /// Total horizontal camera range (larger = wider stage)
+    var totalWidth: Int {
+        return boundRight - boundLeft
+    }
+    
+    /// Whether this is a "wide" stage (>400 total width)
+    var isWideStage: Bool {
+        return totalWidth > 400
+    }
+    
+    /// Human-readable size category
+    var sizeCategory: String {
+        if totalWidth <= 300 {
+            return "Standard"
+        } else if totalWidth <= 600 {
+            return "Wide"
+        } else {
+            return "Extra Wide"
+        }
+    }
     
     init(defFile: URL) {
         self.defFile = defFile
@@ -791,12 +814,31 @@ struct StageInfo: Identifiable, Hashable {
         
         var parsedName = defFile.deletingPathExtension().lastPathComponent
         var parsedAuthor = "Unknown"
+        var parsedBoundLeft = -150  // Default MUGEN values
+        var parsedBoundRight = 150
         
         if let content = try? String(contentsOf: defFile, encoding: .utf8) {
             let lines = content.components(separatedBy: .newlines)
+            var inCameraSection = false
+            
             for line in lines {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.lowercased().hasPrefix("name") && !trimmed.lowercased().contains("localcoord") {
+                
+                // Check for section headers
+                if trimmed.lowercased().hasPrefix("[camera]") {
+                    inCameraSection = true
+                    continue
+                } else if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+                    inCameraSection = false
+                }
+                
+                // Parse name and author from any section
+                if trimmed.lowercased().hasPrefix("name") && !trimmed.lowercased().contains("localcoord") && !trimmed.lowercased().contains("displayname") {
+                    if let value = trimmed.split(separator: "=").last {
+                        parsedName = String(value).trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\"", with: "")
+                    }
+                } else if trimmed.lowercased().hasPrefix("displayname") {
+                    // Prefer displayname if available
                     if let value = trimmed.split(separator: "=").last {
                         parsedName = String(value).trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\"", with: "")
                     }
@@ -805,11 +847,28 @@ struct StageInfo: Identifiable, Hashable {
                         parsedAuthor = String(value).trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\"", with: "")
                     }
                 }
+                
+                // Parse camera bounds
+                if inCameraSection {
+                    if trimmed.lowercased().hasPrefix("boundleft") {
+                        if let value = trimmed.split(separator: "=").last,
+                           let intValue = Int(String(value).trimmingCharacters(in: .whitespaces)) {
+                            parsedBoundLeft = intValue
+                        }
+                    } else if trimmed.lowercased().hasPrefix("boundright") {
+                        if let value = trimmed.split(separator: "=").last,
+                           let intValue = Int(String(value).trimmingCharacters(in: .whitespaces)) {
+                            parsedBoundRight = intValue
+                        }
+                    }
+                }
             }
         }
         
         self.name = parsedName
         self.author = parsedAuthor
+        self.boundLeft = parsedBoundLeft
+        self.boundRight = parsedBoundRight
     }
 }
 

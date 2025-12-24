@@ -62,6 +62,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         gameWindowController?.window?.toggleFullScreen(sender)
     }
     
+    @IBAction func showSettings(_ sender: Any?) {
+        // Select the Settings nav item in the main window
+        gameWindowController?.selectSettingsNavItem()
+    }
+    
     // MARK: - Menu Validation
     
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {

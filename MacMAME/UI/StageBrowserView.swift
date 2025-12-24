@@ -1,16 +1,21 @@
 import Cocoa
 import Combine
 
-/// A visual browser for viewing installed characters with thumbnails
-class CharacterBrowserView: NSView {
+/// View mode for content browsers
+enum BrowserViewMode {
+    case grid
+    case list
+}
+
+/// A visual browser for viewing installed stages with thumbnails
+class StageBrowserView: NSView {
     
     // MARK: - Properties
     
     private var scrollView: NSScrollView!
     private var collectionView: NSCollectionView!
     private var flowLayout: NSCollectionViewFlowLayout!
-    private var characters: [CharacterInfo] = []
-    private var portraitCache: [String: NSImage] = [:]
+    private var stages: [StageInfo] = []
     private var cancellables = Set<AnyCancellable>()
     
     // View mode
@@ -20,9 +25,10 @@ class CharacterBrowserView: NSView {
         }
     }
     
-    // Figma design constants
-    private let gridItemWidth: CGFloat = 160
+    // Figma design constants - stages are twice as wide
+    private let gridItemWidth: CGFloat = 320
     private let gridItemHeight: CGFloat = 160
+    private let listItemWidth: CGFloat = 600
     private let listItemHeight: CGFloat = 60
     private let cardSpacing: CGFloat = 28
     private let sectionInset: CGFloat = 0
@@ -30,11 +36,12 @@ class CharacterBrowserView: NSView {
     // Colors from Figma
     private let cardBgColor = NSColor(red: 0x0f/255.0, green: 0x19/255.0, blue: 0x23/255.0, alpha: 1.0)
     private let grayTextColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
+    private let creamTextColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
     private let placeholderColor = NSColor(red: 0xd9/255.0, green: 0xd9/255.0, blue: 0xd9/255.0, alpha: 1.0)
     private let selectedBorderColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
+    private let greenAccent = NSColor(red: 0x4e/255.0, green: 0xfd/255.0, blue: 0x60/255.0, alpha: 1.0)
     
-    var onCharacterSelected: ((CharacterInfo) -> Void)?
-    var onCharacterDoubleClicked: ((CharacterInfo) -> Void)?
+    var onStageSelected: ((StageInfo) -> Void)?
     
     // MARK: - Fonts
     
@@ -98,8 +105,8 @@ class CharacterBrowserView: NSView {
         collectionView.allowsMultipleSelection = false
         
         // Register item classes
-        collectionView.register(CharacterCollectionViewItem.self, forItemWithIdentifier: CharacterCollectionViewItem.identifier)
-        collectionView.register(CharacterListItem.self, forItemWithIdentifier: CharacterListItem.identifier)
+        collectionView.register(StageGridItem.self, forItemWithIdentifier: StageGridItem.identifier)
+        collectionView.register(StageListItem.self, forItemWithIdentifier: StageListItem.identifier)
         
         scrollView.documentView = collectionView
         
@@ -133,7 +140,6 @@ class CharacterBrowserView: NSView {
             let totalSpacing = availableWidth - totalItemWidth
             let spacing = max(cardSpacing, totalSpacing / max(1, itemsPerRow - 1))
             
-            // Update layout
             flowLayout.minimumInteritemSpacing = spacing
             flowLayout.itemSize = NSSize(width: itemWidth, height: itemHeight)
         } else {
@@ -152,115 +158,48 @@ class CharacterBrowserView: NSView {
     // MARK: - Data Binding
     
     private func setupObservers() {
-        IkemenBridge.shared.$characters
+        IkemenBridge.shared.$stages
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] characters in
-                self?.updateCharacters(characters)
+            .sink { [weak self] stages in
+                self?.updateStages(stages)
             }
             .store(in: &cancellables)
     }
     
-    private func updateCharacters(_ newCharacters: [CharacterInfo]) {
-        self.characters = newCharacters.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+    private func updateStages(_ newStages: [StageInfo]) {
+        self.stages = newStages.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         collectionView.reloadData()
-        
-        // Load portraits in background
-        loadPortraitsAsync()
-    }
-    
-    // MARK: - Portrait Loading
-    
-    private func loadPortraitsAsync() {
-        for character in characters {
-            if portraitCache[character.id] != nil { continue }
-            
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                let portrait = character.getPortraitImage()
-                
-                DispatchQueue.main.async {
-                    self?.portraitCache[character.id] = portrait ?? self?.createPlaceholderImage(for: character)
-                    
-                    // Find and update the item
-                    if let index = self?.characters.firstIndex(where: { $0.id == character.id }) {
-                        let indexPath = IndexPath(item: index, section: 0)
-                        if let item = self?.collectionView.item(at: indexPath) as? CharacterCollectionViewItem {
-                            item.setPortrait(self?.portraitCache[character.id])
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    private func createPlaceholderImage(for character: CharacterInfo) -> NSImage {
-        let size = NSSize(width: 100, height: 100)
-        let image = NSImage(size: size)
-        
-        image.lockFocus()
-        
-        // Placeholder background from Figma (#d9d9d9)
-        placeholderColor.setFill()
-        NSRect(origin: .zero, size: size).fill()
-        
-        // Draw initial in darker gray
-        let initial = String(character.displayName.prefix(1)).uppercased()
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: jerseyFont(size: 40),
-            .foregroundColor: NSColor(white: 0.5, alpha: 1.0)
-        ]
-        let attrString = NSAttributedString(string: initial, attributes: attrs)
-        let stringSize = attrString.size()
-        let point = NSPoint(
-            x: (size.width - stringSize.width) / 2,
-            y: (size.height - stringSize.height) / 2
-        )
-        attrString.draw(at: point)
-        
-        image.unlockFocus()
-        
-        return image
     }
     
     // MARK: - Public Methods
     
     func refresh() {
-        portraitCache.removeAll()
-        updateCharacters(IkemenBridge.shared.characters)
+        updateStages(IkemenBridge.shared.stages)
     }
 }
 
 // MARK: - NSCollectionViewDataSource
 
-extension CharacterBrowserView: NSCollectionViewDataSource {
+extension StageBrowserView: NSCollectionViewDataSource {
     
     func numberOfSections(in collectionView: NSCollectionView) -> Int {
         return 1
     }
     
     func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
-        return characters.count
+        return stages.count
     }
     
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
-        let character = characters[indexPath.item]
+        let stage = stages[indexPath.item]
         
         if viewMode == .grid {
-            let item = collectionView.makeItem(withIdentifier: CharacterCollectionViewItem.identifier, for: indexPath) as! CharacterCollectionViewItem
-            item.configure(with: character)
-            
-            if let cachedPortrait = portraitCache[character.id] {
-                item.setPortrait(cachedPortrait)
-            }
-            
+            let item = collectionView.makeItem(withIdentifier: StageGridItem.identifier, for: indexPath) as! StageGridItem
+            item.configure(with: stage)
             return item
         } else {
-            let item = collectionView.makeItem(withIdentifier: CharacterListItem.identifier, for: indexPath) as! CharacterListItem
-            item.configure(with: character)
-            
-            if let cachedPortrait = portraitCache[character.id] {
-                item.setPortrait(cachedPortrait)
-            }
-            
+            let item = collectionView.makeItem(withIdentifier: StageListItem.identifier, for: indexPath) as! StageListItem
+            item.configure(with: stage)
             return item
         }
     }
@@ -268,33 +207,35 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
 
 // MARK: - NSCollectionViewDelegate
 
-extension CharacterBrowserView: NSCollectionViewDelegate {
+extension StageBrowserView: NSCollectionViewDelegate {
     
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
         guard let indexPath = indexPaths.first else { return }
-        let character = characters[indexPath.item]
-        onCharacterSelected?(character)
+        let stage = stages[indexPath.item]
+        onStageSelected?(stage)
     }
 }
 
-// MARK: - Character Collection View Item
+// MARK: - Stage Grid Item (Card View)
 
-class CharacterCollectionViewItem: NSCollectionViewItem {
+class StageGridItem: NSCollectionViewItem {
     
-    static let identifier = NSUserInterfaceItemIdentifier("CharacterCollectionViewItem")
+    static let identifier = NSUserInterfaceItemIdentifier("StageGridItem")
     
     // Figma colors
     private let cardBgColor = NSColor(red: 0x0f/255.0, green: 0x19/255.0, blue: 0x23/255.0, alpha: 1.0)
     private let grayTextColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
-    private let placeholderColor = NSColor(red: 0xd9/255.0, green: 0xd9/255.0, blue: 0xd9/255.0, alpha: 1.0)
+    private let creamTextColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
+    private let placeholderColor = NSColor(red: 0x1a/255.0, green: 0x2a/255.0, blue: 0x35/255.0, alpha: 1.0)
     private let selectedBorderColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
+    private let greenAccent = NSColor(red: 0x4e/255.0, green: 0xfd/255.0, blue: 0x60/255.0, alpha: 1.0)
     
-    private var portraitImageView: NSImageView!
+    private var containerView: NSView!
+    private var previewImageView: NSImageView!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
-    private var containerView: NSView!
-    
-    // MARK: - Fonts
+    private var sizeBadge: NSView!
+    private var sizeBadgeLabel: NSTextField!
     
     private func jerseyFont(size: CGFloat) -> NSFont {
         if let font = NSFont(name: "Jersey15-Regular", size: size) {
@@ -307,14 +248,14 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     }
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 160, height: 160))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 160))
         view.wantsLayer = true
         
         setupViews()
     }
     
     private func setupViews() {
-        // Container - matches Figma card design
+        // Container
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
@@ -323,15 +264,32 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         containerView.layer?.borderColor = NSColor.clear.cgColor
         view.addSubview(containerView)
         
-        // Portrait image - 100x100 from Figma
-        portraitImageView = NSImageView(frame: .zero)
-        portraitImageView.translatesAutoresizingMaskIntoConstraints = false
-        portraitImageView.imageScaling = .scaleProportionallyUpOrDown
-        portraitImageView.wantsLayer = true
-        portraitImageView.layer?.backgroundColor = placeholderColor.cgColor
-        containerView.addSubview(portraitImageView)
+        // Preview image - wider aspect ratio for stages
+        previewImageView = NSImageView(frame: .zero)
+        previewImageView.translatesAutoresizingMaskIntoConstraints = false
+        previewImageView.imageScaling = .scaleProportionallyUpOrDown
+        previewImageView.wantsLayer = true
+        previewImageView.layer?.backgroundColor = placeholderColor.cgColor
+        containerView.addSubview(previewImageView)
         
-        // Name label - Jersey 10, 24px, gray, centered
+        // Size badge (for wide stages)
+        sizeBadge = NSView()
+        sizeBadge.translatesAutoresizingMaskIntoConstraints = false
+        sizeBadge.wantsLayer = true
+        sizeBadge.layer?.backgroundColor = greenAccent.withAlphaComponent(0.2).cgColor
+        sizeBadge.layer?.cornerRadius = 4
+        sizeBadge.layer?.borderWidth = 1
+        sizeBadge.layer?.borderColor = greenAccent.cgColor
+        sizeBadge.isHidden = true
+        containerView.addSubview(sizeBadge)
+        
+        sizeBadgeLabel = NSTextField(labelWithString: "Wide")
+        sizeBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        sizeBadgeLabel.font = jerseyFont(size: 12)
+        sizeBadgeLabel.textColor = greenAccent
+        sizeBadge.addSubview(sizeBadgeLabel)
+        
+        // Name label
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = jerseyFont(size: 24)
@@ -341,7 +299,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         nameLabel.maximumNumberOfLines = 1
         containerView.addSubview(nameLabel)
         
-        // Author label - Jersey 10, 16px, gray, centered
+        // Author label
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
         authorLabel.font = jerseyFont(size: 16)
@@ -351,28 +309,36 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         authorLabel.maximumNumberOfLines = 1
         containerView.addSubview(authorLabel)
         
-        // Layout per Figma: 12px padding, 4px gaps
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            // Portrait: 12px from top, centered, 100x100
-            portraitImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
-            portraitImageView.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
-            portraitImageView.widthAnchor.constraint(equalToConstant: 100),
-            portraitImageView.heightAnchor.constraint(equalToConstant: 100),
+            // Preview: 12px from top, 12px sides, 80px tall (16:9 aspect for 256px width)
+            previewImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
+            previewImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
+            previewImageView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
+            previewImageView.heightAnchor.constraint(equalToConstant: 80),
             
-            // Name: 4px below portrait
-            nameLabel.topAnchor.constraint(equalTo: portraitImageView.bottomAnchor, constant: 4),
-            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 4),
-            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -4),
+            // Size badge in top-right of preview
+            sizeBadge.topAnchor.constraint(equalTo: previewImageView.topAnchor, constant: 4),
+            sizeBadge.trailingAnchor.constraint(equalTo: previewImageView.trailingAnchor, constant: -4),
+            
+            sizeBadgeLabel.topAnchor.constraint(equalTo: sizeBadge.topAnchor, constant: 2),
+            sizeBadgeLabel.bottomAnchor.constraint(equalTo: sizeBadge.bottomAnchor, constant: -2),
+            sizeBadgeLabel.leadingAnchor.constraint(equalTo: sizeBadge.leadingAnchor, constant: 6),
+            sizeBadgeLabel.trailingAnchor.constraint(equalTo: sizeBadge.trailingAnchor, constant: -6),
+            
+            // Name: 4px below preview
+            nameLabel.topAnchor.constraint(equalTo: previewImageView.bottomAnchor, constant: 4),
+            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
+            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
             
             // Author: 4px below name
-            authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 4),
-            authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 4),
-            authorLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -4),
+            authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
+            authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
+            authorLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
         ])
     }
     
@@ -384,11 +350,8 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     
     private func updateSelectionAppearance() {
         if isSelected {
-            // Figma: border-[#fd4e5b], shadow 0px 0px 18px rgba(253,78,91,0.4)
             containerView.layer?.borderColor = selectedBorderColor.cgColor
             containerView.layer?.borderWidth = 1
-            
-            // Add glow shadow
             containerView.layer?.shadowColor = selectedBorderColor.cgColor
             containerView.layer?.shadowOffset = CGSize.zero
             containerView.layer?.shadowRadius = 18
@@ -400,45 +363,48 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         }
     }
     
-    func configure(with character: CharacterInfo) {
-        nameLabel.stringValue = character.displayName
-        authorLabel.stringValue = "by \(character.author)"
-        portraitImageView.image = nil
-    }
-    
-    func setPortrait(_ image: NSImage?) {
-        portraitImageView.image = image
-        if image != nil {
-            portraitImageView.layer?.backgroundColor = NSColor.clear.cgColor
+    func configure(with stage: StageInfo) {
+        nameLabel.stringValue = stage.name
+        authorLabel.stringValue = "by \(stage.author)"
+        
+        // Show size badge for wide stages
+        if stage.isWideStage {
+            sizeBadge.isHidden = false
+            sizeBadgeLabel.stringValue = stage.sizeCategory
+        } else {
+            sizeBadge.isHidden = true
         }
+        
+        previewImageView.image = nil
     }
     
     override func prepareForReuse() {
         super.prepareForReuse()
-        portraitImageView.image = nil
-        portraitImageView.layer?.backgroundColor = placeholderColor.cgColor
+        previewImageView.image = nil
         nameLabel.stringValue = ""
         authorLabel.stringValue = ""
+        sizeBadge.isHidden = true
         isSelected = false
     }
 }
 
-// MARK: - Character List Item (Row View)
+// MARK: - Stage List Item (Row View)
 
-class CharacterListItem: NSCollectionViewItem {
+class StageListItem: NSCollectionViewItem {
     
-    static let identifier = NSUserInterfaceItemIdentifier("CharacterListItem")
+    static let identifier = NSUserInterfaceItemIdentifier("StageListItem")
     
     private let cardBgColor = NSColor(red: 0x0f/255.0, green: 0x19/255.0, blue: 0x23/255.0, alpha: 1.0)
     private let grayTextColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
     private let creamTextColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
-    private let placeholderColor = NSColor(red: 0xd9/255.0, green: 0xd9/255.0, blue: 0xd9/255.0, alpha: 1.0)
     private let selectedBorderColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
+    private let greenAccent = NSColor(red: 0x4e/255.0, green: 0xfd/255.0, blue: 0x60/255.0, alpha: 1.0)
     
     private var containerView: NSView!
-    private var portraitImageView: NSImageView!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
+    private var sizeLabel: NSTextField!
+    private var widthLabel: NSTextField!
     
     private func jerseyFont(size: CGFloat) -> NSFont {
         if let font = NSFont(name: "Jersey15-Regular", size: size) {
@@ -466,14 +432,6 @@ class CharacterListItem: NSCollectionViewItem {
         containerView.layer?.borderColor = NSColor.clear.cgColor
         view.addSubview(containerView)
         
-        // Small portrait thumbnail
-        portraitImageView = NSImageView(frame: .zero)
-        portraitImageView.translatesAutoresizingMaskIntoConstraints = false
-        portraitImageView.imageScaling = .scaleProportionallyUpOrDown
-        portraitImageView.wantsLayer = true
-        portraitImageView.layer?.backgroundColor = placeholderColor.cgColor
-        containerView.addSubview(portraitImageView)
-        
         // Name
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -490,26 +448,40 @@ class CharacterListItem: NSCollectionViewItem {
         authorLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(authorLabel)
         
+        // Size category
+        sizeLabel = NSTextField(labelWithString: "")
+        sizeLabel.translatesAutoresizingMaskIntoConstraints = false
+        sizeLabel.font = jerseyFont(size: 18)
+        sizeLabel.textColor = greenAccent
+        sizeLabel.alignment = .right
+        containerView.addSubview(sizeLabel)
+        
+        // Width value
+        widthLabel = NSTextField(labelWithString: "")
+        widthLabel.translatesAutoresizingMaskIntoConstraints = false
+        widthLabel.font = jerseyFont(size: 14)
+        widthLabel.textColor = grayTextColor
+        widthLabel.alignment = .right
+        containerView.addSubview(widthLabel)
+        
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            // Portrait: 44x44, centered vertically
-            portraitImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
-            portraitImageView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            portraitImageView.widthAnchor.constraint(equalToConstant: 44),
-            portraitImageView.heightAnchor.constraint(equalToConstant: 44),
-            
-            // Name
-            nameLabel.leadingAnchor.constraint(equalTo: portraitImageView.trailingAnchor, constant: 12),
+            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
             nameLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 10),
-            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: sizeLabel.leadingAnchor, constant: -16),
             
-            // Author
-            authorLabel.leadingAnchor.constraint(equalTo: portraitImageView.trailingAnchor, constant: 12),
+            authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
             authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
+            
+            sizeLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            sizeLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
+            
+            widthLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            widthLabel.topAnchor.constraint(equalTo: sizeLabel.bottomAnchor, constant: 2),
         ])
     }
     
@@ -534,25 +506,26 @@ class CharacterListItem: NSCollectionViewItem {
         }
     }
     
-    func configure(with character: CharacterInfo) {
-        nameLabel.stringValue = character.displayName
-        authorLabel.stringValue = "by \(character.author)"
-        portraitImageView.image = nil
-    }
-    
-    func setPortrait(_ image: NSImage?) {
-        portraitImageView.image = image
-        if image != nil {
-            portraitImageView.layer?.backgroundColor = NSColor.clear.cgColor
+    func configure(with stage: StageInfo) {
+        nameLabel.stringValue = stage.name
+        authorLabel.stringValue = "by \(stage.author)"
+        sizeLabel.stringValue = stage.sizeCategory
+        widthLabel.stringValue = "Width: \(stage.totalWidth)px"
+        
+        // Color code the size
+        if stage.isWideStage {
+            sizeLabel.textColor = greenAccent
+        } else {
+            sizeLabel.textColor = grayTextColor
         }
     }
     
     override func prepareForReuse() {
         super.prepareForReuse()
-        portraitImageView.image = nil
-        portraitImageView.layer?.backgroundColor = placeholderColor.cgColor
         nameLabel.stringValue = ""
         authorLabel.stringValue = ""
+        sizeLabel.stringValue = ""
+        widthLabel.stringValue = ""
         isSelected = false
     }
 }
