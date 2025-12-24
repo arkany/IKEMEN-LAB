@@ -375,7 +375,15 @@ class StageGridItem: NSCollectionViewItem {
             sizeBadge.isHidden = true
         }
         
+        // Load preview image asynchronously
         previewImageView.image = nil
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            if let image = stage.loadPreviewImage() {
+                DispatchQueue.main.async {
+                    self?.previewImageView.image = image
+                }
+            }
+        }
     }
     
     override func prepareForReuse() {

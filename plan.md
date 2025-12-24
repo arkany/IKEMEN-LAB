@@ -32,8 +32,8 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 - [ ] Drag-and-drop feedback UI - show success/failure message inside the drop zone area (needs design)
 
 ### 📋 Planned
-- [ ] Visual stage browser with thumbnails
-- [ ] Settings panel (resolution, fullscreen, etc.)
+- [x] Visual stage browser with thumbnails
+- [x] Settings panel (resolution, fullscreen, etc.)
 - [ ] Screenpack management
 - [ ] Netplay lobby UI
 - [ ] Bundle Ikemen GO inside the .app for distribution

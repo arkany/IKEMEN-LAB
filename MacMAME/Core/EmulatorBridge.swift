@@ -242,6 +242,192 @@ class SFFPortraitExtractor {
         }
     }
     
+    /// Extract stage preview (group 0, image 0 - background sprite) from SFF file
+    static func extractStagePreview(from sffURL: URL) -> NSImage? {
+        guard let data = try? Data(contentsOf: sffURL) else { return nil }
+        guard data.count > 32 else { return nil }
+        
+        // Check SFF signature and version
+        let signature = String(data: data[0..<12], encoding: .ascii) ?? ""
+        
+        guard signature.hasPrefix("ElecbyteSpr") else { return nil }
+        
+        let verHi = data[15]
+        
+        if verHi >= 2 {
+            return extractSFFv2StagePreview(data)
+        } else {
+            return extractSFFv1StagePreview(data)
+        }
+    }
+    
+    /// Extract stage preview from SFF v1 file (group 9000 preview, or group 0 background)
+    private static func extractSFFv1StagePreview(_ data: Data) -> NSImage? {
+        // SFF v1 header:
+        // 0-11: signature
+        // 12-15: version  
+        // 16-19: number of groups
+        // 20-23: number of sprites
+        // 24-27: first sprite offset
+        // 28-31: subfile header size
+        // 32: palette type
+        
+        let spriteCount = readUInt32(data, at: 20)
+        let firstSpriteOffset = readUInt32(data, at: 24)
+        
+        guard spriteCount > 0, firstSpriteOffset < data.count else { return nil }
+        
+        // First pass: look for group 9000 (stage preview thumbnail)
+        var offset = Int(firstSpriteOffset)
+        
+        for _ in 0..<min(Int(spriteCount), 100) {
+            guard offset + 32 <= data.count else { break }
+            
+            let nextOffset = readUInt32(data, at: offset)
+            let dataLength = readUInt32(data, at: offset + 4)
+            let groupNum = readUInt16(data, at: offset + 12)
+            
+            if groupNum == 9000 && dataLength > 0 {
+                let pcxStart = offset + 32
+                let pcxEnd = pcxStart + Int(dataLength)
+                guard pcxEnd <= data.count else { continue }
+                
+                let pcxData = data[pcxStart..<pcxEnd]
+                if let image = decodePCX(Data(pcxData), sharedPalette: nil) {
+                    return image
+                }
+            }
+            
+            if nextOffset == 0 || nextOffset <= offset { break }
+            offset = Int(nextOffset)
+        }
+        
+        // Second pass: fall back to group 0 (background sprite)
+        offset = Int(firstSpriteOffset)
+        
+        for _ in 0..<min(Int(spriteCount), 100) {
+            guard offset + 32 <= data.count else { break }
+            
+            let nextOffset = readUInt32(data, at: offset)
+            let dataLength = readUInt32(data, at: offset + 4)
+            let groupNum = readUInt16(data, at: offset + 12)
+            let imageNum = readUInt16(data, at: offset + 14)
+            
+            if groupNum == 0 && imageNum == 0 && dataLength > 0 {
+                let pcxStart = offset + 32
+                let pcxEnd = pcxStart + Int(dataLength)
+                guard pcxEnd <= data.count else { continue }
+                
+                let pcxData = data[pcxStart..<pcxEnd]
+                if let image = decodePCX(Data(pcxData), sharedPalette: nil) {
+                    return image
+                }
+            }
+            
+            if nextOffset == 0 || nextOffset <= offset { break }
+            offset = Int(nextOffset)
+        }
+        
+        return nil
+    }
+    
+    /// Extract stage preview from SFF v2 file (group 9000 preview, or group 0 background)
+    private static func extractSFFv2StagePreview(_ data: Data) -> NSImage? {
+        guard data.count > 36 else { return nil }
+        
+        let spriteOffset = readUInt32(data, at: 36)
+        let spriteCount = readUInt32(data, at: 40)
+        let paletteOffset = readUInt32(data, at: 44)
+        let ldataOffset = readUInt32(data, at: 52)
+        let tdataOffset = readUInt32(data, at: 60)
+        
+        guard spriteCount > 0, spriteOffset < data.count else { return nil }
+        
+        // First pass: look for group 9000 (stage preview thumbnail)
+        var offset = Int(spriteOffset)
+        
+        for _ in 0..<min(Int(spriteCount), 100) {
+            guard offset + 28 <= data.count else { break }
+            
+            let groupNum = readUInt16(data, at: offset)
+            let width = Int(readUInt16(data, at: offset + 4))
+            let height = Int(readUInt16(data, at: offset + 6))
+            
+            if groupNum == 9000 && width > 0 && height > 0 {
+                if let image = extractSFFv2SpriteAtOffset(data, offset: offset, paletteOffset: Int(paletteOffset), ldataOffset: Int(ldataOffset), tdataOffset: Int(tdataOffset)) {
+                    return image
+                }
+            }
+            
+            offset += 28
+        }
+        
+        // Second pass: fall back to group 0 image 0 (background)
+        offset = Int(spriteOffset)
+        
+        for _ in 0..<min(Int(spriteCount), 100) {
+            guard offset + 28 <= data.count else { break }
+            
+            let groupNum = readUInt16(data, at: offset)
+            let imageNum = readUInt16(data, at: offset + 2)
+            let width = Int(readUInt16(data, at: offset + 4))
+            let height = Int(readUInt16(data, at: offset + 6))
+            
+            if groupNum == 0 && imageNum == 0 && width > 0 && height > 0 {
+                if let image = extractSFFv2SpriteAtOffset(data, offset: offset, paletteOffset: Int(paletteOffset), ldataOffset: Int(ldataOffset), tdataOffset: Int(tdataOffset)) {
+                    return image
+                }
+            }
+            
+            offset += 28
+        }
+        
+        return nil
+    }
+    
+    /// Helper to extract a sprite from SFF v2 at a given node offset
+    private static func extractSFFv2SpriteAtOffset(_ data: Data, offset: Int, paletteOffset: Int, ldataOffset: Int, tdataOffset: Int) -> NSImage? {
+        let width = Int(readUInt16(data, at: offset + 4))
+        let height = Int(readUInt16(data, at: offset + 6))
+        let linkedIndex = readUInt16(data, at: offset + 12)
+        let format = data[offset + 14]
+        let colorDepth = data[offset + 15]
+        let dataOffset = readUInt32(data, at: offset + 16)
+        let dataLength = readUInt32(data, at: offset + 20)
+        let paletteIndex = readUInt16(data, at: offset + 24)
+        let flags = readUInt16(data, at: offset + 26)
+        
+        // Skip linked sprites
+        if linkedIndex != 0xFFFF && linkedIndex != 0 {
+            return nil
+        }
+        
+        guard width > 0, width < 4000, height > 0, height < 4000 else {
+            return nil
+        }
+        
+        let usesTdata = (flags & 1) != 0
+        let actualOffset: Int
+        if usesTdata {
+            actualOffset = tdataOffset + Int(dataOffset)
+        } else {
+            actualOffset = ldataOffset + Int(dataOffset)
+        }
+        
+        guard actualOffset + Int(dataLength) <= data.count else {
+            return nil
+        }
+        
+        var palette: [UInt8]?
+        if colorDepth == 8 && format != 10 && format != 11 && format != 12 {
+            palette = extractSFFv2Palette(data, paletteOffset: paletteOffset, paletteIndex: Int(paletteIndex))
+        }
+        
+        let spriteData = data[actualOffset..<(actualOffset + Int(dataLength))]
+        
+        return decodeSFFv2Sprite(Data(spriteData), width: width, height: height, format: format, colorDepth: colorDepth, palette: palette)
+    }
+    
     /// Extract portrait from SFF v2 file
     private static func extractSFFv2Portrait(_ data: Data) -> NSImage? {
         guard data.count > 36 else { return nil }
@@ -784,6 +970,7 @@ struct StageInfo: Identifiable, Hashable {
     let name: String
     let author: String
     let defFile: URL
+    let sffFile: URL?       // Sprite file for preview extraction
     let boundLeft: Int      // Camera left bound (negative = wider stage)
     let boundRight: Int     // Camera right bound (positive = wider stage)
     
@@ -808,6 +995,12 @@ struct StageInfo: Identifiable, Hashable {
         }
     }
     
+    /// Load preview image from stage SFF (background sprite)
+    func loadPreviewImage() -> NSImage? {
+        guard let sff = sffFile else { return nil }
+        return SFFPortraitExtractor.extractStagePreview(from: sff)
+    }
+    
     init(defFile: URL) {
         self.defFile = defFile
         self.id = defFile.deletingPathExtension().lastPathComponent
@@ -816,6 +1009,7 @@ struct StageInfo: Identifiable, Hashable {
         var parsedAuthor = "Unknown"
         var parsedBoundLeft = -150  // Default MUGEN values
         var parsedBoundRight = 150
+        var parsedSffFile: URL? = nil
         
         if let content = try? String(contentsOf: defFile, encoding: .utf8) {
             let lines = content.components(separatedBy: .newlines)
@@ -830,6 +1024,16 @@ struct StageInfo: Identifiable, Hashable {
                     continue
                 } else if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
                     inCameraSection = false
+                }
+                
+                // Parse spr = filename.sff (but not spriteno)
+                let lowered = trimmed.lowercased()
+                if (lowered.hasPrefix("spr ") || lowered.hasPrefix("spr=")) && !lowered.hasPrefix("spriteno") {
+                    if let value = trimmed.split(separator: "=").last {
+                        let sffName = String(value).trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\"", with: "")
+                        // SFF path is relative to the def file's directory
+                        parsedSffFile = defFile.deletingLastPathComponent().appendingPathComponent(sffName)
+                    }
                 }
                 
                 // Parse name and author from any section
@@ -869,6 +1073,7 @@ struct StageInfo: Identifiable, Hashable {
         self.author = parsedAuthor
         self.boundLeft = parsedBoundLeft
         self.boundRight = parsedBoundRight
+        self.sffFile = parsedSffFile
     }
 }
 
