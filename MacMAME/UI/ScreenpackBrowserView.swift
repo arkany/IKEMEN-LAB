@@ -374,7 +374,14 @@ class ScreenpackGridItem: NSCollectionViewItem {
     func configure(with screenpack: ScreenpackInfo) {
         nameLabel.stringValue = screenpack.name
         authorLabel.stringValue = "by \(screenpack.author)"
-        resolutionLabel.stringValue = " \(screenpack.resolutionString) "
+        
+        // Show resolution and component count
+        let componentCount = screenpack.components.componentNames.count
+        if componentCount > 0 {
+            resolutionLabel.stringValue = " \(screenpack.resolutionString) • \(componentCount) components "
+        } else {
+            resolutionLabel.stringValue = " \(screenpack.resolutionString) "
+        }
         
         // Show active badge
         if screenpack.isActive {
@@ -542,7 +549,15 @@ class ScreenpackListItem: NSCollectionViewItem {
     
     func configure(with screenpack: ScreenpackInfo) {
         nameLabel.stringValue = screenpack.name
-        authorLabel.stringValue = "by \(screenpack.author)"
+        
+        // Show author and component summary
+        let componentSummary = screenpack.componentSummary
+        if componentSummary != "Standard Screenpack" {
+            authorLabel.stringValue = "by \(screenpack.author) • \(componentSummary)"
+        } else {
+            authorLabel.stringValue = "by \(screenpack.author)"
+        }
+        
         resolutionLabel.stringValue = screenpack.resolutionString
         
         if screenpack.isActive {

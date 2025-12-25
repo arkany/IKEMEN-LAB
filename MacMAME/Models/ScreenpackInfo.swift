@@ -1,6 +1,40 @@
 import Foundation
 import AppKit
 
+// MARK: - Screenpack Components
+
+/// Components that can be included in a screenpack
+public struct ScreenpackComponents: OptionSet, Hashable {
+    public let rawValue: Int
+    
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+    
+    public static let titleScreen = ScreenpackComponents(rawValue: 1 << 0)
+    public static let selectScreen = ScreenpackComponents(rawValue: 1 << 1)
+    public static let vsScreen = ScreenpackComponents(rawValue: 1 << 2)
+    public static let fightScreen = ScreenpackComponents(rawValue: 1 << 3)  // Lifebars
+    public static let continueScreen = ScreenpackComponents(rawValue: 1 << 4)
+    public static let victoryScreen = ScreenpackComponents(rawValue: 1 << 5)
+    public static let optionsScreen = ScreenpackComponents(rawValue: 1 << 6)
+    public static let storyboard = ScreenpackComponents(rawValue: 1 << 7)
+    
+    /// Human-readable names for display
+    public var componentNames: [String] {
+        var names: [String] = []
+        if contains(.titleScreen) { names.append("Title Screen") }
+        if contains(.selectScreen) { names.append("Select Screen") }
+        if contains(.vsScreen) { names.append("VS Screen") }
+        if contains(.fightScreen) { names.append("Lifebars") }
+        if contains(.continueScreen) { names.append("Continue Screen") }
+        if contains(.victoryScreen) { names.append("Victory Screen") }
+        if contains(.optionsScreen) { names.append("Options Screen") }
+        if contains(.storyboard) { names.append("Storyboard") }
+        return names
+    }
+}
+
 // MARK: - Screenpack Info
 
 /// Screenpack metadata parsed from system.def files
@@ -12,6 +46,7 @@ public struct ScreenpackInfo: Identifiable, Hashable {
     public let defFile: URL          // system.def path
     public let sffFile: URL?         // Sprite file for preview
     public let localcoord: (width: Int, height: Int)?  // Native resolution
+    public let components: ScreenpackComponents  // What's included
     
     /// Whether this screenpack is currently active in Ikemen GO
     public var isActive: Bool = false
@@ -31,6 +66,13 @@ public struct ScreenpackInfo: Identifiable, Hashable {
         return "Unknown"
     }
     
+    /// Component summary for display (e.g., "Lifebars, Select Screen, Title")
+    public var componentSummary: String {
+        let names = components.componentNames
+        if names.isEmpty { return "Standard Screenpack" }
+        return names.joined(separator: ", ")
+    }
+    
     public init(defFile: URL, isActive: Bool = false) {
         self.defFile = defFile
         self.isActive = isActive
@@ -41,6 +83,7 @@ public struct ScreenpackInfo: Identifiable, Hashable {
         
         // Parse system.def file
         let parsed = DEFParser.parse(url: defFile)
+        let defContent = (try? String(contentsOf: defFile, encoding: .utf8).lowercased()) ?? ""
         
         // Get name from [Info] section or filename
         let parsedName = parsed?.value(for: "name", inSection: "info") 
@@ -50,19 +93,74 @@ public struct ScreenpackInfo: Identifiable, Hashable {
         self.name = parsedName
         self.author = parsed?.value(for: "author", inSection: "info") ?? parsed?.author ?? "Unknown"
         
+        // Detect which components are included
+        var detectedComponents: ScreenpackComponents = []
+        
+        // Check for component references in [Files] section or by file existence
+        let folder = defFile.deletingLastPathComponent()
+        let fileManager = FileManager.default
+        
+        // Title screen
+        if defContent.contains("[title info]") || defContent.contains("title =") ||
+           fileManager.fileExists(atPath: folder.appendingPathComponent("title.def").path) {
+            detectedComponents.insert(.titleScreen)
+        }
+        
+        // Select screen  
+        if defContent.contains("[select info]") || defContent.contains("select =") ||
+           fileManager.fileExists(atPath: folder.appendingPathComponent("select.def").path) {
+            detectedComponents.insert(.selectScreen)
+        }
+        
+        // VS screen
+        if defContent.contains("[vs screen]") || defContent.contains("vs =") ||
+           fileManager.fileExists(atPath: folder.appendingPathComponent("vs.def").path) {
+            detectedComponents.insert(.vsScreen)
+        }
+        
+        // Fight screen (lifebars)
+        if defContent.contains("fight =") || 
+           fileManager.fileExists(atPath: folder.appendingPathComponent("fight.def").path) {
+            detectedComponents.insert(.fightScreen)
+        }
+        
+        // Continue screen
+        if defContent.contains("[continue screen]") || defContent.contains("continue =") ||
+           fileManager.fileExists(atPath: folder.appendingPathComponent("continue.def").path) {
+            detectedComponents.insert(.continueScreen)
+        }
+        
+        // Victory screen
+        if defContent.contains("[victory screen]") || defContent.contains("victory =") ||
+           fileManager.fileExists(atPath: folder.appendingPathComponent("victory.def").path) {
+            detectedComponents.insert(.victoryScreen)
+        }
+        
+        // Options screen
+        if defContent.contains("[option info]") || defContent.contains("options =") {
+            detectedComponents.insert(.optionsScreen)
+        }
+        
+        // Storyboard
+        if defContent.contains("storyboard") ||
+           fileManager.fileExists(atPath: folder.appendingPathComponent("intro.def").path) {
+            detectedComponents.insert(.storyboard)
+        }
+        
+        self.components = detectedComponents
+        
         // Get sprite file reference - typically "spr" in [Files] section
         if let sprName = parsed?.value(for: "spr", inSection: "files") {
-            self.sffFile = defFile.deletingLastPathComponent().appendingPathComponent(sprName)
+            self.sffFile = folder.appendingPathComponent(sprName)
         } else if let sprite = parsed?.sprite {
-            self.sffFile = defFile.deletingLastPathComponent().appendingPathComponent(sprite)
+            self.sffFile = folder.appendingPathComponent(sprite)
         } else {
             // Look for common screenpack sprite names
-            let folder = defFile.deletingLastPathComponent()
             let commonNames = ["system.sff", "screenpack.sff", "\(folderName).sff"]
             var foundSff: URL? = nil
             for name in commonNames {
                 let sffPath = folder.appendingPathComponent(name)
-                if FileManager.default.fileExists(atPath: sffPath.path) {
+                if fileManager.fileExists(atPath: sffPath.path) {
                     foundSff = sffPath
                     break
                 }
