@@ -379,32 +379,28 @@ class IkemenBridge: ObservableObject {
     
     /// Read the active motif/screenpack path from Ikemen's config
     private func readActiveMotifFromConfig(in workingDir: URL) -> String? {
-        // Ikemen GO uses save/config.json for runtime config
-        let configPath = workingDir.appendingPathComponent("save/config.json")
+        // Ikemen GO uses save/config.ini for the Motif setting
+        let configIniPath = workingDir.appendingPathComponent("save/config.ini")
         
-        if let data = try? Data(contentsOf: configPath),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let motif = json["Motif"] as? String {
-            return motif
-        }
-        
-        // Fallback to checking mugen.cfg or config.ini
-        let mugenCfgPath = workingDir.appendingPathComponent("data/mugen.cfg")
-        if let content = try? String(contentsOf: mugenCfgPath, encoding: .utf8) {
+        if let content = try? String(contentsOf: configIniPath, encoding: .utf8) {
             for line in content.components(separatedBy: .newlines) {
-                let trimmed = line.trimmingCharacters(in: .whitespaces).lowercased()
-                if trimmed.hasPrefix("motif") {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                // Look for "Motif = value" (case-insensitive key)
+                if trimmed.lowercased().hasPrefix("motif") && trimmed.contains("=") {
                     if let equalsIndex = trimmed.firstIndex(of: "=") {
                         let value = String(trimmed[trimmed.index(after: equalsIndex)...])
                             .trimmingCharacters(in: .whitespaces)
                             .replacingOccurrences(of: "\"", with: "")
-                        return value
+                        if !value.isEmpty {
+                            return value
+                        }
                     }
                 }
             }
         }
         
-        return nil
+        // Fallback to data/system.def as default
+        return "data/system.def"
     }
     
     /// Set the active screenpack
@@ -422,25 +418,31 @@ class IkemenBridge: ObservableObject {
             relativePath = "data/\(folderName)/system.def"
         }
         
-        // Update config.json
-        let configPath = workingDir.appendingPathComponent("save/config.json")
+        // Update config.ini (the actual Ikemen GO config file)
+        let configPath = workingDir.appendingPathComponent("save/config.ini")
         
         do {
-            var config: [String: Any] = [:]
-            
-            if let data = try? Data(contentsOf: configPath),
-               let existingConfig = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                config = existingConfig
+            guard FileManager.default.fileExists(atPath: configPath.path) else {
+                print("config.ini not found at \(configPath.path)")
+                return
             }
             
-            config["Motif"] = relativePath
+            var content = try String(contentsOf: configPath, encoding: .utf8)
             
-            // Ensure save directory exists
-            let saveDir = workingDir.appendingPathComponent("save")
-            try? FileManager.default.createDirectory(at: saveDir, withIntermediateDirectories: true)
+            // Replace the Motif line in [Config] section
+            // Pattern: Motif followed by spaces/tabs, =, spaces/tabs, then the value
+            let motifPattern = #"(Motif\s*=\s*).+"#
+            if let regex = try? NSRegularExpression(pattern: motifPattern, options: []) {
+                let range = NSRange(content.startIndex..., in: content)
+                content = regex.stringByReplacingMatches(
+                    in: content,
+                    options: [],
+                    range: range,
+                    withTemplate: "$1\(relativePath)"
+                )
+            }
             
-            let jsonData = try JSONSerialization.data(withJSONObject: config, options: [.prettyPrinted, .sortedKeys])
-            try jsonData.write(to: configPath)
+            try content.write(to: configPath, atomically: true, encoding: .utf8)
             
             print("Set active screenpack to: \(relativePath)")
             
