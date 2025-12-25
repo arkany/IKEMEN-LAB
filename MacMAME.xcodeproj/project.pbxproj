@@ -21,6 +21,11 @@
 		012 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 114 /* Fonts */; };
 		013 /* Icons in Resources */ = {isa = PBXBuildFile; fileRef = 115 /* Icons */; };
 		014 /* StageBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 116 /* StageBrowserView.swift */; };
+		015 /* SFFParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 117 /* SFFParser.swift */; };
+		016 /* CharacterInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 118 /* CharacterInfo.swift */; };
+		017 /* StageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 119 /* StageInfo.swift */; };
+		018 /* UIHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 120 /* UIHelpers.swift */; };
+		019 /* DEFParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121 /* DEFParser.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +43,11 @@
 		116 /* StageBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageBrowserView.swift; sourceTree = "<group>"; };
 		114 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
 		115 /* Icons */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Icons; sourceTree = "<group>"; };
+		117 /* SFFParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFFParser.swift; sourceTree = "<group>"; };
+		118 /* CharacterInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterInfo.swift; sourceTree = "<group>"; };
+		119 /* StageInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageInfo.swift; sourceTree = "<group>"; };
+		120 /* UIHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIHelpers.swift; sourceTree = "<group>"; };
+		121 /* DEFParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DEFParser.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -74,6 +84,8 @@
 				410 /* App */,
 				411 /* Views */,
 				412 /* Core */,
+				415 /* Models */,
+				416 /* Shared */,
 				414 /* UI */,
 				413 /* Resources */,
 				112 /* MacMAME-Bridging-Header.h */,
@@ -121,6 +133,8 @@
 			isa = PBXGroup;
 			children = (
 				104 /* EmulatorBridge.swift */,
+				117 /* SFFParser.swift */,
+				121 /* DEFParser.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -145,6 +159,23 @@
 				116 /* StageBrowserView.swift */,
 			);
 			path = UI;
+			sourceTree = "<group>";
+		};
+		415 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				118 /* CharacterInfo.swift */,
+				119 /* StageInfo.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		416 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				120 /* UIHelpers.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -225,6 +256,11 @@
 				004 /* EmulatorBridge.swift in Sources */,
 				011 /* CharacterBrowserView.swift in Sources */,
 				014 /* StageBrowserView.swift in Sources */,
+				015 /* SFFParser.swift in Sources */,
+				016 /* CharacterInfo.swift in Sources */,
+				017 /* StageInfo.swift in Sources */,
+				018 /* UIHelpers.swift in Sources */,
+				019 /* DEFParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -24,20 +24,45 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 - [x] Auto-add to select.def with correct path detection
 - [x] Portrait size validation (warns on oversized)
 - [x] Homebrew dependencies (libxmp, sdl2, molten-vk, unrar)
-- [x] Visual character browser with thumbnails (SFF v1 portrait extraction)
+- [x] Visual character browser with thumbnails (SFF v1/v2 portrait extraction)
 - [x] Auto-detect when Ikemen GO closes (update button state)
+- [x] Visual stage browser with thumbnails (SFF v1/v2 preview extraction)
+- [x] Grid/list view toggle for characters and stages
+- [x] Settings panel (resolution, fullscreen, etc.)
+- [x] Portrait fix tool (generate/resize 160x160 portraits)
 
 ### 🔄 In Progress
-- [ ] Portrait fix tool (generate/resize 160x160 portraits)
 - [ ] Drag-and-drop feedback UI - show success/failure message inside the drop zone area (needs design)
 
 ### 📋 Planned
-- [x] Visual stage browser with thumbnails
-- [x] Settings panel (resolution, fullscreen, etc.)
 - [ ] Screenpack management
 - [ ] Netplay lobby UI
 - [ ] Bundle Ikemen GO inside the .app for distribution
 - [ ] App Store preparation (sandbox, signing)
+
+### 🛠️ Technical Debt / Refactoring
+**Critical:**
+- [x] Split `EmulatorBridge.swift` (2000+ lines → 980 lines) into:
+  - [x] `Core/SFFParser.swift` - SFF v1/v2 parsing, PCX decoding, RLE8/LZ5 decompression
+  - [x] `Core/DEFParser.swift` - Reusable .def file parsing with section support
+  - [x] `Models/CharacterInfo.swift` - Character metadata struct (uses DEFParser)
+  - [x] `Models/StageInfo.swift` - Stage metadata struct (uses DEFParser)
+  - [x] `Shared/UIHelpers.swift` - BrowserViewMode, DesignColors, DesignFonts, BrowserLayout
+  - [ ] `ContentManager.swift` - Installation, select.def management (still in IkemenBridge)
+- [x] DRY: Extract shared fonts/colors (DesignColors, DesignFonts in UIHelpers.swift)
+- [x] DRY: Extract shared DEF file parsing logic (DEFParser.swift)
+- [ ] Extract generic `ContentBrowserView<T>` - DEFERRED: Views share UIHelpers but have different item types/caching
+
+**Medium Priority:**
+- [ ] Add `NSCache` for extracted portraits/previews (avoid re-parsing SFF)
+- [ ] Migrate to async/await from Combine publishers
+- [ ] Use `Result<T, Error>` or throws instead of nil returns
+- [ ] Protocol-based SFF parsing (`SFFVersion` protocol)
+
+**Nice-to-Have:**
+- [ ] Unit tests for SFF parsing
+- [ ] SwiftUI migration path for new views
+- [ ] Dependency injection (replace singletons)
 
 ---
 

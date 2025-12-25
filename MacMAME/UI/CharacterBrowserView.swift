@@ -2,6 +2,7 @@ import Cocoa
 import Combine
 
 /// A visual browser for viewing installed characters with thumbnails
+/// Uses shared design system from UIHelpers.swift
 class CharacterBrowserView: NSView {
     
     // MARK: - Properties
@@ -20,33 +21,15 @@ class CharacterBrowserView: NSView {
         }
     }
     
-    // Figma design constants
-    private let gridItemWidth: CGFloat = 160
-    private let gridItemHeight: CGFloat = 160
-    private let listItemHeight: CGFloat = 60
-    private let cardSpacing: CGFloat = 28
-    private let sectionInset: CGFloat = 0
-    
-    // Colors from Figma
-    private let cardBgColor = NSColor(red: 0x0f/255.0, green: 0x19/255.0, blue: 0x23/255.0, alpha: 1.0)
-    private let grayTextColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
-    private let placeholderColor = NSColor(red: 0xd9/255.0, green: 0xd9/255.0, blue: 0xd9/255.0, alpha: 1.0)
-    private let selectedBorderColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
+    // Layout constants from shared design system
+    private let gridItemWidth = BrowserLayout.gridItemWidth
+    private let gridItemHeight = BrowserLayout.gridItemHeight
+    private let listItemHeight = BrowserLayout.listItemHeight
+    private let cardSpacing = BrowserLayout.cardSpacing
+    private let sectionInset = BrowserLayout.sectionInset
     
     var onCharacterSelected: ((CharacterInfo) -> Void)?
     var onCharacterDoubleClicked: ((CharacterInfo) -> Void)?
-    
-    // MARK: - Fonts
-    
-    private func jerseyFont(size: CGFloat) -> NSFont {
-        if let font = NSFont(name: "Jersey15-Regular", size: size) {
-            return font
-        }
-        if let font = NSFont(name: "Jersey10-Regular", size: size) {
-            return font
-        }
-        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
-    }
     
     // MARK: - Initialization
     
@@ -199,13 +182,13 @@ class CharacterBrowserView: NSView {
         image.lockFocus()
         
         // Placeholder background from Figma (#d9d9d9)
-        placeholderColor.setFill()
+        DesignColors.placeholderBackground.setFill()
         NSRect(origin: .zero, size: size).fill()
         
         // Draw initial in darker gray
         let initial = String(character.displayName.prefix(1)).uppercased()
         let attrs: [NSAttributedString.Key: Any] = [
-            .font: jerseyFont(size: 40),
+            .font: DesignFonts.jersey(size: 40),
             .foregroundColor: NSColor(white: 0.5, alpha: 1.0)
         ]
         let attrString = NSAttributedString(string: initial, attributes: attrs)
@@ -283,28 +266,10 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     
     static let identifier = NSUserInterfaceItemIdentifier("CharacterCollectionViewItem")
     
-    // Figma colors
-    private let cardBgColor = NSColor(red: 0x0f/255.0, green: 0x19/255.0, blue: 0x23/255.0, alpha: 1.0)
-    private let grayTextColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
-    private let placeholderColor = NSColor(red: 0xd9/255.0, green: 0xd9/255.0, blue: 0xd9/255.0, alpha: 1.0)
-    private let selectedBorderColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
-    
     private var portraitImageView: NSImageView!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
     private var containerView: NSView!
-    
-    // MARK: - Fonts
-    
-    private func jerseyFont(size: CGFloat) -> NSFont {
-        if let font = NSFont(name: "Jersey15-Regular", size: size) {
-            return font
-        }
-        if let font = NSFont(name: "Jersey10-Regular", size: size) {
-            return font
-        }
-        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
-    }
     
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 160, height: 160))
@@ -318,7 +283,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = cardBgColor.cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         containerView.layer?.borderWidth = 1
         containerView.layer?.borderColor = NSColor.clear.cgColor
         view.addSubview(containerView)
@@ -328,14 +293,14 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         portraitImageView.translatesAutoresizingMaskIntoConstraints = false
         portraitImageView.imageScaling = .scaleProportionallyUpOrDown
         portraitImageView.wantsLayer = true
-        portraitImageView.layer?.backgroundColor = placeholderColor.cgColor
+        portraitImageView.layer?.backgroundColor = DesignColors.defaultPlaceholder.cgColor
         containerView.addSubview(portraitImageView)
         
         // Name label - Jersey 10, 24px, gray, centered
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = jerseyFont(size: 24)
-        nameLabel.textColor = grayTextColor
+        nameLabel.font = DesignFonts.jersey(size: 24)
+        nameLabel.textColor = DesignColors.grayText
         nameLabel.alignment = .center
         nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.maximumNumberOfLines = 1
@@ -344,8 +309,8 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         // Author label - Jersey 10, 16px, gray, centered
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = jerseyFont(size: 16)
-        authorLabel.textColor = grayTextColor
+        authorLabel.font = DesignFonts.jersey(size: 16)
+        authorLabel.textColor = DesignColors.grayText
         authorLabel.alignment = .center
         authorLabel.lineBreakMode = .byTruncatingTail
         authorLabel.maximumNumberOfLines = 1
@@ -385,11 +350,11 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     private func updateSelectionAppearance() {
         if isSelected {
             // Figma: border-[#fd4e5b], shadow 0px 0px 18px rgba(253,78,91,0.4)
-            containerView.layer?.borderColor = selectedBorderColor.cgColor
+            containerView.layer?.borderColor = DesignColors.selectedBorder.cgColor
             containerView.layer?.borderWidth = 1
             
             // Add glow shadow
-            containerView.layer?.shadowColor = selectedBorderColor.cgColor
+            containerView.layer?.shadowColor = DesignColors.selectedBorder.cgColor
             containerView.layer?.shadowOffset = CGSize.zero
             containerView.layer?.shadowRadius = 18
             containerView.layer?.shadowOpacity = 0.4
@@ -416,7 +381,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     override func prepareForReuse() {
         super.prepareForReuse()
         portraitImageView.image = nil
-        portraitImageView.layer?.backgroundColor = placeholderColor.cgColor
+        portraitImageView.layer?.backgroundColor = DesignColors.defaultPlaceholder.cgColor
         nameLabel.stringValue = ""
         authorLabel.stringValue = ""
         isSelected = false
@@ -429,26 +394,10 @@ class CharacterListItem: NSCollectionViewItem {
     
     static let identifier = NSUserInterfaceItemIdentifier("CharacterListItem")
     
-    private let cardBgColor = NSColor(red: 0x0f/255.0, green: 0x19/255.0, blue: 0x23/255.0, alpha: 1.0)
-    private let grayTextColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
-    private let creamTextColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
-    private let placeholderColor = NSColor(red: 0xd9/255.0, green: 0xd9/255.0, blue: 0xd9/255.0, alpha: 1.0)
-    private let selectedBorderColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
-    
     private var containerView: NSView!
     private var portraitImageView: NSImageView!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
-    
-    private func jerseyFont(size: CGFloat) -> NSFont {
-        if let font = NSFont(name: "Jersey15-Regular", size: size) {
-            return font
-        }
-        if let font = NSFont(name: "Jersey10-Regular", size: size) {
-            return font
-        }
-        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
-    }
     
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 60))
@@ -461,7 +410,7 @@ class CharacterListItem: NSCollectionViewItem {
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = cardBgColor.cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         containerView.layer?.borderWidth = 1
         containerView.layer?.borderColor = NSColor.clear.cgColor
         view.addSubview(containerView)
@@ -471,22 +420,22 @@ class CharacterListItem: NSCollectionViewItem {
         portraitImageView.translatesAutoresizingMaskIntoConstraints = false
         portraitImageView.imageScaling = .scaleProportionallyUpOrDown
         portraitImageView.wantsLayer = true
-        portraitImageView.layer?.backgroundColor = placeholderColor.cgColor
+        portraitImageView.layer?.backgroundColor = DesignColors.defaultPlaceholder.cgColor
         containerView.addSubview(portraitImageView)
         
         // Name
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = jerseyFont(size: 24)
-        nameLabel.textColor = creamTextColor
+        nameLabel.font = DesignFonts.jersey(size: 24)
+        nameLabel.textColor = DesignColors.creamText
         nameLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(nameLabel)
         
         // Author
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = jerseyFont(size: 16)
-        authorLabel.textColor = grayTextColor
+        authorLabel.font = DesignFonts.jersey(size: 16)
+        authorLabel.textColor = DesignColors.grayText
         authorLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(authorLabel)
         
@@ -521,9 +470,9 @@ class CharacterListItem: NSCollectionViewItem {
     
     private func updateSelectionAppearance() {
         if isSelected {
-            containerView.layer?.borderColor = selectedBorderColor.cgColor
+            containerView.layer?.borderColor = DesignColors.selectedBorder.cgColor
             containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowColor = selectedBorderColor.cgColor
+            containerView.layer?.shadowColor = DesignColors.selectedBorder.cgColor
             containerView.layer?.shadowOffset = CGSize.zero
             containerView.layer?.shadowRadius = 10
             containerView.layer?.shadowOpacity = 0.3
@@ -550,7 +499,7 @@ class CharacterListItem: NSCollectionViewItem {
     override func prepareForReuse() {
         super.prepareForReuse()
         portraitImageView.image = nil
-        portraitImageView.layer?.backgroundColor = placeholderColor.cgColor
+        portraitImageView.layer?.backgroundColor = DesignColors.defaultPlaceholder.cgColor
         nameLabel.stringValue = ""
         authorLabel.stringValue = ""
         isSelected = false

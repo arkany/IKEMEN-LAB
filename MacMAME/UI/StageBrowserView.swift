@@ -1,13 +1,8 @@
 import Cocoa
 import Combine
 
-/// View mode for content browsers
-enum BrowserViewMode {
-    case grid
-    case list
-}
-
 /// A visual browser for viewing installed stages with thumbnails
+/// Uses shared design system from UIHelpers.swift
 class StageBrowserView: NSView {
     
     // MARK: - Properties
@@ -25,35 +20,14 @@ class StageBrowserView: NSView {
         }
     }
     
-    // Figma design constants - stages are twice as wide
-    private let gridItemWidth: CGFloat = 320
-    private let gridItemHeight: CGFloat = 160
-    private let listItemWidth: CGFloat = 600
-    private let listItemHeight: CGFloat = 60
-    private let cardSpacing: CGFloat = 28
-    private let sectionInset: CGFloat = 0
-    
-    // Colors from Figma
-    private let cardBgColor = NSColor(red: 0x0f/255.0, green: 0x19/255.0, blue: 0x23/255.0, alpha: 1.0)
-    private let grayTextColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
-    private let creamTextColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
-    private let placeholderColor = NSColor(red: 0xd9/255.0, green: 0xd9/255.0, blue: 0xd9/255.0, alpha: 1.0)
-    private let selectedBorderColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
-    private let greenAccent = NSColor(red: 0x4e/255.0, green: 0xfd/255.0, blue: 0x60/255.0, alpha: 1.0)
+    // Layout constants from shared design system
+    private let gridItemWidth = BrowserLayout.stageGridItemWidth
+    private let gridItemHeight = BrowserLayout.stageGridItemHeight
+    private let listItemHeight = BrowserLayout.listItemHeight
+    private let cardSpacing = BrowserLayout.cardSpacing
+    private let sectionInset = BrowserLayout.sectionInset
     
     var onStageSelected: ((StageInfo) -> Void)?
-    
-    // MARK: - Fonts
-    
-    private func jerseyFont(size: CGFloat) -> NSFont {
-        if let font = NSFont(name: "Jersey15-Regular", size: size) {
-            return font
-        }
-        if let font = NSFont(name: "Jersey10-Regular", size: size) {
-            return font
-        }
-        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
-    }
     
     // MARK: - Initialization
     
@@ -222,30 +196,12 @@ class StageGridItem: NSCollectionViewItem {
     
     static let identifier = NSUserInterfaceItemIdentifier("StageGridItem")
     
-    // Figma colors
-    private let cardBgColor = NSColor(red: 0x0f/255.0, green: 0x19/255.0, blue: 0x23/255.0, alpha: 1.0)
-    private let grayTextColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
-    private let creamTextColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
-    private let placeholderColor = NSColor(red: 0x1a/255.0, green: 0x2a/255.0, blue: 0x35/255.0, alpha: 1.0)
-    private let selectedBorderColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
-    private let greenAccent = NSColor(red: 0x4e/255.0, green: 0xfd/255.0, blue: 0x60/255.0, alpha: 1.0)
-    
     private var containerView: NSView!
     private var previewImageView: NSImageView!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
     private var sizeBadge: NSView!
     private var sizeBadgeLabel: NSTextField!
-    
-    private func jerseyFont(size: CGFloat) -> NSFont {
-        if let font = NSFont(name: "Jersey15-Regular", size: size) {
-            return font
-        }
-        if let font = NSFont(name: "Jersey10-Regular", size: size) {
-            return font
-        }
-        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
-    }
     
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 160))
@@ -259,7 +215,7 @@ class StageGridItem: NSCollectionViewItem {
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = cardBgColor.cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         containerView.layer?.borderWidth = 1
         containerView.layer?.borderColor = NSColor.clear.cgColor
         view.addSubview(containerView)
@@ -269,31 +225,31 @@ class StageGridItem: NSCollectionViewItem {
         previewImageView.translatesAutoresizingMaskIntoConstraints = false
         previewImageView.imageScaling = .scaleProportionallyUpOrDown
         previewImageView.wantsLayer = true
-        previewImageView.layer?.backgroundColor = placeholderColor.cgColor
+        previewImageView.layer?.backgroundColor = DesignColors.placeholderBackground.cgColor
         containerView.addSubview(previewImageView)
         
         // Size badge (for wide stages)
         sizeBadge = NSView()
         sizeBadge.translatesAutoresizingMaskIntoConstraints = false
         sizeBadge.wantsLayer = true
-        sizeBadge.layer?.backgroundColor = greenAccent.withAlphaComponent(0.2).cgColor
+        sizeBadge.layer?.backgroundColor = DesignColors.greenAccent.withAlphaComponent(0.2).cgColor
         sizeBadge.layer?.cornerRadius = 4
         sizeBadge.layer?.borderWidth = 1
-        sizeBadge.layer?.borderColor = greenAccent.cgColor
+        sizeBadge.layer?.borderColor = DesignColors.greenAccent.cgColor
         sizeBadge.isHidden = true
         containerView.addSubview(sizeBadge)
         
         sizeBadgeLabel = NSTextField(labelWithString: "Wide")
         sizeBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
-        sizeBadgeLabel.font = jerseyFont(size: 12)
-        sizeBadgeLabel.textColor = greenAccent
+        sizeBadgeLabel.font = DesignFonts.jersey(size: 12)
+        sizeBadgeLabel.textColor = DesignColors.greenAccent
         sizeBadge.addSubview(sizeBadgeLabel)
         
         // Name label
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = jerseyFont(size: 24)
-        nameLabel.textColor = grayTextColor
+        nameLabel.font = DesignFonts.jersey(size: 24)
+        nameLabel.textColor = DesignColors.grayText
         nameLabel.alignment = .center
         nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.maximumNumberOfLines = 1
@@ -302,8 +258,8 @@ class StageGridItem: NSCollectionViewItem {
         // Author label
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = jerseyFont(size: 16)
-        authorLabel.textColor = grayTextColor
+        authorLabel.font = DesignFonts.jersey(size: 16)
+        authorLabel.textColor = DesignColors.grayText
         authorLabel.alignment = .center
         authorLabel.lineBreakMode = .byTruncatingTail
         authorLabel.maximumNumberOfLines = 1
@@ -350,9 +306,9 @@ class StageGridItem: NSCollectionViewItem {
     
     private func updateSelectionAppearance() {
         if isSelected {
-            containerView.layer?.borderColor = selectedBorderColor.cgColor
+            containerView.layer?.borderColor = DesignColors.selectedBorder.cgColor
             containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowColor = selectedBorderColor.cgColor
+            containerView.layer?.shadowColor = DesignColors.selectedBorder.cgColor
             containerView.layer?.shadowOffset = CGSize.zero
             containerView.layer?.shadowRadius = 18
             containerView.layer?.shadowOpacity = 0.4
@@ -402,27 +358,11 @@ class StageListItem: NSCollectionViewItem {
     
     static let identifier = NSUserInterfaceItemIdentifier("StageListItem")
     
-    private let cardBgColor = NSColor(red: 0x0f/255.0, green: 0x19/255.0, blue: 0x23/255.0, alpha: 1.0)
-    private let grayTextColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
-    private let creamTextColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
-    private let selectedBorderColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
-    private let greenAccent = NSColor(red: 0x4e/255.0, green: 0xfd/255.0, blue: 0x60/255.0, alpha: 1.0)
-    
     private var containerView: NSView!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
     private var sizeLabel: NSTextField!
     private var widthLabel: NSTextField!
-    
-    private func jerseyFont(size: CGFloat) -> NSFont {
-        if let font = NSFont(name: "Jersey15-Regular", size: size) {
-            return font
-        }
-        if let font = NSFont(name: "Jersey10-Regular", size: size) {
-            return font
-        }
-        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
-    }
     
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 60))
@@ -435,7 +375,7 @@ class StageListItem: NSCollectionViewItem {
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = cardBgColor.cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         containerView.layer?.borderWidth = 1
         containerView.layer?.borderColor = NSColor.clear.cgColor
         view.addSubview(containerView)
@@ -443,32 +383,32 @@ class StageListItem: NSCollectionViewItem {
         // Name
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = jerseyFont(size: 24)
-        nameLabel.textColor = creamTextColor
+        nameLabel.font = DesignFonts.jersey(size: 24)
+        nameLabel.textColor = DesignColors.creamText
         nameLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(nameLabel)
         
         // Author
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = jerseyFont(size: 16)
-        authorLabel.textColor = grayTextColor
+        authorLabel.font = DesignFonts.jersey(size: 16)
+        authorLabel.textColor = DesignColors.grayText
         authorLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(authorLabel)
         
         // Size category
         sizeLabel = NSTextField(labelWithString: "")
         sizeLabel.translatesAutoresizingMaskIntoConstraints = false
-        sizeLabel.font = jerseyFont(size: 18)
-        sizeLabel.textColor = greenAccent
+        sizeLabel.font = DesignFonts.jersey(size: 18)
+        sizeLabel.textColor = DesignColors.greenAccent
         sizeLabel.alignment = .right
         containerView.addSubview(sizeLabel)
         
         // Width value
         widthLabel = NSTextField(labelWithString: "")
         widthLabel.translatesAutoresizingMaskIntoConstraints = false
-        widthLabel.font = jerseyFont(size: 14)
-        widthLabel.textColor = grayTextColor
+        widthLabel.font = DesignFonts.jersey(size: 14)
+        widthLabel.textColor = DesignColors.grayText
         widthLabel.alignment = .right
         containerView.addSubview(widthLabel)
         
@@ -501,9 +441,9 @@ class StageListItem: NSCollectionViewItem {
     
     private func updateSelectionAppearance() {
         if isSelected {
-            containerView.layer?.borderColor = selectedBorderColor.cgColor
+            containerView.layer?.borderColor = DesignColors.selectedBorder.cgColor
             containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowColor = selectedBorderColor.cgColor
+            containerView.layer?.shadowColor = DesignColors.selectedBorder.cgColor
             containerView.layer?.shadowOffset = CGSize.zero
             containerView.layer?.shadowRadius = 10
             containerView.layer?.shadowOpacity = 0.3
@@ -522,9 +462,9 @@ class StageListItem: NSCollectionViewItem {
         
         // Color code the size
         if stage.isWideStage {
-            sizeLabel.textColor = greenAccent
+            sizeLabel.textColor = DesignColors.greenAccent
         } else {
-            sizeLabel.textColor = grayTextColor
+            sizeLabel.textColor = DesignColors.grayText
         }
     }
     
