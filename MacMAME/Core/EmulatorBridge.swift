@@ -418,8 +418,11 @@ class SFFPortraitExtractor {
             return nil
         }
         
+        // Extract palette for 8-bit formats, including format 10 (indexed PNG with external palette)
         var palette: [UInt8]?
-        if colorDepth == 8 && format != 10 && format != 11 && format != 12 {
+        if colorDepth == 8 && format != 11 && format != 12 {
+            // Format 10 = 8-bit indexed PNG that uses SFF's palette (PNG has dummy black palette)
+            // Format 11, 12 = true color PNG with embedded palette
             palette = extractSFFv2Palette(data, paletteOffset: paletteOffset, paletteIndex: Int(paletteIndex))
         }
         
@@ -545,8 +548,9 @@ class SFFPortraitExtractor {
             }
             
             // Get palette for this sprite
+            // Format 10 = 8-bit indexed PNG that uses SFF's palette (PNG has dummy black palette)
             var palette: [UInt8]?
-            if colorDepth == 8 && format != 10 && format != 11 && format != 12 {
+            if colorDepth == 8 && format != 11 && format != 12 {
                 palette = extractSFFv2Palette(data, paletteOffset: Int(paletteOffset), paletteIndex: Int(paletteIndex))
             }
             
@@ -604,8 +608,8 @@ class SFFPortraitExtractor {
     
     /// Decode SFF v2 sprite data
     private static func decodeSFFv2Sprite(_ data: Data, width: Int, height: Int, format: UInt8, colorDepth: UInt8, palette: [UInt8]?) -> NSImage? {
-        // Format 10, 11, 12 = embedded PNG data with 4-byte header
-        if format == 10 || format == 11 || format == 12 {
+        // Format 11, 12 = true color PNG with embedded palette
+        if format == 11 || format == 12 {
             // Skip 4-byte decompressed size header, then it's raw PNG data
             guard data.count > 4 else { return nil }
             let pngData = data.dropFirst(4)
@@ -613,6 +617,54 @@ class SFFPortraitExtractor {
                 return image
             }
             return nil
+        }
+        
+        // Format 10 = 8-bit indexed PNG with external palette from SFF
+        // The PNG has a dummy black palette - we need to apply the SFF's palette
+        if format == 10 {
+            guard data.count > 4, let pal = palette else { return nil }
+            let pngData = Data(data.dropFirst(4))
+            
+            // Decode PNG to get pixel indices
+            guard let cgImageSource = CGImageSourceCreateWithData(pngData as CFData, nil),
+                  let cgImage = CGImageSourceCreateImageAtIndex(cgImageSource, 0, nil),
+                  let dataProvider = cgImage.dataProvider,
+                  let pixelData = dataProvider.data else {
+                return nil
+            }
+            
+            let indices = CFDataGetBytePtr(pixelData)!
+            let indexCount = CFDataGetLength(pixelData)
+            let w = cgImage.width
+            let h = cgImage.height
+            
+            // Apply SFF's palette to pixel indices
+            var rgbaPixels = [UInt8](repeating: 255, count: w * h * 4)
+            for i in 0..<min(indexCount, w * h) {
+                let colorIndex = Int(indices[i])
+                rgbaPixels[i * 4] = pal[colorIndex * 4]       // R
+                rgbaPixels[i * 4 + 1] = pal[colorIndex * 4 + 1] // G
+                rgbaPixels[i * 4 + 2] = pal[colorIndex * 4 + 2] // B
+                // Use palette alpha, but index 0 is typically transparent
+                let alpha = colorIndex == 0 ? UInt8(0) : pal[colorIndex * 4 + 3]
+                rgbaPixels[i * 4 + 3] = alpha
+            }
+            
+            // Create NSImage from RGBA data
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            guard let context = CGContext(
+                data: &rgbaPixels,
+                width: w,
+                height: h,
+                bitsPerComponent: 8,
+                bytesPerRow: w * 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ), let finalImage = context.makeImage() else {
+                return nil
+            }
+            
+            return NSImage(cgImage: finalImage, size: NSSize(width: w, height: h))
         }
         
         var pixels: [UInt8]
