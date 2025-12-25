@@ -424,48 +424,19 @@ public final class ContentManager {
             return
         }
         
-        // Find the [Characters] section and add the character at the END (before next section)
-        // This preserves screenpack layouts that use "empty" entries for positioning
+        // Find the [Characters] section and add the character right after the header
+        // This puts new characters at the top of the roster where they're easy to find
         let lines = content.components(separatedBy: "\n")
         var newLines: [String] = []
-        var foundCharactersSection = false
         var insertedCharacter = false
-        var lastCharacterLineIndex = -1
         
-        for (index, line) in lines.enumerated() {
+        for line in lines {
             newLines.append(line)
             
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            
-            if trimmed.lowercased() == "[characters]" {
-                foundCharactersSection = true
-                continue
-            }
-            
-            if foundCharactersSection && !insertedCharacter {
-                // When we hit the next section, insert before it
-                if trimmed.hasPrefix("[") {
-                    newLines.insert(charEntry, at: newLines.count - 1)
-                    insertedCharacter = true
-                } else if !trimmed.isEmpty && !trimmed.hasPrefix(";") {
-                    // Track the last actual content line in [Characters] section
-                    lastCharacterLineIndex = newLines.count - 1
-                }
-            }
-        }
-        
-        // If we reached end of file without finding another section, append at end of chars
-        if !insertedCharacter && foundCharactersSection {
-            if lastCharacterLineIndex >= 0 {
-                newLines.insert(charEntry, at: lastCharacterLineIndex + 1)
-            } else {
-                // No characters yet, add after [Characters] header
-                for (i, line) in newLines.enumerated() {
-                    if line.trimmingCharacters(in: .whitespaces).lowercased() == "[characters]" {
-                        newLines.insert(charEntry, at: i + 1)
-                        break
-                    }
-                }
+            // Insert right after [Characters] header
+            if !insertedCharacter && line.trimmingCharacters(in: .whitespaces).lowercased() == "[characters]" {
+                newLines.append(charEntry)
+                insertedCharacter = true
             }
         }
         
