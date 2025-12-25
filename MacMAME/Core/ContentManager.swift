@@ -188,8 +188,64 @@ public final class ContentManager {
         // Copy to data directory
         try fileManager.copyItem(at: source, to: destPath)
         
+        // If the screenpack has a select.def, sync existing characters to it
+        let screenpackSelectDef = destPath.appendingPathComponent("select.def")
+        if fileManager.fileExists(atPath: screenpackSelectDef.path) {
+            syncCharactersToScreenpack(selectDefPath: screenpackSelectDef, workingDir: workingDir)
+        }
+        
         let action = isUpdate ? "Updated" : "Installed"
         return "\(action) screenpack: \(displayName)"
+    }
+    
+    /// Sync characters from the chars/ folder to a screenpack's select.def
+    public func syncCharactersToScreenpack(selectDefPath: URL, workingDir: URL) {
+        let charsDir = workingDir.appendingPathComponent("chars")
+        
+        guard let charFolders = try? fileManager.contentsOfDirectory(at: charsDir, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return
+        }
+        
+        for charFolder in charFolders {
+            var isDir: ObjCBool = false
+            guard fileManager.fileExists(atPath: charFolder.path, isDirectory: &isDir), isDir.boolValue else {
+                continue
+            }
+            
+            let charName = charFolder.lastPathComponent
+            
+            // Skip hidden folders
+            if charName.hasPrefix(".") { continue }
+            
+            // Find the def entry for this character
+            if let defEntry = findCharacterDefEntry(in: charFolder) {
+                try? addCharacterToSelectDefFile(defEntry, selectDefPath: selectDefPath)
+            }
+        }
+    }
+    
+    /// Sync all characters to all screenpack select.def files
+    public func syncAllScreenpacks(in workingDir: URL) -> Int {
+        let dataDir = workingDir.appendingPathComponent("data")
+        var syncedCount = 0
+        
+        guard let contents = try? fileManager.contentsOfDirectory(at: dataDir, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return 0
+        }
+        
+        for item in contents {
+            var isDir: ObjCBool = false
+            if fileManager.fileExists(atPath: item.path, isDirectory: &isDir), isDir.boolValue {
+                let screenpackSelectDef = item.appendingPathComponent("select.def")
+                if fileManager.fileExists(atPath: screenpackSelectDef.path) {
+                    syncCharactersToScreenpack(selectDefPath: screenpackSelectDef, workingDir: workingDir)
+                    syncedCount += 1
+                }
+            }
+        }
+        
+        print("Synced characters to \(syncedCount) screenpack(s)")
+        return syncedCount
     }
     
     // MARK: - Character Installation
@@ -245,6 +301,12 @@ public final class ContentManager {
             return "Installed character: \(displayName) ⚠️ \(warnings.joined(separator: ", "))"
         }
         return "Installed character: \(displayName)"
+    }
+    
+    /// Find the correct select.def entry for a character folder
+    private func findCharacterDefEntry(in charPath: URL) -> String? {
+        let charName = charPath.lastPathComponent
+        return findCharacterDefEntry(charName: charName, in: charPath)
     }
     
     /// Find the correct select.def entry for a character
@@ -321,10 +383,29 @@ public final class ContentManager {
     
     // MARK: - select.def Management
     
-    /// Add a character to select.def
+    /// Add a character to all select.def files (main and screenpacks)
     public func addCharacterToSelectDef(_ charEntry: String, in workingDir: URL) throws {
-        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        // Add to main select.def
+        let mainSelectDef = workingDir.appendingPathComponent("data/select.def")
+        try addCharacterToSelectDefFile(charEntry, selectDefPath: mainSelectDef)
         
+        // Also add to all screenpack select.def files
+        let dataDir = workingDir.appendingPathComponent("data")
+        if let contents = try? fileManager.contentsOfDirectory(at: dataDir, includingPropertiesForKeys: [.isDirectoryKey]) {
+            for item in contents {
+                var isDir: ObjCBool = false
+                if fileManager.fileExists(atPath: item.path, isDirectory: &isDir), isDir.boolValue {
+                    let screenpackSelectDef = item.appendingPathComponent("select.def")
+                    if fileManager.fileExists(atPath: screenpackSelectDef.path) {
+                        try? addCharacterToSelectDefFile(charEntry, selectDefPath: screenpackSelectDef)
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Add a character to a specific select.def file
+    private func addCharacterToSelectDefFile(_ charEntry: String, selectDefPath: URL) throws {
         guard fileManager.fileExists(atPath: selectDefPath.path) else {
             print("Warning: select.def not found at \(selectDefPath.path)")
             return
@@ -337,7 +418,7 @@ public final class ContentManager {
         let charPattern = "(?m)^\\s*\(NSRegularExpression.escapedPattern(for: folderName))(/|\\s|,|$)"
         if let regex = try? NSRegularExpression(pattern: charPattern, options: .caseInsensitive),
            regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)) != nil {
-            print("Character \(charEntry) already in select.def")
+            print("Character \(charEntry) already in \(selectDefPath.lastPathComponent)")
             return
         }
         
@@ -389,7 +470,7 @@ public final class ContentManager {
         
         content = newLines.joined(separator: "\n")
         try content.write(to: selectDefPath, atomically: true, encoding: .utf8)
-        print("Added \(charEntry) to select.def")
+        print("Added \(charEntry) to \(selectDefPath.path)")
     }
     
     /// Add a stage to select.def

@@ -545,7 +545,18 @@ class GameWindowController: NSWindowController {
             self?.statusLabel.stringValue = status
         }
         screenpackBrowserView.onScreenpackActivate = { [weak self] screenpack in
-            IkemenBridge.shared.setActiveScreenpack(screenpack)
+            let bridge = IkemenBridge.shared
+            guard let workingDir = bridge.workingDirectory else { return }
+            
+            // Sync characters to this screenpack's select.def before activating
+            // defFile is system.def, so its parent directory contains select.def
+            let screenpackDir = screenpack.defFile.deletingLastPathComponent()
+            let selectDefPath = screenpackDir.appendingPathComponent("select.def")
+            if FileManager.default.fileExists(atPath: selectDefPath.path) {
+                ContentManager.shared.syncCharactersToScreenpack(selectDefPath: selectDefPath, workingDir: workingDir)
+            }
+            
+            bridge.setActiveScreenpack(screenpack)
             self?.statusLabel.stringValue = "Activated: \(screenpack.name)"
         }
         mainAreaView.addSubview(screenpackBrowserView)

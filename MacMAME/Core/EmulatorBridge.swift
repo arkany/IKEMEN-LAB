@@ -121,6 +121,11 @@ class IkemenBridge: ObservableObject {
     private var enginePath: URL?
     private var engineWorkingDirectory: URL?
     
+    /// Public accessor for the Ikemen GO working directory
+    public var workingDirectory: URL? {
+        return engineWorkingDirectory
+    }
+    
     // For tracking the launched app
     private var launchedAppPID: pid_t?
     private var terminationObserver: NSObjectProtocol?
