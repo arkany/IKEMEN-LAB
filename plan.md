@@ -36,6 +36,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 ### 📋 Planned
 - [x] Screenpack management (browse, activate, install, component detection)
+- [ ] Character roster arrangement UI (screenpacks use grid layouts with empty slots for positioning)
 - [ ] Netplay lobby UI
 - [ ] Bundle Ikemen GO inside the .app for distribution
 - [ ] App Store preparation (sandbox, signing)
