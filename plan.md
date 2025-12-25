@@ -42,22 +42,23 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 ### 🛠️ Technical Debt / Refactoring
 **Critical:**
-- [x] Split `EmulatorBridge.swift` (2000+ lines → 980 lines) into:
+- [x] Split `EmulatorBridge.swift` (2000+ lines → 489 lines) into:
   - [x] `Core/SFFParser.swift` - SFF v1/v2 parsing, PCX decoding, RLE8/LZ5 decompression
   - [x] `Core/DEFParser.swift` - Reusable .def file parsing with section support
+  - [x] `Core/ImageCache.swift` - NSCache-based singleton for portraits/previews
+  - [x] `Core/ContentManager.swift` - Installation, select.def management
   - [x] `Models/CharacterInfo.swift` - Character metadata struct (uses DEFParser)
   - [x] `Models/StageInfo.swift` - Stage metadata struct (uses DEFParser)
   - [x] `Shared/UIHelpers.swift` - BrowserViewMode, DesignColors, DesignFonts, BrowserLayout
-  - [ ] `ContentManager.swift` - Installation, select.def management (still in IkemenBridge)
 - [x] DRY: Extract shared fonts/colors (DesignColors, DesignFonts in UIHelpers.swift)
 - [x] DRY: Extract shared DEF file parsing logic (DEFParser.swift)
 - [ ] Extract generic `ContentBrowserView<T>` - DEFERRED: Views share UIHelpers but have different item types/caching
 
 **Medium Priority:**
-- [ ] Add `NSCache` for extracted portraits/previews (avoid re-parsing SFF)
-- [ ] Migrate to async/await from Combine publishers
-- [ ] Use `Result<T, Error>` or throws instead of nil returns
-- [ ] Protocol-based SFF parsing (`SFFVersion` protocol)
+- [x] Add `NSCache` for extracted portraits/previews (ImageCache.swift with 500 items / ~100MB limit)
+- [x] Use `Result<T, Error>` or throws instead of nil returns (SFFError enum, extractPortraitResult/extractStagePreviewResult)
+- [x] Protocol-based SFF parsing (`SFFVersionParser` protocol with SFFv1Parser/SFFv2Parser)
+- [ ] Migrate to async/await from Combine publishers - DEFERRED: @Published properties work well with SwiftUI; async/await would require MainActor changes and doesn't provide clear benefit for current usage
 
 **Nice-to-Have:**
 - [ ] Unit tests for SFF parsing

@@ -155,13 +155,27 @@ class CharacterBrowserView: NSView {
     
     private func loadPortraitsAsync() {
         for character in characters {
+            // Check local cache first (for current session quick access)
             if portraitCache[character.id] != nil { continue }
+            
+            // Check shared ImageCache
+            let cacheKey = ImageCache.portraitKey(for: character.id)
+            if let cached = ImageCache.shared.get(cacheKey) {
+                portraitCache[character.id] = cached
+                continue
+            }
             
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 let portrait = character.getPortraitImage()
                 
                 DispatchQueue.main.async {
-                    self?.portraitCache[character.id] = portrait ?? self?.createPlaceholderImage(for: character)
+                    let finalImage = portrait ?? self?.createPlaceholderImage(for: character)
+                    self?.portraitCache[character.id] = finalImage
+                    
+                    // Store in shared cache (only real portraits, not placeholders)
+                    if let realPortrait = portrait {
+                        ImageCache.shared.set(realPortrait, for: cacheKey)
+                    }
                     
                     // Find and update the item
                     if let index = self?.characters.firstIndex(where: { $0.id == character.id }) {

@@ -331,10 +331,19 @@ class StageGridItem: NSCollectionViewItem {
             sizeBadge.isHidden = true
         }
         
+        // Check cache first
+        let cacheKey = ImageCache.stagePreviewKey(for: stage.id)
+        if let cached = ImageCache.shared.get(cacheKey) {
+            previewImageView.image = cached
+            return
+        }
+        
         // Load preview image asynchronously
         previewImageView.image = nil
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             if let image = stage.loadPreviewImage() {
+                // Store in cache
+                ImageCache.shared.set(image, for: cacheKey)
                 DispatchQueue.main.async {
                     self?.previewImageView.image = image
                 }

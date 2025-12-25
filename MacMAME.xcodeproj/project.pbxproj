@@ -26,6 +26,8 @@
 		017 /* StageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 119 /* StageInfo.swift */; };
 		018 /* UIHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 120 /* UIHelpers.swift */; };
 		019 /* DEFParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121 /* DEFParser.swift */; };
+		020 /* ImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122 /* ImageCache.swift */; };
+		021 /* ContentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 123 /* ContentManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +50,8 @@
 		119 /* StageInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageInfo.swift; sourceTree = "<group>"; };
 		120 /* UIHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIHelpers.swift; sourceTree = "<group>"; };
 		121 /* DEFParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DEFParser.swift; sourceTree = "<group>"; };
+		122 /* ImageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
+		123 /* ContentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentManager.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -135,6 +139,8 @@
 				104 /* EmulatorBridge.swift */,
 				117 /* SFFParser.swift */,
 				121 /* DEFParser.swift */,
+				122 /* ImageCache.swift */,
+				123 /* ContentManager.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -261,6 +267,8 @@
 				017 /* StageInfo.swift in Sources */,
 				018 /* UIHelpers.swift in Sources */,
 				019 /* DEFParser.swift in Sources */,
+				020 /* ImageCache.swift in Sources */,
+				021 /* ContentManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
