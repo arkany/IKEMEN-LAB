@@ -424,50 +424,49 @@ public final class ContentManager {
             return
         }
         
-        // Find the [Characters] section and add the character
+        // Find the [Characters] section and add the character at the END (before next section)
+        // This preserves screenpack layouts that use "empty" entries for positioning
         let lines = content.components(separatedBy: "\n")
         var newLines: [String] = []
         var foundCharactersSection = false
         var insertedCharacter = false
+        var lastCharacterLineIndex = -1
         
-        for line in lines {
+        for (index, line) in lines.enumerated() {
             newLines.append(line)
             
-            if line.trimmingCharacters(in: .whitespaces).lowercased() == "[characters]" {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            if trimmed.lowercased() == "[characters]" {
                 foundCharactersSection = true
+                continue
             }
             
             if foundCharactersSection && !insertedCharacter {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.hasPrefix("[") && trimmed.lowercased() != "[characters]" {
+                // When we hit the next section, insert before it
+                if trimmed.hasPrefix("[") {
                     newLines.insert(charEntry, at: newLines.count - 1)
                     insertedCharacter = true
+                } else if !trimmed.isEmpty && !trimmed.hasPrefix(";") {
+                    // Track the last actual content line in [Characters] section
+                    lastCharacterLineIndex = newLines.count - 1
                 }
             }
         }
         
-        // If we still haven't inserted, find best position
+        // If we reached end of file without finding another section, append at end of chars
         if !insertedCharacter && foundCharactersSection {
-            var insertIndex = 0
-            var inCharSection = false
-            for (i, line) in newLines.enumerated() {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.lowercased() == "[characters]" {
-                    inCharSection = true
-                    insertIndex = i + 1
-                    continue
-                }
-                if inCharSection {
-                    if trimmed.isEmpty || trimmed.hasPrefix(";") {
-                        insertIndex = i + 1
-                    } else if trimmed.hasPrefix("[") {
+            if lastCharacterLineIndex >= 0 {
+                newLines.insert(charEntry, at: lastCharacterLineIndex + 1)
+            } else {
+                // No characters yet, add after [Characters] header
+                for (i, line) in newLines.enumerated() {
+                    if line.trimmingCharacters(in: .whitespaces).lowercased() == "[characters]" {
+                        newLines.insert(charEntry, at: i + 1)
                         break
-                    } else {
-                        insertIndex = i + 1
                     }
                 }
             }
-            newLines.insert(charEntry, at: insertIndex)
         }
         
         content = newLines.joined(separator: "\n")
