@@ -98,6 +98,8 @@ class IkemenBridge: ObservableObject {
     @Published private(set) var engineState: EngineState = .idle
     @Published private(set) var characters: [CharacterInfo] = []
     @Published private(set) var stages: [StageInfo] = []
+    @Published private(set) var screenpacks: [ScreenpackInfo] = []
+    @Published private(set) var activeScreenpackPath: String?
     
     // MARK: - Process
     
@@ -249,6 +251,7 @@ class IkemenBridge: ObservableObject {
     func loadContent() {
         loadCharacters()
         loadStages()
+        loadScreenpacks()
     }
     
     /// Load all characters from the chars directory
@@ -316,6 +319,137 @@ class IkemenBridge: ObservableObject {
         }
         
         print("Loaded \(foundStages.count) stages")
+    }
+    
+    /// Load all screenpacks from the data directory
+    private func loadScreenpacks() {
+        var foundScreenpacks: [ScreenpackInfo] = []
+        let fileManager = FileManager.default
+        
+        guard let workingDir = engineWorkingDirectory else { return }
+        let dataPath = workingDir.appendingPathComponent("data")
+        
+        // First, read the active screenpack from config
+        let activeMotif = readActiveMotifFromConfig(in: workingDir)
+        
+        // Look for screenpack directories in data/
+        guard let dataDirs = try? fileManager.contentsOfDirectory(at: dataPath, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return
+        }
+        
+        for dir in dataDirs {
+            var isDirectory: ObjCBool = false
+            guard fileManager.fileExists(atPath: dir.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+                continue
+            }
+            
+            // Look for system.def in the directory
+            let systemDef = dir.appendingPathComponent("system.def")
+            if fileManager.fileExists(atPath: systemDef.path) {
+                // Check if this is the active screenpack
+                let relativePath = "data/\(dir.lastPathComponent)/system.def"
+                let isActive = (activeMotif == relativePath) || (activeMotif == dir.lastPathComponent)
+                
+                var screenpackInfo = ScreenpackInfo(defFile: systemDef, isActive: isActive)
+                foundScreenpacks.append(screenpackInfo)
+            }
+        }
+        
+        // Also check for system.def directly in data/ (default screenpack)
+        let defaultSystemDef = dataPath.appendingPathComponent("system.def")
+        if fileManager.fileExists(atPath: defaultSystemDef.path) {
+            let isActive = (activeMotif == "data/system.def") || (activeMotif == nil) || activeMotif?.isEmpty == true
+            var defaultScreenpack = ScreenpackInfo(defFile: defaultSystemDef, isActive: isActive)
+            foundScreenpacks.append(defaultScreenpack)
+        }
+        
+        DispatchQueue.main.async {
+            self.activeScreenpackPath = activeMotif
+            self.screenpacks = foundScreenpacks.sorted { 
+                // Active first, then alphabetical
+                if $0.isActive != $1.isActive {
+                    return $0.isActive
+                }
+                return $0.name.lowercased() < $1.name.lowercased() 
+            }
+        }
+        
+        print("Loaded \(foundScreenpacks.count) screenpacks, active: \(activeMotif ?? "default")")
+    }
+    
+    /// Read the active motif/screenpack path from Ikemen's config
+    private func readActiveMotifFromConfig(in workingDir: URL) -> String? {
+        // Ikemen GO uses save/config.json for runtime config
+        let configPath = workingDir.appendingPathComponent("save/config.json")
+        
+        if let data = try? Data(contentsOf: configPath),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let motif = json["Motif"] as? String {
+            return motif
+        }
+        
+        // Fallback to checking mugen.cfg or config.ini
+        let mugenCfgPath = workingDir.appendingPathComponent("data/mugen.cfg")
+        if let content = try? String(contentsOf: mugenCfgPath, encoding: .utf8) {
+            for line in content.components(separatedBy: .newlines) {
+                let trimmed = line.trimmingCharacters(in: .whitespaces).lowercased()
+                if trimmed.hasPrefix("motif") {
+                    if let equalsIndex = trimmed.firstIndex(of: "=") {
+                        let value = String(trimmed[trimmed.index(after: equalsIndex)...])
+                            .trimmingCharacters(in: .whitespaces)
+                            .replacingOccurrences(of: "\"", with: "")
+                        return value
+                    }
+                }
+            }
+        }
+        
+        return nil
+    }
+    
+    /// Set the active screenpack
+    func setActiveScreenpack(_ screenpack: ScreenpackInfo) {
+        guard let workingDir = engineWorkingDirectory else { return }
+        
+        // Calculate the relative path for the motif
+        let relativePath: String
+        if screenpack.defFile.deletingLastPathComponent().lastPathComponent == "data" {
+            // Default screenpack in data/system.def
+            relativePath = "data/system.def"
+        } else {
+            // Screenpack in subdirectory data/name/system.def
+            let folderName = screenpack.defFile.deletingLastPathComponent().lastPathComponent
+            relativePath = "data/\(folderName)/system.def"
+        }
+        
+        // Update config.json
+        let configPath = workingDir.appendingPathComponent("save/config.json")
+        
+        do {
+            var config: [String: Any] = [:]
+            
+            if let data = try? Data(contentsOf: configPath),
+               let existingConfig = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                config = existingConfig
+            }
+            
+            config["Motif"] = relativePath
+            
+            // Ensure save directory exists
+            let saveDir = workingDir.appendingPathComponent("save")
+            try? FileManager.default.createDirectory(at: saveDir, withIntermediateDirectories: true)
+            
+            let jsonData = try JSONSerialization.data(withJSONObject: config, options: [.prettyPrinted, .sortedKeys])
+            try jsonData.write(to: configPath)
+            
+            print("Set active screenpack to: \(relativePath)")
+            
+            // Reload screenpacks to update active state
+            loadScreenpacks()
+            
+        } catch {
+            print("Failed to set active screenpack: \(error)")
+        }
     }
     
     // MARK: - Engine Control

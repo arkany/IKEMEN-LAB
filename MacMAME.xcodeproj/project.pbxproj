@@ -28,6 +28,8 @@
 		019 /* DEFParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121 /* DEFParser.swift */; };
 		020 /* ImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122 /* ImageCache.swift */; };
 		021 /* ContentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 123 /* ContentManager.swift */; };
+		022 /* ScreenpackInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124 /* ScreenpackInfo.swift */; };
+		023 /* ScreenpackBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125 /* ScreenpackBrowserView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +54,8 @@
 		121 /* DEFParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DEFParser.swift; sourceTree = "<group>"; };
 		122 /* ImageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
 		123 /* ContentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentManager.swift; sourceTree = "<group>"; };
+		124 /* ScreenpackInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpackInfo.swift; sourceTree = "<group>"; };
+		125 /* ScreenpackBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpackBrowserView.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -163,6 +167,7 @@
 			children = (
 				113 /* CharacterBrowserView.swift */,
 				116 /* StageBrowserView.swift */,
+				125 /* ScreenpackBrowserView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -172,6 +177,7 @@
 			children = (
 				118 /* CharacterInfo.swift */,
 				119 /* StageInfo.swift */,
+				124 /* ScreenpackInfo.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -269,6 +275,8 @@
 				019 /* DEFParser.swift in Sources */,
 				020 /* ImageCache.swift in Sources */,
 				021 /* ContentManager.swift in Sources */,
+				022 /* ScreenpackInfo.swift in Sources */,
+				023 /* ScreenpackBrowserView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -8,7 +8,7 @@ enum NavItem: String, CaseIterable {
     case characters = "Characters"
     case stages = "Stages"
     case lifebars = "Lifebars"
-    case addons = "Add-ons"
+    case screenpacks = "Screenpacks"
     case settings = "Settings"
     
     var iconName: String {
@@ -17,7 +17,7 @@ enum NavItem: String, CaseIterable {
         case .characters: return "characters"
         case .stages: return "stages"
         case .lifebars: return "lifebars"
-        case .addons: return "addons"
+        case .screenpacks: return "screenpacks"
         case .settings: return "settings"
         }
     }
@@ -57,6 +57,7 @@ class GameWindowController: NSWindowController {
     private var dropZoneView: DropZoneView!
     private var characterBrowserView: CharacterBrowserView!
     private var stageBrowserView: StageBrowserView!
+    private var screenpackBrowserView: ScreenpackBrowserView!
     private var viewModeToggle: NSSegmentedControl!
     
     // View mode state
@@ -535,6 +536,20 @@ class GameWindowController: NSWindowController {
         }
         mainAreaView.addSubview(stageBrowserView)
         
+        // Screenpack Browser (hidden initially)
+        screenpackBrowserView = ScreenpackBrowserView(frame: .zero)
+        screenpackBrowserView.translatesAutoresizingMaskIntoConstraints = false
+        screenpackBrowserView.isHidden = true
+        screenpackBrowserView.onScreenpackSelected = { [weak self] screenpack in
+            let status = screenpack.isActive ? "\(screenpack.name) (Active)" : screenpack.name
+            self?.statusLabel.stringValue = status
+        }
+        screenpackBrowserView.onScreenpackActivate = { [weak self] screenpack in
+            IkemenBridge.shared.setActiveScreenpack(screenpack)
+            self?.statusLabel.stringValue = "Activated: \(screenpack.name)"
+        }
+        mainAreaView.addSubview(screenpackBrowserView)
+        
         NSLayoutConstraint.activate([
             // View mode toggle in top-right
             viewModeToggle.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
@@ -557,6 +572,12 @@ class GameWindowController: NSWindowController {
             stageBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             stageBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             stageBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
+            
+            // Screenpack browser fills main area (below toggle)
+            screenpackBrowserView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
+            screenpackBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
+            screenpackBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
+            screenpackBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
         ])
     }
     
@@ -564,6 +585,7 @@ class GameWindowController: NSWindowController {
         currentViewMode = sender.selectedSegment == 0 ? .grid : .list
         characterBrowserView.viewMode = currentViewMode
         stageBrowserView.viewMode = currentViewMode
+        screenpackBrowserView.viewMode = currentViewMode
     }
     
     private func updateMainAreaContent() {
@@ -573,7 +595,7 @@ class GameWindowController: NSWindowController {
         }
         
         // Show/hide view mode toggle for content browsers
-        let showToggle = selectedNavItem == .characters || selectedNavItem == .stages
+        let showToggle = selectedNavItem == .characters || selectedNavItem == .stages || selectedNavItem == .screenpacks
         viewModeToggle.isHidden = !showToggle
         
         // Show/hide appropriate views based on selection
@@ -582,28 +604,39 @@ class GameWindowController: NSWindowController {
             dropZoneView.isHidden = true
             characterBrowserView.isHidden = false
             stageBrowserView.isHidden = true
+            screenpackBrowserView.isHidden = true
             characterBrowserView.viewMode = currentViewMode
         case .stages:
             dropZoneView.isHidden = true
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = false
+            screenpackBrowserView.isHidden = true
             stageBrowserView.viewMode = currentViewMode
+        case .screenpacks:
+            dropZoneView.isHidden = true
+            characterBrowserView.isHidden = true
+            stageBrowserView.isHidden = true
+            screenpackBrowserView.isHidden = false
+            screenpackBrowserView.viewMode = currentViewMode
         case .settings:
             // Show settings panel
             dropZoneView.isHidden = true
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = true
+            screenpackBrowserView.isHidden = true
             showSettingsContent()
-        case .lifebars, .addons, .collections:
+        case .lifebars, .collections:
             // TODO: Implement other browsers
             dropZoneView.isHidden = false
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = true
+            screenpackBrowserView.isHidden = true
         case nil:
             // Empty state - show drop zone
             dropZoneView.isHidden = false
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = true
+            screenpackBrowserView.isHidden = true
         }
     }
     
