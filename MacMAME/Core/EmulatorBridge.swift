@@ -564,6 +564,7 @@ class IkemenBridge: ObservableObject {
         // Reload content after installation
         loadCharacters()
         loadStages()
+        loadScreenpacks()
         
         return result
     }
@@ -579,6 +580,7 @@ class IkemenBridge: ObservableObject {
         // Reload content after installation
         loadCharacters()
         loadStages()
+        loadScreenpacks()
         
         return result
     }

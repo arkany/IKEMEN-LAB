@@ -102,11 +102,29 @@ public final class ContentManager {
         }
     }
     
-    /// Install content from a folder (auto-detects character or stage)
+    /// Install content from a folder (auto-detects character, stage, or screenpack)
     public func installContentFolder(from folderURL: URL, to workingDir: URL) throws -> String {
         // Scan the folder to determine content type
         let contents = try fileManager.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
         let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
+        
+        // First check for screenpack (system.def with fight/select sections)
+        let systemDefFile = contents.first { $0.lastPathComponent.lowercased() == "system.def" }
+        if let systemDef = systemDefFile,
+           let defContent = try? String(contentsOf: systemDef, encoding: .utf8).lowercased() {
+            // Screenpack system.def has [Files] section referencing select, fight, etc.
+            let hasScreenpackFiles = defContent.contains("[files]") &&
+                                    (defContent.contains("select") || defContent.contains("fight") || defContent.contains("title"))
+            // Also check for [Title Info] or [Select Info] sections which are screenpack-specific
+            let hasScreenpackSections = defContent.contains("[title info]") || 
+                                       defContent.contains("[select info]") ||
+                                       defContent.contains("[vs screen]") ||
+                                       defContent.contains("[option info]")
+            
+            if hasScreenpackFiles || hasScreenpackSections {
+                return try installScreenpack(from: folderURL, to: workingDir)
+            }
+        }
         
         // Read DEF file to determine content type
         for defFile in defFiles {
@@ -143,6 +161,35 @@ public final class ContentManager {
         }
         
         throw IkemenError.invalidContent("Could not determine content type. Ensure the folder contains character files (.def, .sff, .air, .cmd, .cns) or stage files (.def, .sff).")
+    }
+    
+    // MARK: - Screenpack Installation
+    
+    /// Install a screenpack from a folder (copy to data/ directory)
+    public func installScreenpack(from source: URL, to workingDir: URL) throws -> String {
+        let dataDir = workingDir.appendingPathComponent("data")
+        let screenpackName = source.lastPathComponent
+        let destPath = dataDir.appendingPathComponent(screenpackName)
+        
+        // Try to get the display name from system.def
+        var displayName = screenpackName
+        let systemDefPath = source.appendingPathComponent("system.def")
+        if let parsed = DEFParser.parse(url: systemDefPath) {
+            displayName = parsed.name ?? parsed.value(for: "name", inSection: "info") ?? screenpackName
+        }
+        
+        // Check if screenpack already exists
+        let isUpdate = fileManager.fileExists(atPath: destPath.path)
+        if isUpdate {
+            // Remove old version
+            try fileManager.removeItem(at: destPath)
+        }
+        
+        // Copy to data directory
+        try fileManager.copyItem(at: source, to: destPath)
+        
+        let action = isUpdate ? "Updated" : "Installed"
+        return "\(action) screenpack: \(displayName)"
     }
     
     // MARK: - Character Installation
