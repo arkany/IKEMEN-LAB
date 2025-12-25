@@ -414,8 +414,10 @@ public final class ContentManager {
         var content = try String(contentsOf: selectDefPath, encoding: .utf8)
         
         // Check if character is already in the file
+        // Handle both forward slashes (Unix) and backslashes (Windows screenpacks)
         let folderName = charEntry.contains("/") ? String(charEntry.split(separator: "/").first!) : charEntry
-        let charPattern = "(?m)^\\s*\(NSRegularExpression.escapedPattern(for: folderName))(/|\\s|,|$)"
+        // Match folder name followed by slash (either direction), whitespace, comma, or end of line
+        let charPattern = "(?m)^\\s*\(NSRegularExpression.escapedPattern(for: folderName))(/|\\\\|\\s|,|$)"
         if let regex = try? NSRegularExpression(pattern: charPattern, options: .caseInsensitive),
            regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)) != nil {
             print("Character \(charEntry) already in \(selectDefPath.lastPathComponent)")
