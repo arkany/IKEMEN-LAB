@@ -47,9 +47,24 @@ public struct ScreenpackInfo: Identifiable, Hashable {
     public let sffFile: URL?         // Sprite file for preview
     public let localcoord: (width: Int, height: Int)?  // Native resolution
     public let components: ScreenpackComponents  // What's included
+    public let selectRows: Int       // Character select grid rows
+    public let selectColumns: Int    // Character select grid columns
     
     /// Whether this screenpack is currently active in Ikemen GO
     public var isActive: Bool = false
+    
+    /// Maximum character slots in the select screen (rows × columns)
+    public var characterSlots: Int {
+        return selectRows * selectColumns
+    }
+    
+    /// Character limit string for display (e.g., "546 slots (14×39)")
+    public var characterLimitString: String {
+        if selectRows > 0 && selectColumns > 0 {
+            return "\(characterSlots) slots (\(selectRows)×\(selectColumns))"
+        }
+        return "Unknown"
+    }
     
     /// Load preview image from screenpack SFF
     /// Typically uses sprite group 0 or a title screen element
@@ -178,6 +193,22 @@ public struct ScreenpackInfo: Identifiable, Hashable {
             }
         } else {
             self.localcoord = nil
+        }
+        
+        // Get character select grid size from [Select Info] section
+        // Format: rows = 14 ; columns = 39
+        if let rowsStr = parsed?.value(for: "rows", inSection: "select info"),
+           let rows = Int(rowsStr.trimmingCharacters(in: .whitespaces)) {
+            self.selectRows = rows
+        } else {
+            self.selectRows = 0
+        }
+        
+        if let colsStr = parsed?.value(for: "columns", inSection: "select info"),
+           let cols = Int(colsStr.trimmingCharacters(in: .whitespaces)) {
+            self.selectColumns = cols
+        } else {
+            self.selectColumns = 0
         }
     }
     
