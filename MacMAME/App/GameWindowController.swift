@@ -537,6 +537,9 @@ class GameWindowController: NSWindowController {
         characterDetailsView.onClose = { [weak self] in
             self?.hideCharacterDetails()
         }
+        characterDetailsView.onNameChanged = { [weak self] character, newName in
+            self?.updateCharacterName(character, newName: newName)
+        }
         mainAreaView.addSubview(characterDetailsView)
         
         // Stage Browser (hidden initially)
@@ -706,6 +709,46 @@ class GameWindowController: NSWindowController {
         } else {
             characterDetailsView.isHidden = true
             characterDetailsView.alphaValue = 1
+        }
+    }
+    
+    private func updateCharacterName(_ character: CharacterInfo, newName: String) {
+        // Update the name in the .def file
+        guard let content = try? String(contentsOf: character.defFile, encoding: .utf8) else {
+            statusLabel.stringValue = "Failed to read character file"
+            return
+        }
+        
+        var lines = content.components(separatedBy: "\n")
+        var modified = false
+        
+        for (index, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces).lowercased()
+            // Look for name= or displayname= line
+            if (trimmed.hasPrefix("name") || trimmed.hasPrefix("displayname")) && trimmed.contains("=") {
+                if let eqIdx = line.firstIndex(of: "=") {
+                    let key = String(line[..<eqIdx]).trimmingCharacters(in: .whitespaces)
+                    lines[index] = "\(key)=\"\(newName)\""
+                    modified = true
+                    // Only modify 'name' if there's no displayname, or modify displayname
+                    if trimmed.hasPrefix("displayname") {
+                        break // Prefer displayname
+                    }
+                }
+            }
+        }
+        
+        if modified {
+            let newContent = lines.joined(separator: "\n")
+            do {
+                try newContent.write(to: character.defFile, atomically: true, encoding: .utf8)
+                statusLabel.stringValue = "Renamed to \"\(newName)\""
+                
+                // Refresh the character list
+                IkemenBridge.shared.loadContent()
+            } catch {
+                statusLabel.stringValue = "Failed to save: \(error.localizedDescription)"
+            }
         }
     }
     

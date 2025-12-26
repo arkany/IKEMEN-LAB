@@ -37,9 +37,10 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 ### 📋 Planned
 - [x] Screenpack management (browse, activate, install, component detection)
 - [x] Character roster arrangement (drag-to-reorder in select.def)
-- [ ] Character details panel (author, version, palette count, file sizes, compatible with Ikemen/MUGEN)
-- [ ] Character move list viewer (parse .cmd file for commands like `~D, DF, F, x` → "↓↘→ + LP")
+- [x] Character details panel (author, version, palette count, editable name)
+- [x] Character move list viewer (parse .cmd file for commands like `~D, DF, F, x` → "↓↘→ + LP")
 - [ ] Animated idle stance in character details (parse .air Action 0, extract sprites from .sff, animate with timing)
+- [ ] Light/dark mode support
 - [ ] Detect screenpack character limit (parse `rows` × `columns` from system.def, e.g., MMMBE = 14×39 = 546 slots)
 - [ ] Content validator/fixer for imported chars & stages:
   - Path issues: root-relative vs file-relative, Windows backslashes, case sensitivity
