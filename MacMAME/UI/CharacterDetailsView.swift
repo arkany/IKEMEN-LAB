@@ -48,6 +48,22 @@ class CharacterDetailsView: NSView {
         setupContent()
     }
     
+    // MARK: - Event Handling
+    
+    // Capture all mouse events so they don't pass through to views underneath
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // If point is within our bounds, return self or a subview (don't return nil)
+        if bounds.contains(point) {
+            return super.hitTest(point) ?? self
+        }
+        return nil
+    }
+    
+    override func mouseDown(with event: NSEvent) {
+        // Consume the event - don't pass to superview
+        super.mouseDown(with: event)
+    }
+    
     // MARK: - Setup
     
     private func setupScrollView() {
