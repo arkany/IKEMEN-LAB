@@ -60,7 +60,20 @@ public struct StageInfo: Identifiable, Hashable {
         
         // Get sprite file reference
         if let sprName = parsed?.spriteFile {
-            self.sffFile = defFile.deletingLastPathComponent().appendingPathComponent(sprName)
+            // Normalize path separators (Windows backslashes to forward slashes)
+            let normalizedPath = sprName.replacingOccurrences(of: "\\", with: "/")
+            
+            // Check if it's a root-relative path (e.g., "stages/Bifrost.sff")
+            // vs a file-relative path (e.g., "Bifrost.sff")
+            if normalizedPath.contains("/") {
+                // Root-relative path - resolve from Ikemen GO working directory
+                // Go up from stages/ folder to root, then append the path
+                let rootDir = defFile.deletingLastPathComponent().deletingLastPathComponent()
+                self.sffFile = rootDir.appendingPathComponent(normalizedPath)
+            } else {
+                // File-relative path - resolve from same directory as .def
+                self.sffFile = defFile.deletingLastPathComponent().appendingPathComponent(normalizedPath)
+            }
         } else {
             self.sffFile = nil
         }

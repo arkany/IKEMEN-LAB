@@ -36,10 +36,23 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 ### 📋 Planned
 - [x] Screenpack management (browse, activate, install, component detection)
-- [ ] Character roster arrangement UI (screenpacks use grid layouts with empty slots for positioning)
-- [ ] Netplay lobby UI
+- [ ] Character roster arrangement (drag-to-reorder in select.def)
+- [ ] Character details panel (author, version, palette count, file sizes, compatible with Ikemen/MUGEN)
+- [ ] Character move list viewer (parse .cmd file for commands like `~D, DF, F, x` → "↓↘→ + LP")
+- [ ] Animated idle stance in character details (parse .air Action 0, extract sprites from .sff, animate with timing)
+- [ ] Detect screenpack character limit (parse `rows` × `columns` from system.def, e.g., MMMBE = 14×39 = 546 slots)
+- [ ] Content validator/fixer for imported chars & stages:
+  - Path issues: root-relative vs file-relative, Windows backslashes, case sensitivity
+  - Missing files: sprite/sound references that don't exist
+  - Portrait problems: wrong size, missing 9000,0 sprite
+  - Encoding issues: Shift-JIS, Latin-1, BOM markers
+  - Auto-fix safe issues on import, report others
+- [ ] Netplay IP manager (save/edit friend IPs in config.ini `[Netplay]` section - game handles actual connection)
 - [ ] Bundle Ikemen GO inside the .app for distribution
 - [ ] App Store preparation (sandbox, signing)
+
+### 🐛 Known Issues
+- [x] ~~Stage preview fails for stages using root-relative sprite paths~~ (fixed: now handles both `spr = stages/Bifrost.sff` and `spr = Bifrost.sff`)
 
 ### 🛠️ Technical Debt / Refactoring
 **Critical:**
@@ -201,23 +214,24 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 ## Phase 4 — Netplay UI
 
-**Outcome:** Friendly interface for Ikemen GO's built-in netplay.
+**Outcome:** Friendly interface for managing netplay connection info.
 
 ### Features
-- [ ] Host game UI (shows your IP/port)
-- [ ] Join game UI (enter host IP/port)
-- [ ] Connection status display
-- [ ] Recent connections history
-- [ ] Optional: Simple relay/lobby server
+- [ ] Manage saved IP addresses in config.ini `[Netplay]` section
+- [ ] Add/edit/delete friend IPs with nicknames (`IP.FriendName = 192.168.1.100`)
+- [ ] Configure listen port (default: 7500)
+- [ ] Toggle rollback vs delay netcode (`RollbackNetcode = 0/1`)
+- [ ] Display local IP for sharing with friends
 
 ### Notes
-- Ikemen GO has GGPO rollback built-in
-- We just need to surface the connection UI nicely
-- May need to parse Ikemen's netplay config
+- Ikemen GO handles actual connections through its in-game Network menu
+- We just pre-configure the IP list so friends appear in the connection menu
+- Config location: `save/config.ini` under `[Netplay]`
+- Rollback netcode uses GGPO (experimental but better for online play)
 
 ### Deliverables
-- Netplay menu in MacMugen
-- Can host and join matches through UI
+- Netplay settings panel in MacMugen preferences
+- Saved IPs appear in Ikemen GO's connection menu
 
 ---
 
@@ -249,7 +263,11 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 ## Phase 6 — Nice-to-Haves (Future)
 
 - [ ] Character favorites and ratings
-- [ ] Play history and statistics  
+- [ ] Play stats dashboard (parse `save/stats.json`):
+  - Top winning characters (from `clearcount`)
+  - Arcade mode rankings & high scores
+  - Total playtime per mode
+  - Win/loss records
 - [ ] Screenshot capture
 - [ ] Video recording
 - [ ] Twitch/streaming integration
