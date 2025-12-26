@@ -1,6 +1,12 @@
 import Cocoa
 import Combine
 
+// MARK: - Pasteboard Type for Character Drag
+
+extension NSPasteboard.PasteboardType {
+    static let characterDrag = NSPasteboard.PasteboardType("com.macmame.character-drag")
+}
+
 /// A visual browser for viewing installed characters with thumbnails
 /// Uses shared design system from UIHelpers.swift
 class CharacterBrowserView: NSView {
@@ -80,6 +86,10 @@ class CharacterBrowserView: NSView {
         collectionView.isSelectable = true
         collectionView.allowsMultipleSelection = false
         
+        // Enable drag-and-drop reordering
+        collectionView.registerForDraggedTypes([.characterDrag])
+        collectionView.setDraggingSourceOperationMask(.move, forLocal: true)
+        
         // Register item classes
         collectionView.register(CharacterCollectionViewItem.self, forItemWithIdentifier: CharacterCollectionViewItem.identifier)
         collectionView.register(CharacterListItem.self, forItemWithIdentifier: CharacterListItem.identifier)
@@ -144,7 +154,8 @@ class CharacterBrowserView: NSView {
     }
     
     private func updateCharacters(_ newCharacters: [CharacterInfo]) {
-        self.characters = newCharacters.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        // Keep characters in the order received (which comes from select.def via EmulatorBridge)
+        self.characters = newCharacters
         collectionView.reloadData()
         
         // Load portraits in background
@@ -271,6 +282,82 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
         guard let indexPath = indexPaths.first else { return }
         let character = characters[indexPath.item]
         onCharacterSelected?(character)
+    }
+    
+    // MARK: - Drag and Drop
+    
+    func collectionView(_ collectionView: NSCollectionView, canDragItemsAt indexPaths: Set<IndexPath>, with event: NSEvent) -> Bool {
+        return true
+    }
+    
+    func collectionView(_ collectionView: NSCollectionView, pasteboardWriterForItemAt indexPath: IndexPath) -> NSPasteboardWriting? {
+        let item = NSPasteboardItem()
+        // Store the index as string data
+        item.setString(String(indexPath.item), forType: .characterDrag)
+        return item
+    }
+    
+    func collectionView(_ collectionView: NSCollectionView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forItemsAt indexPaths: Set<IndexPath>) {
+        // Optional: could add visual feedback here
+    }
+    
+    func collectionView(_ collectionView: NSCollectionView, validateDrop draggingInfo: NSDraggingInfo, proposedIndexPath proposedDropIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>, dropOperation proposedDropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>) -> NSDragOperation {
+        
+        // Only accept drops between items (not on items)
+        if proposedDropOperation.pointee == .on {
+            proposedDropOperation.pointee = .before
+        }
+        
+        return .move
+    }
+    
+    func collectionView(_ collectionView: NSCollectionView, acceptDrop draggingInfo: NSDraggingInfo, indexPath: IndexPath, dropOperation: NSCollectionView.DropOperation) -> Bool {
+        
+        // Get the source index from the pasteboard
+        guard let pasteboardItem = draggingInfo.draggingPasteboard.pasteboardItems?.first,
+              let sourceIndexString = pasteboardItem.string(forType: .characterDrag),
+              let sourceIndex = Int(sourceIndexString) else {
+            return false
+        }
+        
+        var destinationIndex = indexPath.item
+        
+        // Adjust destination if moving down
+        if sourceIndex < destinationIndex {
+            destinationIndex -= 1
+        }
+        
+        // Don't do anything if not actually moving
+        guard sourceIndex != destinationIndex else { return false }
+        
+        // Perform the move in our data model
+        let movedCharacter = characters.remove(at: sourceIndex)
+        characters.insert(movedCharacter, at: destinationIndex)
+        
+        // Animate the move in the collection view
+        collectionView.animator().moveItem(at: IndexPath(item: sourceIndex, section: 0),
+                                           to: IndexPath(item: destinationIndex, section: 0))
+        
+        // Save the new order to select.def
+        saveCharacterOrder()
+        
+        return true
+    }
+    
+    /// Save the current character order to select.def
+    private func saveCharacterOrder() {
+        guard let workingDir = IkemenBridge.shared.workingDirectory else { return }
+        
+        let characterNames = characters.map { $0.directory.lastPathComponent }
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try ContentManager.shared.reorderCharacters(characterNames, in: workingDir)
+                print("Saved character order: \(characterNames)")
+            } catch {
+                print("Failed to save character order: \(error)")
+            }
+        }
     }
 }
 

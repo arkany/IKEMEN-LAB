@@ -383,6 +383,161 @@ public final class ContentManager {
     
     // MARK: - select.def Management
     
+    /// Read the character order from select.def
+    /// Returns an array of character folder names in the order they appear
+    public func readCharacterOrder(from workingDir: URL) -> [String] {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard let content = try? String(contentsOf: selectDefPath, encoding: .utf8) else {
+            return []
+        }
+        
+        var characters: [String] = []
+        var inCharactersSection = false
+        
+        for line in content.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            // Skip comments and empty lines
+            if trimmed.isEmpty || trimmed.hasPrefix(";") {
+                continue
+            }
+            
+            // Check for section headers
+            if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+                let section = trimmed.dropFirst().dropLast().lowercased()
+                inCharactersSection = (section == "characters")
+                continue
+            }
+            
+            // If we're in [Characters] section, extract character names
+            if inCharactersSection {
+                // Skip "empty" entries used for grid spacing
+                if trimmed.lowercased() == "empty" {
+                    continue
+                }
+                
+                // Extract character name (before any comma for stage assignment)
+                let charPart = trimmed.split(separator: ",").first ?? Substring(trimmed)
+                var charName = String(charPart).trimmingCharacters(in: .whitespaces)
+                
+                // Handle path separators - extract folder name
+                // Could be "kfm" or "kfm/alt.def" or "chars/kfm/kfm.def"
+                charName = charName.replacingOccurrences(of: "\\", with: "/")
+                if charName.contains("/") {
+                    // Get the first component (folder name)
+                    charName = String(charName.split(separator: "/").first ?? Substring(charName))
+                }
+                
+                if !charName.isEmpty && !characters.contains(charName) {
+                    characters.append(charName)
+                }
+            }
+        }
+        
+        return characters
+    }
+    
+    /// Reorder characters in select.def to match the given order
+    /// - Parameters:
+    ///   - newOrder: Array of character folder names in desired order
+    ///   - workingDir: The Ikemen GO working directory
+    public func reorderCharacters(_ newOrder: [String], in workingDir: URL) throws {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard fileManager.fileExists(atPath: selectDefPath.path) else {
+            throw NSError(domain: "ContentManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "select.def not found"])
+        }
+        
+        let content = try String(contentsOf: selectDefPath, encoding: .utf8)
+        let lines = content.components(separatedBy: "\n")
+        
+        var newLines: [String] = []
+        var inCharactersSection = false
+        var characterLines: [(name: String, line: String)] = []
+        
+        // First pass: collect all character lines and their names
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            // Check for section headers
+            if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+                let section = String(trimmed.dropFirst().dropLast()).lowercased()
+                
+                if inCharactersSection && section != "characters" {
+                    // We're leaving [Characters] section - write reordered characters first
+                    inCharactersSection = false
+                    
+                    // Sort character lines according to newOrder
+                    let sortedCharLines = sortCharacterLines(characterLines, order: newOrder)
+                    newLines.append(contentsOf: sortedCharLines)
+                }
+                
+                inCharactersSection = (section == "characters")
+                newLines.append(line)
+                continue
+            }
+            
+            if inCharactersSection {
+                // Skip comments and empty content lines (but keep them)
+                if trimmed.isEmpty || trimmed.hasPrefix(";") {
+                    newLines.append(line)
+                    continue
+                }
+                
+                // Skip "empty" entries - they're for grid spacing, preserve them at end
+                if trimmed.lowercased() == "empty" {
+                    // We'll handle empty entries differently - keep them in place
+                    newLines.append(line)
+                    continue
+                }
+                
+                // Extract character name for sorting
+                let charPart = trimmed.split(separator: ",").first ?? Substring(trimmed)
+                var charName = String(charPart).trimmingCharacters(in: .whitespaces)
+                charName = charName.replacingOccurrences(of: "\\", with: "/")
+                if charName.contains("/") {
+                    charName = String(charName.split(separator: "/").first ?? Substring(charName))
+                }
+                
+                characterLines.append((name: charName, line: line))
+            } else {
+                newLines.append(line)
+            }
+        }
+        
+        // Handle case where file ends while still in [Characters] section
+        if inCharactersSection && !characterLines.isEmpty {
+            let sortedCharLines = sortCharacterLines(characterLines, order: newOrder)
+            newLines.append(contentsOf: sortedCharLines)
+        }
+        
+        let newContent = newLines.joined(separator: "\n")
+        try newContent.write(to: selectDefPath, atomically: true, encoding: .utf8)
+        print("Reordered characters in select.def")
+    }
+    
+    /// Sort character lines according to the specified order
+    private func sortCharacterLines(_ lines: [(name: String, line: String)], order: [String]) -> [String] {
+        var result: [String] = []
+        var remaining = lines
+        
+        // First, add characters in the specified order
+        for name in order {
+            if let index = remaining.firstIndex(where: { $0.name.lowercased() == name.lowercased() }) {
+                result.append(remaining[index].line)
+                remaining.remove(at: index)
+            }
+        }
+        
+        // Add any remaining characters (not in the order list) at the end
+        for item in remaining {
+            result.append(item.line)
+        }
+        
+        return result
+    }
+    
     /// Add a character to all select.def files (main and screenpacks)
     public func addCharacterToSelectDef(_ charEntry: String, in workingDir: URL) throws {
         // Add to main select.def

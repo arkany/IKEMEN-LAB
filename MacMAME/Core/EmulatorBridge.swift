@@ -295,11 +295,35 @@ class IkemenBridge: ObservableObject {
             }
         }
         
+        // Sort characters according to select.def order
+        let selectDefOrder = ContentManager.shared.readCharacterOrder(from: workingDir)
+        let sortedCharacters = sortCharactersBy(selectDefOrder: selectDefOrder, characters: foundCharacters)
+        
         DispatchQueue.main.async {
-            self.characters = foundCharacters.sorted { $0.displayName.lowercased() < $1.displayName.lowercased() }
+            self.characters = sortedCharacters
         }
         
         print("Loaded \(foundCharacters.count) characters")
+    }
+    
+    /// Sort characters according to select.def order, with any unlisted characters at the end alphabetically
+    private func sortCharactersBy(selectDefOrder: [String], characters: [CharacterInfo]) -> [CharacterInfo] {
+        var result: [CharacterInfo] = []
+        var remaining = characters
+        
+        // First, add characters in select.def order
+        for name in selectDefOrder {
+            if let index = remaining.firstIndex(where: { $0.directory.lastPathComponent.lowercased() == name.lowercased() }) {
+                result.append(remaining[index])
+                remaining.remove(at: index)
+            }
+        }
+        
+        // Add remaining characters (not in select.def) alphabetically at the end
+        let sortedRemaining = remaining.sorted { $0.displayName.lowercased() < $1.displayName.lowercased() }
+        result.append(contentsOf: sortedRemaining)
+        
+        return result
     }
     
     /// Load all stages from the stages directory
