@@ -56,6 +56,8 @@ class GameWindowController: NSWindowController {
     // UI Elements - Main Area
     private var dropZoneView: DropZoneView!
     private var characterBrowserView: CharacterBrowserView!
+    private var characterDetailsView: CharacterDetailsView!
+    private var characterDetailsWidthConstraint: NSLayoutConstraint!
     private var stageBrowserView: StageBrowserView!
     private var screenpackBrowserView: ScreenpackBrowserView!
     private var viewModeToggle: NSSegmentedControl!
@@ -524,8 +526,18 @@ class GameWindowController: NSWindowController {
         characterBrowserView.isHidden = true
         characterBrowserView.onCharacterSelected = { [weak self] character in
             self?.statusLabel.stringValue = character.displayName
+            self?.showCharacterDetails(character)
         }
         mainAreaView.addSubview(characterBrowserView)
+        
+        // Character Details Panel (hidden initially, slides in from right)
+        characterDetailsView = CharacterDetailsView(frame: .zero)
+        characterDetailsView.translatesAutoresizingMaskIntoConstraints = false
+        characterDetailsView.isHidden = true
+        characterDetailsView.onClose = { [weak self] in
+            self?.hideCharacterDetails()
+        }
+        mainAreaView.addSubview(characterDetailsView)
         
         // Stage Browser (hidden initially)
         stageBrowserView = StageBrowserView(frame: .zero)
@@ -561,6 +573,9 @@ class GameWindowController: NSWindowController {
         }
         mainAreaView.addSubview(screenpackBrowserView)
         
+        // Character details panel width constraint (for animation)
+        characterDetailsWidthConstraint = characterDetailsView.widthAnchor.constraint(equalToConstant: 280)
+        
         NSLayoutConstraint.activate([
             // View mode toggle in top-right
             viewModeToggle.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
@@ -577,6 +592,12 @@ class GameWindowController: NSWindowController {
             characterBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             characterBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             characterBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
+            
+            // Character details panel on the right side
+            characterDetailsView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
+            characterDetailsView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
+            characterDetailsView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
+            characterDetailsWidthConstraint,
             
             // Stage browser fills main area (below toggle)
             stageBrowserView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
@@ -603,6 +624,11 @@ class GameWindowController: NSWindowController {
         // Remove settings view if not on settings tab
         if selectedNavItem != .settings {
             mainAreaView.subviews.filter { $0.identifier?.rawValue == "settingsView" }.forEach { $0.removeFromSuperview() }
+        }
+        
+        // Hide character details when switching away from characters
+        if selectedNavItem != .characters {
+            hideCharacterDetails(animated: false)
         }
         
         // Show/hide view mode toggle for content browsers
@@ -648,6 +674,38 @@ class GameWindowController: NSWindowController {
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = true
             screenpackBrowserView.isHidden = true
+        }
+    }
+    
+    // MARK: - Character Details Panel
+    
+    private func showCharacterDetails(_ character: CharacterInfo) {
+        characterDetailsView.configure(with: character)
+        characterDetailsView.isHidden = false
+        
+        // Animate slide-in
+        characterDetailsView.alphaValue = 0
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            characterDetailsView.animator().alphaValue = 1
+        }
+    }
+    
+    private func hideCharacterDetails(animated: Bool = true) {
+        guard !characterDetailsView.isHidden else { return }
+        
+        if animated {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.15
+                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                characterDetailsView.animator().alphaValue = 0
+            }, completionHandler: { [weak self] in
+                self?.characterDetailsView.isHidden = true
+            })
+        } else {
+            characterDetailsView.isHidden = true
+            characterDetailsView.alphaValue = 1
         }
     }
     

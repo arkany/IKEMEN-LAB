@@ -36,7 +36,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 ### 📋 Planned
 - [x] Screenpack management (browse, activate, install, component detection)
-- [ ] Character roster arrangement (drag-to-reorder in select.def)
+- [x] Character roster arrangement (drag-to-reorder in select.def)
 - [ ] Character details panel (author, version, palette count, file sizes, compatible with Ikemen/MUGEN)
 - [ ] Character move list viewer (parse .cmd file for commands like `~D, DF, F, x` → "↓↘→ + LP")
 - [ ] Animated idle stance in character details (parse .air Action 0, extract sprites from .sff, animate with timing)

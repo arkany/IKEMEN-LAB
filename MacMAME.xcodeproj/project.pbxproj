@@ -30,6 +30,7 @@
 		021 /* ContentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 123 /* ContentManager.swift */; };
 		022 /* ScreenpackInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124 /* ScreenpackInfo.swift */; };
 		023 /* ScreenpackBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125 /* ScreenpackBrowserView.swift */; };
+		024 /* CharacterDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126 /* CharacterDetailsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +57,7 @@
 		123 /* ContentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentManager.swift; sourceTree = "<group>"; };
 		124 /* ScreenpackInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpackInfo.swift; sourceTree = "<group>"; };
 		125 /* ScreenpackBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpackBrowserView.swift; sourceTree = "<group>"; };
+		126 /* CharacterDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDetailsView.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -166,6 +168,7 @@
 			isa = PBXGroup;
 			children = (
 				113 /* CharacterBrowserView.swift */,
+				126 /* CharacterDetailsView.swift */,
 				116 /* StageBrowserView.swift */,
 				125 /* ScreenpackBrowserView.swift */,
 			);
@@ -267,6 +270,7 @@
 				003 /* MetalView.swift in Sources */,
 				004 /* EmulatorBridge.swift in Sources */,
 				011 /* CharacterBrowserView.swift in Sources */,
+				024 /* CharacterDetailsView.swift in Sources */,
 				014 /* StageBrowserView.swift in Sources */,
 				015 /* SFFParser.swift in Sources */,
 				016 /* CharacterInfo.swift in Sources */,
