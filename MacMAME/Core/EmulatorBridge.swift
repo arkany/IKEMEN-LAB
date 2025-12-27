@@ -339,13 +339,28 @@ class IkemenBridge: ObservableObject {
         guard let workingDir = engineWorkingDirectory else { return }
         let engineStagesPath = workingDir.appendingPathComponent("stages")
         
-        guard let stageFiles = try? fileManager.contentsOfDirectory(at: engineStagesPath, includingPropertiesForKeys: nil) else {
+        // Search for .def files at top level and one level deep (in subdirectories)
+        guard let stageItems = try? fileManager.contentsOfDirectory(at: engineStagesPath, includingPropertiesForKeys: [.isDirectoryKey]) else {
             return
         }
         
-        for file in stageFiles where file.pathExtension.lowercased() == "def" {
-            let stageInfo = StageInfo(defFile: file)
-            foundStages.append(stageInfo)
+        for item in stageItems {
+            // Check if it's a .def file at top level
+            if item.pathExtension.lowercased() == "def" {
+                let stageInfo = StageInfo(defFile: item)
+                foundStages.append(stageInfo)
+            }
+            
+            // Check if it's a directory - look for .def files inside
+            var isDirectory: ObjCBool = false
+            if fileManager.fileExists(atPath: item.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                if let subItems = try? fileManager.contentsOfDirectory(at: item, includingPropertiesForKeys: nil) {
+                    for subItem in subItems where subItem.pathExtension.lowercased() == "def" {
+                        let stageInfo = StageInfo(defFile: subItem)
+                        foundStages.append(stageInfo)
+                    }
+                }
+            }
         }
         
         DispatchQueue.main.async {
