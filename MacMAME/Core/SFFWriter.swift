@@ -265,15 +265,35 @@ public final class SFFWriter {
     private static func createThumbnail(from image: NSImage, maxSize: CGFloat) -> NSImage {
         let originalSize = image.size
         let scale = min(maxSize / originalSize.width, maxSize / originalSize.height)
-        let newSize = NSSize(width: originalSize.width * scale, height: originalSize.height * scale)
+        let newWidth = Int(originalSize.width * scale)
+        let newHeight = Int(originalSize.height * scale)
         
-        let thumbnail = NSImage(size: newSize)
-        thumbnail.lockFocus()
-        image.draw(in: NSRect(origin: .zero, size: newSize),
+        // Use NSBitmapImageRep for reliable thumbnail creation
+        let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: newWidth,
+            pixelsHigh: newHeight,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: newWidth * 4,
+            bitsPerPixel: 32
+        )!
+        
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        
+        image.draw(in: NSRect(x: 0, y: 0, width: newWidth, height: newHeight),
                    from: NSRect(origin: .zero, size: originalSize),
                    operation: .copy,
                    fraction: 1.0)
-        thumbnail.unlockFocus()
+        
+        NSGraphicsContext.restoreGraphicsState()
+        
+        let thumbnail = NSImage(size: NSSize(width: newWidth, height: newHeight))
+        thumbnail.addRepresentation(rep)
         
         return thumbnail
     }

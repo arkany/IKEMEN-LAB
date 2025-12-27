@@ -9,7 +9,8 @@ public final class StageGenerator {
     
     public enum StageGenerationError: LocalizedError {
         case imageLoadFailed(URL)
-        case invalidImageSize
+        case invalidImageSize(width: Int, height: Int)
+        case imageTooLarge(width: Int, height: Int)
         case directoryCreationFailed(String)
         case sffWriteFailed(String)
         case defWriteFailed(String)
@@ -19,8 +20,10 @@ public final class StageGenerator {
             switch self {
             case .imageLoadFailed(let url):
                 return "Failed to load image: \(url.lastPathComponent)"
-            case .invalidImageSize:
-                return "Image must be at least 320x240 pixels"
+            case .invalidImageSize(let width, let height):
+                return "Image too small (\(width)x\(height)). Minimum size is 320x240 pixels."
+            case .imageTooLarge(let width, let height):
+                return "Image too large (\(width)x\(height)). Maximum recommended size is 4096x4096 pixels."
             case .directoryCreationFailed(let detail):
                 return "Failed to create stage directory: \(detail)"
             case .sffWriteFailed(let detail):
@@ -136,8 +139,16 @@ public final class StageGenerator {
         
         // Validate image size
         let size = image.size
-        guard size.width >= 320 && size.height >= 240 else {
-            return .failure(.invalidImageSize)
+        let width = Int(size.width)
+        let height = Int(size.height)
+        
+        guard width >= 320 && height >= 240 else {
+            return .failure(.invalidImageSize(width: width, height: height))
+        }
+        
+        // Warn about very large images (Ikemen GO may have performance issues)
+        if width > 4096 || height > 4096 {
+            return .failure(.imageTooLarge(width: width, height: height))
         }
         
         // Create a safe directory name from the stage name
@@ -203,8 +214,16 @@ public final class StageGenerator {
         
         // Validate image size
         let size = image.size
-        guard size.width >= 320 && size.height >= 240 else {
-            return .failure(.invalidImageSize)
+        let width = Int(size.width)
+        let height = Int(size.height)
+        
+        guard width >= 320 && height >= 240 else {
+            return .failure(.invalidImageSize(width: width, height: height))
+        }
+        
+        // Warn about very large images (Ikemen GO may have performance issues)
+        if width > 4096 || height > 4096 {
+            return .failure(.imageTooLarge(width: width, height: height))
         }
         
         // Create a safe directory name from the stage name

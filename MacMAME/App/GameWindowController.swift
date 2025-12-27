@@ -1081,32 +1081,53 @@ class GameWindowController: NSWindowController {
     }
     
     private func showStageCreationDialog(forImage imageURL: URL) {
-        // Get the stage name from the user
+        // Get the stage name and author from the user
         let alert = NSAlert()
         alert.messageText = "Create Stage"
-        alert.informativeText = "Enter a name for the new stage:"
+        alert.informativeText = "Enter details for the new stage:"
         alert.addButton(withTitle: "Create")
         alert.addButton(withTitle: "Cancel")
         
-        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        input.stringValue = imageURL.deletingPathExtension().lastPathComponent
-        input.placeholderString = "Stage Name"
-        alert.accessoryView = input
+        // Create a container for multiple fields
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 60))
+        
+        // Stage name field
+        let nameLabel = NSTextField(labelWithString: "Name:")
+        nameLabel.frame = NSRect(x: 0, y: 36, width: 50, height: 20)
+        container.addSubview(nameLabel)
+        
+        let nameInput = NSTextField(frame: NSRect(x: 55, y: 34, width: 245, height: 24))
+        nameInput.stringValue = imageURL.deletingPathExtension().lastPathComponent
+        nameInput.placeholderString = "Stage Name"
+        container.addSubview(nameInput)
+        
+        // Author field
+        let authorLabel = NSTextField(labelWithString: "Author:")
+        authorLabel.frame = NSRect(x: 0, y: 4, width: 50, height: 20)
+        container.addSubview(authorLabel)
+        
+        let authorInput = NSTextField(frame: NSRect(x: 55, y: 2, width: 245, height: 24))
+        authorInput.stringValue = NSFullUserName()
+        authorInput.placeholderString = "Your Name"
+        container.addSubview(authorInput)
+        
+        alert.accessoryView = container
         
         alert.beginSheetModal(for: window!) { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
             
-            let stageName = input.stringValue.trimmingCharacters(in: .whitespaces)
+            let stageName = nameInput.stringValue.trimmingCharacters(in: .whitespaces)
             guard !stageName.isEmpty else {
                 self?.showAlert(title: "Invalid Name", message: "Please enter a stage name.")
                 return
             }
             
-            self?.createStage(from: imageURL, name: stageName)
+            let author = authorInput.stringValue.trimmingCharacters(in: .whitespaces)
+            self?.createStage(from: imageURL, name: stageName, author: author.isEmpty ? "Unknown" : author)
         }
     }
     
-    private func createStage(from imageURL: URL, name: String) {
+    private func createStage(from imageURL: URL, name: String, author: String = "MacMugen") {
         // Find the stages directory
         guard let workingDir = ikemenBridge.workingDirectory else {
             showAlert(title: "Error", message: "Ikemen GO directory not found.")
@@ -1116,7 +1137,8 @@ class GameWindowController: NSWindowController {
         let stagesDir = workingDir.appendingPathComponent("stages")
         
         // Create the stage with default options
-        let options = StageGenerator.StageOptions.withDefaults(name: name)
+        var options = StageGenerator.StageOptions.withDefaults(name: name)
+        options.author = author
         
         let result = StageGenerator.generate(from: imageURL, in: stagesDir, options: options)
         
