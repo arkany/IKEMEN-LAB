@@ -97,8 +97,12 @@ public final class SFFWriter {
         // Reserved (4 bytes)
         data.append(contentsOf: [UInt8](repeating: 0, count: 4))
         
+        // Reserved (4 bytes) - padding before sprite offset field at byte 36
+        data.append(contentsOf: [UInt8](repeating: 0, count: 4))
+        
         // Calculate offsets
-        let headerSize: UInt32 = 36
+        // SFF v2 header is 68 bytes total (fields end at byte 68)
+        let headerSize: UInt32 = 68
         let spriteNodeSize: UInt32 = 28
         let paletteNodeSize: UInt32 = 16
         
