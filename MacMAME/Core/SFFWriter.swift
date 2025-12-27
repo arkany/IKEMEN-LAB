@@ -252,10 +252,10 @@ public final class SFFWriter {
             // Create background sprite (group 0, image 0)
             let bgSprite = try SpriteEntry(group: 0, image: 0, x: 0, y: 0, image: image)
             
-            // Optionally create a thumbnail sprite (group 9000, image 0)
-            // This is used for stage select preview
+            // Create thumbnail sprite (group 9000, image 1)
+            // Ikemen GO expects stage.portrait.spr = 9000,1 for stage select preview
             let thumbnailImage = createThumbnail(from: image, maxSize: 320)
-            let thumbSprite = try SpriteEntry(group: 9000, image: 0, x: 0, y: 0, image: thumbnailImage)
+            let thumbSprite = try SpriteEntry(group: 9000, image: 1, x: 0, y: 0, image: thumbnailImage)
             
             return write(sprites: [bgSprite, thumbSprite], to: outputURL)
         } catch let error as SFFWriteError {
