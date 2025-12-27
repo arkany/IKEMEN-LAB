@@ -1144,6 +1144,11 @@ class GameWindowController: NSWindowController {
         
         switch result {
         case .success(let generated):
+            // Register stage in select.def so it appears in Ikemen GO
+            let dataDir = workingDir.appendingPathComponent("data")
+            let relativePath = generated.stageDirectory.lastPathComponent + "/" + generated.defFile.lastPathComponent
+            StageGenerator.registerStageInSelectDef(stagePath: relativePath, dataDirectory: dataDir)
+            
             // Refresh stages list
             ikemenBridge.refreshStages()
             stageBrowserView.refresh()

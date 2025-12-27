@@ -387,4 +387,53 @@ public final class StageGenerator {
         
         return content
     }
+    
+    // MARK: - Select.def Registration
+    
+    /// Register a stage in select.def so it appears in Ikemen GO
+    /// - Parameters:
+    ///   - stagePath: Path to the stage .def file relative to the stages directory (e.g., "MyStage/MyStage.def")
+    ///   - dataDirectory: The Ikemen GO data directory containing select.def
+    /// - Returns: true if registration succeeded, false otherwise
+    @discardableResult
+    public static func registerStageInSelectDef(stagePath: String, dataDirectory: URL) -> Bool {
+        let selectDefURL = dataDirectory.appendingPathComponent("select.def")
+        
+        guard FileManager.default.fileExists(atPath: selectDefURL.path) else {
+            print("select.def not found at \(selectDefURL.path)")
+            return false
+        }
+        
+        do {
+            var content = try String(contentsOf: selectDefURL, encoding: .utf8)
+            
+            // Check if stage is already registered
+            let stageEntry = "stages/\(stagePath)"
+            if content.contains(stageEntry) {
+                print("Stage already registered: \(stageEntry)")
+                return true
+            }
+            
+            // Find [ExtraStages] section and add the stage after it
+            if let range = content.range(of: "[ExtraStages]") {
+                // Find the end of the line containing [ExtraStages]
+                let searchStart = range.upperBound
+                if let lineEnd = content[searchStart...].firstIndex(of: "\n") {
+                    // Insert after the [ExtraStages] line
+                    let insertionPoint = content.index(after: lineEnd)
+                    content.insert(contentsOf: stageEntry + "\n", at: insertionPoint)
+                    
+                    try content.write(to: selectDefURL, atomically: true, encoding: .utf8)
+                    print("Registered stage: \(stageEntry)")
+                    return true
+                }
+            }
+            
+            print("Could not find [ExtraStages] section in select.def")
+            return false
+        } catch {
+            print("Failed to update select.def: \(error)")
+            return false
+        }
+    }
 }
