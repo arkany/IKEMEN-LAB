@@ -31,6 +31,9 @@
 		022 /* ScreenpackInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124 /* ScreenpackInfo.swift */; };
 		023 /* ScreenpackBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125 /* ScreenpackBrowserView.swift */; };
 		024 /* CharacterDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126 /* CharacterDetailsView.swift */; };
+		025 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127 /* AppSettings.swift */; };
+		026 /* SFFWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128 /* SFFWriter.swift */; };
+		027 /* StageGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129 /* StageGenerator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +61,9 @@
 		124 /* ScreenpackInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpackInfo.swift; sourceTree = "<group>"; };
 		125 /* ScreenpackBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpackBrowserView.swift; sourceTree = "<group>"; };
 		126 /* CharacterDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterDetailsView.swift; sourceTree = "<group>"; };
+		127 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		128 /* SFFWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFFWriter.swift; sourceTree = "<group>"; };
+		129 /* StageGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageGenerator.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -147,6 +153,9 @@
 				121 /* DEFParser.swift */,
 				122 /* ImageCache.swift */,
 				123 /* ContentManager.swift */,
+				127 /* AppSettings.swift */,
+				128 /* SFFWriter.swift */,
+				129 /* StageGenerator.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -281,6 +290,9 @@
 				021 /* ContentManager.swift in Sources */,
 				022 /* ScreenpackInfo.swift in Sources */,
 				023 /* ScreenpackBrowserView.swift in Sources */,
+				025 /* AppSettings.swift in Sources */,
+				026 /* SFFWriter.swift in Sources */,
+				027 /* StageGenerator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

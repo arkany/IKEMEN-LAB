@@ -259,6 +259,11 @@ class IkemenBridge: ObservableObject {
         loadScreenpacks()
     }
     
+    /// Refresh stages list from disk
+    func refreshStages() {
+        loadStages()
+    }
+    
     /// Load all characters from the chars directory
     private func loadCharacters() {
         var foundCharacters: [CharacterInfo] = []

@@ -61,6 +61,7 @@ class GameWindowController: NSWindowController {
     private var stageBrowserView: StageBrowserView!
     private var screenpackBrowserView: ScreenpackBrowserView!
     private var viewModeToggle: NSSegmentedControl!
+    private var createStageButton: NSButton!
     
     // View mode state
     private var currentViewMode: BrowserViewMode = .grid
@@ -520,6 +521,14 @@ class GameWindowController: NSWindowController {
         viewModeToggle.isHidden = true
         mainAreaView.addSubview(viewModeToggle)
         
+        // Create Stage from PNG button (hidden by default, shown when on stages tab)
+        createStageButton = NSButton(title: "Create from PNG", target: self, action: #selector(createStageFromPNG(_:)))
+        createStageButton.translatesAutoresizingMaskIntoConstraints = false
+        createStageButton.bezelStyle = .rounded
+        createStageButton.isHidden = true
+        createStageButton.toolTip = "Create a new stage from a PNG image"
+        mainAreaView.addSubview(createStageButton)
+        
         // Character Browser (hidden initially)
         characterBrowserView = CharacterBrowserView(frame: .zero)
         characterBrowserView.translatesAutoresizingMaskIntoConstraints = false
@@ -584,6 +593,10 @@ class GameWindowController: NSWindowController {
             viewModeToggle.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
             viewModeToggle.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             
+            // Create stage button - to the left of view mode toggle
+            createStageButton.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
+            createStageButton.trailingAnchor.constraint(equalTo: viewModeToggle.leadingAnchor, constant: -12),
+            
             // Drop zone fills main area with padding
             dropZoneView.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
             dropZoneView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
@@ -637,6 +650,10 @@ class GameWindowController: NSWindowController {
         // Show/hide view mode toggle for content browsers
         let showToggle = selectedNavItem == .characters || selectedNavItem == .stages || selectedNavItem == .screenpacks
         viewModeToggle.isHidden = !showToggle
+        
+        // Show/hide create stage button (only on stages tab and when feature is enabled)
+        let showCreateStageButton = selectedNavItem == .stages && AppSettings.shared.enablePNGStageCreation
+        createStageButton.isHidden = !showCreateStageButton
         
         // Show/hide appropriate views based on selection
         switch selectedNavItem {
@@ -815,6 +832,17 @@ class GameWindowController: NSWindowController {
         ])
         stackView.addArrangedSubview(audioSection)
         
+        // Advanced Features Section
+        let advancedSection = createSettingsSection(title: "Advanced", settings: [
+            createAppToggleSetting(
+                label: "Create Stage from PNG",
+                description: "Enable creating stages from PNG images",
+                getValue: { AppSettings.shared.enablePNGStageCreation },
+                setValue: { AppSettings.shared.enablePNGStageCreation = $0 }
+            ),
+        ])
+        stackView.addArrangedSubview(advancedSection)
+        
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: container.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
@@ -955,6 +983,45 @@ class GameWindowController: NSWindowController {
         return row
     }
     
+    /// Create a toggle setting backed by AppSettings (not Ikemen config)
+    private func createAppToggleSetting(label: String, description: String, getValue: @escaping () -> Bool, setValue: @escaping (Bool) -> Void) -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.spacing = 4
+        container.alignment = .leading
+        
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.spacing = 16
+        row.alignment = .centerY
+        
+        let labelField = NSTextField(labelWithString: label)
+        labelField.font = jerseyFont(size: 24)
+        labelField.textColor = creamText
+        labelField.widthAnchor.constraint(equalToConstant: 200).isActive = true
+        row.addArrangedSubview(labelField)
+        
+        let toggle = NSSwitch()
+        toggle.state = getValue() ? .on : .off
+        
+        // Create a wrapper to handle the toggle action
+        let handler = AppToggleHandler(getValue: getValue, setValue: setValue)
+        toggle.target = handler
+        toggle.action = #selector(AppToggleHandler.toggleChanged(_:))
+        objc_setAssociatedObject(toggle, &AppToggleHandler.associatedKey, handler, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        row.addArrangedSubview(toggle)
+        container.addArrangedSubview(row)
+        
+        // Add description label
+        let descLabel = NSTextField(labelWithString: description)
+        descLabel.font = NSFont.systemFont(ofSize: 12)
+        descLabel.textColor = grayText
+        container.addArrangedSubview(descLabel)
+        
+        return container
+    }
+    
     // MARK: - Settings Actions
     
     @objc private func resolutionChanged(_ sender: NSPopUpButton) {
@@ -987,6 +1054,93 @@ class GameWindowController: NSWindowController {
         }
         
         saveIkemenConfigValue(section: section, key: key, value: "\(sender.intValue)")
+    }
+    
+    // MARK: - Stage Creation
+    
+    @objc private func createStageFromPNG(_ sender: NSButton) {
+        // Check if feature is enabled
+        guard AppSettings.shared.enablePNGStageCreation else {
+            showAlert(title: "Feature Disabled", message: "PNG stage creation is disabled. Enable it in Settings → Advanced.")
+            return
+        }
+        
+        // Open file picker for PNG
+        let openPanel = NSOpenPanel()
+        openPanel.title = "Select a PNG Image"
+        openPanel.message = "Choose a PNG image to use as a stage background"
+        openPanel.allowedContentTypes = [.png]
+        openPanel.allowsMultipleSelection = false
+        openPanel.canChooseDirectories = false
+        openPanel.canChooseFiles = true
+        
+        openPanel.beginSheetModal(for: window!) { [weak self] response in
+            guard response == .OK, let url = openPanel.url else { return }
+            self?.showStageCreationDialog(forImage: url)
+        }
+    }
+    
+    private func showStageCreationDialog(forImage imageURL: URL) {
+        // Get the stage name from the user
+        let alert = NSAlert()
+        alert.messageText = "Create Stage"
+        alert.informativeText = "Enter a name for the new stage:"
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+        
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        input.stringValue = imageURL.deletingPathExtension().lastPathComponent
+        input.placeholderString = "Stage Name"
+        alert.accessoryView = input
+        
+        alert.beginSheetModal(for: window!) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            
+            let stageName = input.stringValue.trimmingCharacters(in: .whitespaces)
+            guard !stageName.isEmpty else {
+                self?.showAlert(title: "Invalid Name", message: "Please enter a stage name.")
+                return
+            }
+            
+            self?.createStage(from: imageURL, name: stageName)
+        }
+    }
+    
+    private func createStage(from imageURL: URL, name: String) {
+        // Find the stages directory
+        guard let workingDir = ikemenBridge.workingDirectory else {
+            showAlert(title: "Error", message: "Ikemen GO directory not found.")
+            return
+        }
+        
+        let stagesDir = workingDir.appendingPathComponent("stages")
+        
+        // Create the stage with default options
+        let options = StageGenerator.StageOptions.withDefaults(name: name)
+        
+        let result = StageGenerator.generate(from: imageURL, in: stagesDir, options: options)
+        
+        switch result {
+        case .success(let generated):
+            // Refresh stages list
+            ikemenBridge.refreshStages()
+            stageBrowserView.refresh()
+            
+            // Show success message
+            showAlert(title: "Stage Created", message: "Successfully created stage '\(generated.stageName)' at:\n\(generated.stageDirectory.path)")
+            statusLabel.stringValue = "Created stage: \(generated.stageName)"
+            
+        case .failure(let error):
+            showAlert(title: "Stage Creation Failed", message: error.localizedDescription)
+        }
+    }
+    
+    private func showAlert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.addButton(withTitle: "OK")
+        alert.beginSheetModal(for: window!, completionHandler: nil)
     }
     
     // MARK: - Config File Helpers
@@ -1108,6 +1262,14 @@ class GameWindowController: NSWindowController {
             .sink { [weak self] stages in
                 self?.stagesCountLabel?.stringValue = "\(stages.count)"
                 self?.updateNavItemCount(.stages, count: stages.count)
+            }
+            .store(in: &cancellables)
+        
+        // Observe settings changes to update UI
+        NotificationCenter.default.publisher(for: .settingsChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateMainAreaContent()
             }
             .store(in: &cancellables)
     }
@@ -1556,5 +1718,24 @@ extension NSView {
             }
         }
         return nil
+    }
+}
+
+// MARK: - App Toggle Handler
+
+/// Helper class to handle app settings toggle callbacks with closures
+private class AppToggleHandler: NSObject {
+    static var associatedKey: UInt8 = 0
+    
+    let getValue: () -> Bool
+    let setValue: (Bool) -> Void
+    
+    init(getValue: @escaping () -> Bool, setValue: @escaping (Bool) -> Void) {
+        self.getValue = getValue
+        self.setValue = setValue
+    }
+    
+    @objc func toggleChanged(_ sender: NSSwitch) {
+        setValue(sender.state == .on)
     }
 }
