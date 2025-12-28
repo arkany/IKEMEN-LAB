@@ -40,8 +40,9 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 ### 🔄 In Progress
 - [ ] Apply design system to remaining views (Characters, Stages, Settings)
 
-### � Known Issues
+### ⚠️ Known Issues
 - [x] ~~Stage preview fails for stages using root-relative sprite paths~~ (fixed: now handles both `spr = stages/Bifrost.sff` and `spr = Bifrost.sff`)
+- [ ] Dashboard card navigation incomplete — Fighters/Stages card clicks fire callbacks but `selectNavItem()` not navigating
 
 ### 🛠️ Technical Debt / Refactoring
 **Critical:**
@@ -80,7 +81,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 |---------|--------|-------|
 | Download → unzip → validate → install | ✅ Done | ZIP, RAR, 7z, folders supported |
 | Fix common folder issues | ✅ Done | Auto-detect correct path structure |
-| Normalize folder names + metadata | 📋 Todo | Sanitize names, consistent casing |
+| Normalize folder names + metadata | ✅ Done | Sanitize names (spaces→underscores, Title_Case, preserve acronyms) |
 | Auto-generate portraits (basic) | ✅ Done | Portrait fix tool (160x160) |
 | Update select.def | ✅ Done | Auto-add with correct paths |
 | Local metadata index (SQLite) | 📋 Todo | Persistent character/stage database |

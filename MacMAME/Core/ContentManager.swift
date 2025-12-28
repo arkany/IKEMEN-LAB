@@ -19,6 +19,210 @@ public final class ContentManager {
     
     private init() {}
     
+    // MARK: - Folder Name Sanitization
+    
+    /// Sanitize a folder name to be filesystem-friendly and consistent
+    /// Rules:
+    /// - Replace spaces with underscores
+    /// - Remove special characters except hyphens and underscores
+    /// - Collapse multiple underscores/hyphens
+    /// - Trim leading/trailing underscores/hyphens
+    /// - Convert to Title_Case for consistency (preserving acronyms and hyphenated words)
+    public func sanitizeFolderName(_ name: String) -> String {
+        var sanitized = name
+        
+        // Replace spaces with underscores
+        sanitized = sanitized.replacingOccurrences(of: " ", with: "_")
+        
+        // Remove characters that aren't alphanumeric, underscore, or hyphen
+        sanitized = sanitized.unicodeScalars.filter { scalar in
+            CharacterSet.alphanumerics.contains(scalar) ||
+            scalar == "_" ||
+            scalar == "-"
+        }.map { String($0) }.joined()
+        
+        // Collapse multiple underscores/hyphens into single underscore
+        while sanitized.contains("__") {
+            sanitized = sanitized.replacingOccurrences(of: "__", with: "_")
+        }
+        while sanitized.contains("--") {
+            sanitized = sanitized.replacingOccurrences(of: "--", with: "-")
+        }
+        sanitized = sanitized.replacingOccurrences(of: "_-", with: "_")
+        sanitized = sanitized.replacingOccurrences(of: "-_", with: "_")
+        
+        // Trim leading/trailing underscores and hyphens
+        sanitized = sanitized.trimmingCharacters(in: CharacterSet(charactersIn: "_-"))
+        
+        // Convert to Title_Case: capitalize first letter and letters after underscores/hyphens
+        // Process underscore-separated segments
+        sanitized = sanitized.components(separatedBy: "_")
+            .map { segment in
+                // Process hyphen-separated parts within each segment
+                segment.components(separatedBy: "-")
+                    .map { word in
+                        guard !word.isEmpty else { return word }
+                        // Check if it's all caps (like "KFM", "MVD", "FIX") - keep as-is
+                        if word.uppercased() == word && word.count <= 4 {
+                            return word
+                        }
+                        // Check if it's a version number or has digits at end (like "man2") - preserve structure
+                        if word.last?.isNumber == true {
+                            let letters = word.prefix(while: { !$0.isNumber })
+                            let numbers = word.suffix(from: letters.endIndex)
+                            if letters.isEmpty {
+                                return word
+                            }
+                            return letters.prefix(1).uppercased() + letters.dropFirst().lowercased() + numbers
+                        }
+                        // Otherwise capitalize first letter, lowercase rest
+                        return word.prefix(1).uppercased() + word.dropFirst().lowercased()
+                    }
+                    .joined(separator: "-")
+            }
+            .joined(separator: "_")
+        
+        // Handle empty result
+        if sanitized.isEmpty {
+            sanitized = "Unnamed"
+        }
+        
+        return sanitized
+    }
+    
+    /// Check if a folder name needs sanitization
+    public func needsSanitization(_ name: String) -> Bool {
+        return sanitizeFolderName(name) != name
+    }
+    
+    /// Rename a content folder to its sanitized name
+    /// Returns the new name if renamed, nil if no rename needed or failed
+    @discardableResult
+    public func sanitizeContentFolder(at folderURL: URL, updateSelectDef: Bool = true, workingDir: URL? = nil) throws -> String? {
+        let originalName = folderURL.lastPathComponent
+        let sanitizedName = sanitizeFolderName(originalName)
+        
+        // No change needed
+        if sanitizedName == originalName {
+            return nil
+        }
+        
+        let parentDir = folderURL.deletingLastPathComponent()
+        let newPath = parentDir.appendingPathComponent(sanitizedName)
+        
+        // Check if target already exists
+        if fileManager.fileExists(atPath: newPath.path) {
+            // Target exists - append number to avoid collision
+            var counter = 2
+            var uniquePath = parentDir.appendingPathComponent("\(sanitizedName)_\(counter)")
+            while fileManager.fileExists(atPath: uniquePath.path) {
+                counter += 1
+                uniquePath = parentDir.appendingPathComponent("\(sanitizedName)_\(counter)")
+            }
+            try fileManager.moveItem(at: folderURL, to: uniquePath)
+            
+            // Update select.def if requested
+            if updateSelectDef, let workDir = workingDir {
+                updateSelectDefEntry(from: originalName, to: uniquePath.lastPathComponent, in: workDir)
+            }
+            
+            return uniquePath.lastPathComponent
+        }
+        
+        // Rename the folder
+        try fileManager.moveItem(at: folderURL, to: newPath)
+        
+        // Update select.def if requested
+        if updateSelectDef, let workDir = workingDir {
+            updateSelectDefEntry(from: originalName, to: sanitizedName, in: workDir)
+        }
+        
+        // Clear image cache for old name
+        ImageCache.shared.clearCharacter(originalName)
+        
+        return sanitizedName
+    }
+    
+    /// Update select.def when a character/stage is renamed
+    private func updateSelectDefEntry(from oldName: String, to newName: String, in workingDir: URL) {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard fileManager.fileExists(atPath: selectDefPath.path),
+              var content = try? String(contentsOf: selectDefPath, encoding: .utf8) else {
+            return
+        }
+        
+        // Replace entries (handle both "charname" and "charname/def.def" formats)
+        // Case-insensitive replacement for the folder name part
+        let patterns = [
+            (oldName, newName),                              // Exact match
+            ("\(oldName)/", "\(newName)/"),                  // With path separator
+        ]
+        
+        for (old, new) in patterns {
+            // Case-insensitive search and replace
+            if let range = content.range(of: old, options: .caseInsensitive) {
+                content = content.replacingCharacters(in: range, with: new)
+            }
+        }
+        
+        try? content.write(to: selectDefPath, atomically: true, encoding: .utf8)
+    }
+    
+    /// Batch sanitize all character folders
+    /// Returns array of (oldName, newName) for renamed folders
+    public func sanitizeAllCharacters(in workingDir: URL) throws -> [(String, String)] {
+        let charsDir = workingDir.appendingPathComponent("chars")
+        var renamed: [(String, String)] = []
+        
+        guard let folders = try? fileManager.contentsOfDirectory(at: charsDir, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return renamed
+        }
+        
+        for folder in folders {
+            var isDir: ObjCBool = false
+            guard fileManager.fileExists(atPath: folder.path, isDirectory: &isDir), isDir.boolValue else {
+                continue
+            }
+            
+            let oldName = folder.lastPathComponent
+            if oldName.hasPrefix(".") { continue }  // Skip hidden
+            
+            if let newName = try sanitizeContentFolder(at: folder, updateSelectDef: true, workingDir: workingDir) {
+                renamed.append((oldName, newName))
+            }
+        }
+        
+        return renamed
+    }
+    
+    /// Batch sanitize all stage folders
+    /// Returns array of (oldName, newName) for renamed folders
+    public func sanitizeAllStages(in workingDir: URL) throws -> [(String, String)] {
+        let stagesDir = workingDir.appendingPathComponent("stages")
+        var renamed: [(String, String)] = []
+        
+        guard let folders = try? fileManager.contentsOfDirectory(at: stagesDir, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return renamed
+        }
+        
+        for folder in folders {
+            var isDir: ObjCBool = false
+            guard fileManager.fileExists(atPath: folder.path, isDirectory: &isDir), isDir.boolValue else {
+                continue
+            }
+            
+            let oldName = folder.lastPathComponent
+            if oldName.hasPrefix(".") { continue }  // Skip hidden
+            
+            if let newName = try sanitizeContentFolder(at: folder, updateSelectDef: true, workingDir: workingDir) {
+                renamed.append((oldName, newName))
+            }
+        }
+        
+        return renamed
+    }
+    
     // MARK: - Content Installation
     
     /// Install content from an archive file (zip, rar, 7z - auto-detects character or stage)
@@ -272,7 +476,9 @@ public final class ContentManager {
             }
         }
         
-        let destPath = charsDir.appendingPathComponent(charName)
+        // Sanitize the folder name for consistency
+        let sanitizedName = sanitizeFolderName(charName)
+        let destPath = charsDir.appendingPathComponent(sanitizedName)
         
         // Check if character already exists
         let isUpdate = fileManager.fileExists(atPath: destPath.path)
@@ -280,14 +486,14 @@ public final class ContentManager {
             // Remove old version
             try fileManager.removeItem(at: destPath)
             // Clear cached images
-            ImageCache.shared.clearCharacter(charName)
+            ImageCache.shared.clearCharacter(sanitizedName)
         }
         
         // Copy to chars directory
         try fileManager.copyItem(at: source, to: destPath)
         
         // Find the .def file to determine the correct select.def entry
-        let defEntry = findCharacterDefEntry(charName: charName, in: destPath)
+        let defEntry = findCharacterDefEntry(charName: sanitizedName, in: destPath)
         
         // Add to select.def if not already present
         if !isUpdate {
@@ -295,7 +501,12 @@ public final class ContentManager {
         }
         
         // Check for portrait issues and generate warning
-        let warnings = validateCharacterPortrait(in: destPath)
+        var warnings = validateCharacterPortrait(in: destPath)
+        
+        // Note if folder was renamed
+        if sanitizedName != charName {
+            warnings.append("Renamed from '\(charName)'")
+        }
         
         if !warnings.isEmpty {
             return "Installed character: \(displayName) ⚠️ \(warnings.joined(separator: ", "))"
@@ -347,10 +558,22 @@ public final class ContentManager {
         
         let contents = try fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
         var installedStages: [String] = []
+        var renamedFiles: [(String, String)] = []
         
         for file in contents {
             let ext = file.pathExtension.lowercased()
-            let destPath = stagesDir.appendingPathComponent(file.lastPathComponent)
+            let originalName = file.deletingPathExtension().lastPathComponent
+            
+            // Sanitize the filename (without extension)
+            let sanitizedBaseName = sanitizeFolderName(originalName)
+            let sanitizedFileName = ext.isEmpty ? sanitizedBaseName : "\(sanitizedBaseName).\(ext)"
+            
+            let destPath = stagesDir.appendingPathComponent(sanitizedFileName)
+            
+            // Track if we renamed
+            if sanitizedFileName != file.lastPathComponent {
+                renamedFiles.append((file.lastPathComponent, sanitizedFileName))
+            }
             
             // Remove existing file if present
             if fileManager.fileExists(atPath: destPath.path) {
@@ -360,10 +583,9 @@ public final class ContentManager {
             try fileManager.copyItem(at: file, to: destPath)
             
             if ext == "def" {
-                let stageName = file.deletingPathExtension().lastPathComponent
-                installedStages.append(stageName)
+                installedStages.append(sanitizedBaseName)
                 // Clear cached images
-                ImageCache.shared.clearStage(stageName)
+                ImageCache.shared.clearStage(sanitizedBaseName)
             }
         }
         
@@ -372,13 +594,22 @@ public final class ContentManager {
             try addStageToSelectDef(stageName, in: workingDir)
         }
         
+        var result: String
         if installedStages.count == 1 {
-            return "Installed stage: \(installedStages[0])"
+            result = "Installed stage: \(installedStages[0])"
         } else if installedStages.count > 1 {
-            return "Installed \(installedStages.count) stages: \(installedStages.joined(separator: ", "))"
+            result = "Installed \(installedStages.count) stages: \(installedStages.joined(separator: ", "))"
         } else {
-            return "No stages found to install"
+            result = "No stages found to install"
         }
+        
+        // Note any renamed files
+        if !renamedFiles.isEmpty {
+            let renamedNote = renamedFiles.map { "\($0.0) → \($0.1)" }.joined(separator: ", ")
+            result += " (renamed: \(renamedNote))"
+        }
+        
+        return result
     }
     
     // MARK: - select.def Management
