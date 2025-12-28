@@ -249,15 +249,17 @@ public final class SFFWriter {
     /// - Returns: Result indicating success or failure
     public static func writeStageBackground(image: NSImage, to outputURL: URL) -> Result<Void, SFFWriteError> {
         do {
+            // Create thumbnail sprite FIRST (group 9000, image 1)
+            // Ikemen GO expects stage.portrait.spr = 9000,1 for stage select preview
+            // Use 240x100 to match working stage0-720 thumbnail size
+            // With portraitscale=4 in DEF, this scales to proper display size
+            let thumbnailImage = createStageThumbnail(from: image, targetWidth: 240, targetHeight: 100)
+            let thumbSprite = try SpriteEntry(group: 9000, image: 1, x: 0, y: 0, image: thumbnailImage)
+            
             // Create background sprite (group 0, image 0)
             let bgSprite = try SpriteEntry(group: 0, image: 0, x: 0, y: 0, image: image)
             
-            // Create thumbnail sprite (group 9000, image 1)
-            // Ikemen GO expects stage.portrait.spr = 9000,1 for stage select preview
-            let thumbnailImage = createThumbnail(from: image, maxSize: 320)
-            let thumbSprite = try SpriteEntry(group: 9000, image: 1, x: 0, y: 0, image: thumbnailImage)
-            
-            return write(sprites: [bgSprite, thumbSprite], to: outputURL)
+            return write(sprites: [thumbSprite, bgSprite], to: outputURL)
         } catch let error as SFFWriteError {
             return .failure(error)
         } catch {
@@ -297,6 +299,61 @@ public final class SFFWriter {
         NSGraphicsContext.restoreGraphicsState()
         
         let thumbnail = NSImage(size: NSSize(width: newWidth, height: newHeight))
+        thumbnail.addRepresentation(rep)
+        
+        return thumbnail
+    }
+    
+    /// Create a stage thumbnail with fixed target dimensions (crops/scales to fit wide format)
+    private static func createStageThumbnail(from image: NSImage, targetWidth: Int, targetHeight: Int) -> NSImage {
+        let originalSize = image.size
+        
+        // Calculate the crop region to extract a wide section from the center of the image
+        // We want to capture the center portion that will look best as a thumbnail
+        let targetAspect = CGFloat(targetWidth) / CGFloat(targetHeight)
+        let originalAspect = originalSize.width / originalSize.height
+        
+        var sourceRect: NSRect
+        
+        if originalAspect > targetAspect {
+            // Original is wider than target - crop width from center
+            let newWidth = originalSize.height * targetAspect
+            let xOffset = (originalSize.width - newWidth) / 2
+            sourceRect = NSRect(x: xOffset, y: 0, width: newWidth, height: originalSize.height)
+        } else {
+            // Original is taller than target - crop height from center-top (where action usually is)
+            let newHeight = originalSize.width / targetAspect
+            // Bias toward top of image where the interesting content usually is in stages
+            let yOffset = originalSize.height - newHeight - (originalSize.height * 0.1)
+            sourceRect = NSRect(x: 0, y: max(0, yOffset), width: originalSize.width, height: newHeight)
+        }
+        
+        // Create the thumbnail bitmap
+        let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: targetWidth,
+            pixelsHigh: targetHeight,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: targetWidth * 4,
+            bitsPerPixel: 32
+        )!
+        
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        
+        // Draw the cropped region scaled to target size
+        image.draw(in: NSRect(x: 0, y: 0, width: targetWidth, height: targetHeight),
+                   from: sourceRect,
+                   operation: .copy,
+                   fraction: 1.0)
+        
+        NSGraphicsContext.restoreGraphicsState()
+        
+        let thumbnail = NSImage(size: NSSize(width: targetWidth, height: targetHeight))
         thumbnail.addRepresentation(rep)
         
         return thumbnail

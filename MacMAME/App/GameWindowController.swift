@@ -835,8 +835,8 @@ class GameWindowController: NSWindowController {
         // Advanced Features Section
         let advancedSection = createSettingsSection(title: "Advanced", settings: [
             createAppToggleSetting(
-                label: "Create Stage from PNG",
-                description: "Enable creating stages from PNG images",
+                label: "EXPERIMENTAL: Create Stage from PNG",
+                description: "Enable creating stages from PNG images (experimental feature)",
                 getValue: { AppSettings.shared.enablePNGStageCreation },
                 setValue: { AppSettings.shared.enablePNGStageCreation = $0 }
             ),

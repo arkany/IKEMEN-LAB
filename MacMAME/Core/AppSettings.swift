@@ -18,7 +18,7 @@ public final class AppSettings {
     
     private func registerDefaults() {
         defaults.register(defaults: [
-            Keys.enablePNGStageCreation: true,
+            Keys.enablePNGStageCreation: false,
             Keys.defaultStageZoom: 1.0,
             Keys.defaultStageBoundLeft: -150,
             Keys.defaultStageBoundRight: 150,

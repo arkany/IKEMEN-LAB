@@ -39,6 +39,10 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 - [x] Character roster arrangement (drag-to-reorder in select.def)
 - [x] Character details panel (author, version, palette count, editable name)
 - [x] Character move list viewer (parse .cmd file for commands like `~D, DF, F, x` → "↓↘→ + LP")
+- [ ] Right-click context menu for characters/stages:
+  - Delete (move to Trash, remove from select.def)
+  - Reveal in Finder
+  - Duplicate
 - [ ] Animated idle stance in character details (parse .air Action 0, extract sprites from .sff, animate with timing)
 - [ ] Light/dark mode support
 - [ ] Detect screenpack character limit (parse `rows` × `columns` from system.def, e.g., MMMBE = 14×39 = 546 slots)
@@ -263,6 +267,10 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 ## Phase 6 — Nice-to-Haves (Future)
 
+- [ ] Stage thumbnail generator for stages missing 9000,1 sprite:
+  - Show "Missing Thumbnail" label on stage list items without preview
+  - Add "Generate" button on right side of list item
+  - Extract background sprite (group 0), scale down, inject as 9000,1
 - [ ] Character favorites and ratings
 - [ ] Play stats dashboard (parse `save/stats.json`):
   - Top winning characters (from `clearcount`)
