@@ -30,6 +30,11 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 - [x] Grid/list view toggle for characters and stages
 - [x] Settings panel (resolution, fullscreen, etc.)
 - [x] Portrait fix tool (generate/resize 160x160 portraits)
+- [x] Right-click context menus for characters/stages (Reveal in Finder, Remove)
+
+### 🔄 In Progress
+- [ ] **Design System Overhaul** — Modern dark theme (zinc palette, Manrope/Montserrat fonts)
+- [ ] **Dashboard Page** — Overview with stats, quick actions, recent installs
 
 ### � Known Issues
 - [x] ~~Stage preview fails for stages using root-relative sprite paths~~ (fixed: now handles both `spr = stages/Bifrost.sff` and `spr = Bifrost.sff`)
@@ -79,6 +84,34 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 | Drag-and-drop feedback UI | 🔄 In Progress | Show success/failure in drop zone |
 
 **Why this phase matters:** This gives you the compiler core. Everything else plugs into this.
+
+---
+
+### 🎨 Dashboard Page — "The Command Center"
+**Focus:** At-a-glance overview + quick actions  
+**Goal:** Make the app feel like a proper content manager, not just a file browser
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Overview Header** | 📋 Todo | "Manage your local MUGEN instance assets and configuration" |
+| **Stats Cards Row** | 📋 Todo | 4-column grid with glass panel styling |
+| ├─ Active Fighters | 📋 Todo | Count with +N badge for recent additions |
+| ├─ Installed Stages | 📋 Todo | Count from select.def |
+| ├─ Storage Used | 📋 Todo | Calculate chars/ + stages/ folder sizes, show limit |
+| └─ Launch Game | 📋 Todo | Primary action button with "Last played X ago" |
+| **Install Content Drop Zone** | 📋 Todo | Dashed border, cloud icon, accepts drag-and-drop |
+| **Recently Installed Table** | 📋 Todo | Name, Type (Char/Stage badge), Date, Status toggle |
+| **Quick Settings Panel** | 📋 Todo | V-Sync, Fullscreen, Debug Mode toggles |
+| **Master Volume Slider** | 📋 Todo | Horizontal slider with track/thumb styling |
+| **Screenpack Promo Card** | 📋 Todo | "New Screenpack available" with Install button |
+
+**Design System (from HTML reference):**
+- Color palette: Tailwind zinc (950/900/800/700/600/500/400)
+- Fonts: Montserrat (headers, semibold, tracking-wider), Manrope (body/nav)
+- Borders: white/5 (subtle), white/10 (hover)
+- Cards: Glass panel effect (gradient from white/3% to transparent)
+- Corner radius: 12px (rounded-xl)
+- Sidebar: 256px width, fixed left
 
 ---
 
@@ -135,7 +168,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 | Stage roster pools | 📋 Todo | Random stage selection per match |
 | Portrait generator v2 | 📋 Todo | Better cropping, style presets, batch processing |
 | Auto-fixer v2 | 📋 Todo | CNS patching, missing sprites, AI tweaks |
-| Right-click context menus | 📋 Todo | Delete, Reveal in Finder, Duplicate |
+| Right-click context menus | ✅ Done | Reveal in Finder, Remove (characters + stages) |
 | Light/dark mode support | 📋 Todo | Respect system appearance |
 | Export/share curated sets | 📋 Todo | Export collection as shareable package |
 | Netplay IP manager | 📋 Todo | Save/edit friend IPs in config.ini |
