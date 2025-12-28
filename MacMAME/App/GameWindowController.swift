@@ -560,6 +560,12 @@ class GameWindowController: NSWindowController {
         dashboardView.onFilesDropped = { [weak self] urls in
             self?.handleDroppedFiles(urls)
         }
+        dashboardView.onCharactersClicked = { [weak self] in
+            self?.selectNavItem(.characters)
+        }
+        dashboardView.onStagesClicked = { [weak self] in
+            self?.selectNavItem(.stages)
+        }
         mainAreaView.addSubview(dashboardView)
         
         // Drop Zone (visible in empty state - legacy, kept for other views)
@@ -1512,6 +1518,7 @@ class GameWindowController: NSWindowController {
             .sink { [weak self] characters in
                 self?.charactersCountLabel?.stringValue = "\(characters.count)"
                 self?.updateNavItemCount(.characters, count: characters.count)
+                self?.updateDashboardStats()
             }
             .store(in: &cancellables)
         
@@ -1520,6 +1527,7 @@ class GameWindowController: NSWindowController {
             .sink { [weak self] stages in
                 self?.stagesCountLabel?.stringValue = "\(stages.count)"
                 self?.updateNavItemCount(.stages, count: stages.count)
+                self?.updateDashboardStats()
             }
             .store(in: &cancellables)
         

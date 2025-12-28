@@ -6,6 +6,8 @@ class DashboardView: NSView {
     // MARK: - Callbacks
     var onLaunchGame: (() -> Void)?
     var onFilesDropped: (([URL]) -> Void)?
+    var onCharactersClicked: (() -> Void)?
+    var onStagesClicked: (() -> Void)?
     
     // MARK: - UI Elements
     private var scrollView: NSScrollView!
@@ -120,22 +122,30 @@ class DashboardView: NSView {
         cardsContainer.distribution = .fillEqually
         cardsContainer.translatesAutoresizingMaskIntoConstraints = false
         
-        // Fighters card
+        // Fighters card - clickable to navigate to Characters
         let (fightersCard, fightersLabel) = createStatCard(
             icon: "person.2.fill",
             title: "Active Fighters",
             value: "0"
         )
         fightersCountLabel = fightersLabel
+        fightersCard.onClick = { [weak self] in
+            print("[DashboardView] Fighters card onClick triggered")
+            self?.charactersCardClicked()
+        }
         cardsContainer.addArrangedSubview(fightersCard)
         
-        // Stages card
+        // Stages card - clickable to navigate to Stages
         let (stagesCard, stagesLabel) = createStatCard(
             icon: "photo.fill",
             title: "Installed Stages",
             value: "0"
         )
         stagesCountLabel = stagesLabel
+        stagesCard.onClick = { [weak self] in
+            print("[DashboardView] Stages card onClick triggered")
+            self?.stagesCardClicked()
+        }
         cardsContainer.addArrangedSubview(stagesCard)
         
         // Storage card
@@ -157,102 +167,148 @@ class DashboardView: NSView {
         contentStack.addArrangedSubview(cardsContainer)
     }
     
-    private func createStatCard(icon: String, title: String, value: String) -> (NSView, NSTextField) {
-        let card = NSView()
+    private func createStatCard(icon: String, title: String, value: String) -> (HoverableStatCard, NSTextField) {
+        let card = HoverableStatCard()
         card.translatesAutoresizingMaskIntoConstraints = false
-        card.wantsLayer = true
-        card.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        card.layer?.cornerRadius = 12
-        card.layer?.borderWidth = 1
-        card.layer?.borderColor = DesignColors.borderSubtle.cgColor
         
         let stack = NSStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.orientation = .vertical
-        stack.spacing = 8
+        stack.spacing = 4
         stack.alignment = .leading
         card.addSubview(stack)
         
-        // Icon
+        // Icon container - w-8 h-8 rounded bg-zinc-900 border border-white/5
+        let iconContainer = NSView()
+        iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.wantsLayer = true
+        iconContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor  // zinc-900 #18181b
+        iconContainer.layer?.cornerRadius = 4  // rounded (not rounded-lg)
+        iconContainer.layer?.borderWidth = 1
+        iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor  // white/5
+        iconContainer.identifier = NSUserInterfaceItemIdentifier("iconContainer")
+        stack.addArrangedSubview(iconContainer)
+        
         let iconView = NSImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.image = NSImage(systemSymbolName: icon, accessibilityDescription: nil)
-        iconView.contentTintColor = DesignColors.textSecondary
-        iconView.symbolConfiguration = .init(pointSize: 20, weight: .medium)
-        stack.addArrangedSubview(iconView)
+        iconView.contentTintColor = DesignColors.textSecondary  // zinc-400, changes to white on hover
+        iconView.symbolConfiguration = .init(pointSize: 14, weight: .regular)
+        iconView.identifier = NSUserInterfaceItemIdentifier("iconView")
+        iconContainer.addSubview(iconView)
         
-        // Title
-        let titleLabel = NSTextField(labelWithString: title)
-        titleLabel.font = DesignFonts.caption(size: 12)
-        titleLabel.textColor = DesignColors.textSecondary
-        stack.addArrangedSubview(titleLabel)
+        NSLayoutConstraint.activate([
+            iconContainer.widthAnchor.constraint(equalToConstant: 32),  // w-8
+            iconContainer.heightAnchor.constraint(equalToConstant: 32), // h-8
+            iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+        ])
         
-        // Value
+        // Spacer to push value down (mb-4 = margin-bottom 16px on icon row)
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.heightAnchor.constraint(equalToConstant: 12).isActive = true
+        stack.addArrangedSubview(spacer)
+        
+        // Value - text-2xl (24px) font-montserrat font-semibold tracking-wider
         let valueLabel = NSTextField(labelWithString: value)
-        valueLabel.font = DesignFonts.header(size: 32)
+        valueLabel.font = DesignFonts.header(size: 24)
         valueLabel.textColor = DesignColors.textPrimary
         stack.addArrangedSubview(valueLabel)
         
+        // Title - text-xs (12px) text-zinc-500
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = DesignFonts.caption(size: 12)
+        titleLabel.textColor = DesignColors.textTertiary  // zinc-500
+        stack.addArrangedSubview(titleLabel)
+        
         NSLayoutConstraint.activate([
-            card.heightAnchor.constraint(equalToConstant: 120),
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),  // p-5
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: card.bottomAnchor, constant: -20),
         ])
+        
+        // Add click button on top of all subviews
+        card.finalizeSetup()
         
         return (card, valueLabel)
     }
     
     private func createLaunchCard() -> NSView {
-        let card = NSView()
+        // Launch card matches CSS: glass-panel with special white icon and hover effect
+        let card = HoverableLaunchCard()
         card.translatesAutoresizingMaskIntoConstraints = false
-        card.wantsLayer = true
-        card.layer?.backgroundColor = DesignColors.positive.withAlphaComponent(0.15).cgColor
-        card.layer?.cornerRadius = 12
-        card.layer?.borderWidth = 1
-        card.layer?.borderColor = DesignColors.positive.withAlphaComponent(0.3).cgColor
         
         let stack = NSStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.orientation = .vertical
-        stack.spacing = 8
+        stack.spacing = 4
         stack.alignment = .leading
         card.addSubview(stack)
         
-        // Icon
+        // Icon container - w-8 h-8 rounded bg-white text-zinc-950 with glow
+        let iconContainer = NSView()
+        iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.wantsLayer = true
+        iconContainer.layer?.backgroundColor = NSColor.white.cgColor
+        iconContainer.layer?.cornerRadius = 4
+        iconContainer.layer?.borderWidth = 1
+        iconContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        // shadow-[0_0_15px_rgba(255,255,255,0.15)]
+        iconContainer.layer?.shadowColor = NSColor.white.cgColor
+        iconContainer.layer?.shadowOpacity = 0.15
+        iconContainer.layer?.shadowRadius = 15
+        iconContainer.layer?.shadowOffset = .zero
+        stack.addArrangedSubview(iconContainer)
+        
         let iconView = NSImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: nil)
-        iconView.contentTintColor = DesignColors.positive
-        iconView.symbolConfiguration = .init(pointSize: 20, weight: .medium)
-        stack.addArrangedSubview(iconView)
-        
-        // Title
-        let titleLabel = NSTextField(labelWithString: "Launch Game")
-        titleLabel.font = DesignFonts.caption(size: 12)
-        titleLabel.textColor = DesignColors.positive
-        stack.addArrangedSubview(titleLabel)
-        
-        // Last played
-        lastPlayedLabel = NSTextField(labelWithString: "Ready to play")
-        lastPlayedLabel.font = DesignFonts.body(size: 14)
-        lastPlayedLabel.textColor = DesignColors.textSecondary
-        stack.addArrangedSubview(lastPlayedLabel)
-        
-        // Launch button
-        let launchButton = NSButton(title: "Play Now", target: self, action: #selector(launchButtonClicked))
-        launchButton.translatesAutoresizingMaskIntoConstraints = false
-        launchButton.bezelStyle = .rounded
-        launchButton.controlSize = .large
-        launchButton.font = DesignFonts.body(size: 14)
-        stack.addArrangedSubview(launchButton)
+        iconView.contentTintColor = DesignColors.background  // zinc-950
+        iconView.symbolConfiguration = .init(pointSize: 14, weight: .regular)
+        iconContainer.addSubview(iconView)
         
         NSLayoutConstraint.activate([
-            card.heightAnchor.constraint(equalToConstant: 120),
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            iconContainer.widthAnchor.constraint(equalToConstant: 32),
+            iconContainer.heightAnchor.constraint(equalToConstant: 32),
+            iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
         ])
+        
+        // Spacer (mt-6 in HTML)
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.heightAnchor.constraint(equalToConstant: 20).isActive = true
+        stack.addArrangedSubview(spacer)
+        
+        // Title - text-lg font-medium tracking-tight
+        let titleLabel = NSTextField(labelWithString: "Launch Game")
+        titleLabel.font = DesignFonts.body(size: 16)
+        titleLabel.textColor = DesignColors.textPrimary
+        stack.addArrangedSubview(titleLabel)
+        
+        // Last played - text-xs text-zinc-500
+        lastPlayedLabel = NSTextField(labelWithString: "Ready to play")
+        lastPlayedLabel.font = DesignFonts.caption(size: 12)
+        lastPlayedLabel.textColor = DesignColors.textTertiary
+        stack.addArrangedSubview(lastPlayedLabel)
+        
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: card.bottomAnchor, constant: -20),
+        ])
+        
+        // Add click callback to entire card
+        card.onClick = { [weak self] in
+            print("[DashboardView] Launch card onClick triggered")
+            self?.launchButtonClicked()
+        }
+        
+        // Add click button on top of all subviews
+        card.finalizeSetup()
         
         return card
     }
@@ -396,6 +452,16 @@ class DashboardView: NSView {
     
     @objc private func launchButtonClicked() {
         onLaunchGame?()
+    }
+    
+    @objc private func charactersCardClicked() {
+        print("[DashboardView] charactersCardClicked - calling onCharactersClicked callback")
+        onCharactersClicked?()
+    }
+    
+    @objc private func stagesCardClicked() {
+        print("[DashboardView] stagesCardClicked - calling onStagesClicked callback")
+        onStagesClicked?()
     }
     
     @objc private func settingToggled(_ sender: NSSwitch) {
@@ -644,5 +710,354 @@ class DashboardDropZone: NSView {
             return validExtensions.contains(url.pathExtension.lowercased())
         }
         return false
+    }
+}
+
+// MARK: - Hoverable Stat Card
+
+/// A stats card with hover effect matching CSS:
+/// glass-panel p-5 rounded-lg border border-white/5 hover:border-white/10 transition-colors
+class HoverableStatCard: NSView {
+    
+    private var trackingArea: NSTrackingArea?
+    private var gradientLayer: CAGradientLayer?
+    private var clickButton: NSButton?  // Transparent overlay for clicks
+    var onClick: (() -> Void)?  // Click callback
+    private var isHovered = false {
+        didSet {
+            updateAppearance(animated: true)
+        }
+    }
+    
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupAppearance()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupAppearance()
+    }
+    
+    private func setupClickHandler() {
+        print("[HoverableStatCard] setupClickHandler called")
+        // Create transparent button overlay for click handling
+        let button = NSButton(frame: bounds)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.isBordered = false
+        button.title = ""
+        button.bezelStyle = .shadowlessSquare
+        button.setButtonType(.momentaryChange)
+        button.target = self
+        button.action = #selector(buttonClicked)
+        button.alphaValue = 0.001  // Nearly invisible but still clickable
+        addSubview(button, positioned: .above, relativeTo: nil)  // Add on top of all subviews
+        print("[HoverableStatCard] Button added ABOVE all subviews, target=\(String(describing: button.target)), action=\(String(describing: button.action))")
+        
+        NSLayoutConstraint.activate([
+            button.topAnchor.constraint(equalTo: topAnchor),
+            button.leadingAnchor.constraint(equalTo: leadingAnchor),
+            button.trailingAnchor.constraint(equalTo: trailingAnchor),
+            button.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+        clickButton = button
+    }
+    
+    // Call this after all subviews are added
+    func finalizeSetup() {
+        print("[HoverableStatCard] finalizeSetup - adding click handler on top")
+        setupClickHandler()
+    }
+    
+    @objc private func buttonClicked() {
+        print("[HoverableStatCard] buttonClicked! onClick callback: \(onClick != nil ? "SET" : "NIL")")
+        // Animate press
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.08
+            context.allowsImplicitAnimation = true
+            self.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
+        } completionHandler: {
+            // Animate release
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.1
+                context.allowsImplicitAnimation = true
+                self.layer?.setAffineTransform(.identity)
+            } completionHandler: {
+                print("[HoverableStatCard] Animation complete, calling onClick")
+                self.onClick?()
+            }
+        }
+    }
+    
+    private func setupAppearance() {
+        wantsLayer = true
+        layer?.cornerRadius = 8  // rounded-lg
+        layer?.borderWidth = 1
+        layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor  // border-white/5
+        
+        // Glass panel gradient: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)
+        let gradient = CAGradientLayer()
+        gradient.colors = [
+            NSColor.white.withAlphaComponent(0.03).cgColor,
+            NSColor.white.withAlphaComponent(0.0).cgColor
+        ]
+        gradient.locations = [0.0, 1.0]
+        gradient.cornerRadius = 8
+        layer?.insertSublayer(gradient, at: 0)
+        gradientLayer = gradient
+    }
+    
+    override func layout() {
+        super.layout()
+        gradientLayer?.frame = bounds
+    }
+    
+    private func updateAppearance(animated: Bool) {
+        // Border: white/5 -> white/10 on hover (transition-colors)
+        // Tailwind default: 150ms cubic-bezier(0.4, 0, 0.2, 1)
+        let duration = animated ? 0.15 : 0.0
+        
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(duration)
+        // Tailwind's default timing: cubic-bezier(0.4, 0, 0.2, 1)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1))
+        
+        if isHovered {
+            layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor  // hover:border-white/10
+        } else {
+            layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor  // border-white/5
+        }
+        
+        CATransaction.commit()
+        
+        // Also update icon color (group-hover:text-white)
+        updateIconColor(animated: animated)
+    }
+    
+    private func updateIconColor(animated: Bool) {
+        // Find icon view and update its color
+        guard let iconView = findSubview(withIdentifier: "iconView") as? NSImageView else { return }
+        
+        let newColor = isHovered ? DesignColors.textPrimary : DesignColors.textSecondary
+        
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.15
+                context.allowsImplicitAnimation = true
+                iconView.contentTintColor = newColor
+            }
+        } else {
+            iconView.contentTintColor = newColor
+        }
+    }
+    
+    private func findSubview(withIdentifier identifier: String) -> NSView? {
+        for subview in subviews {
+            if subview.identifier?.rawValue == identifier {
+                return subview
+            }
+            if let found = findInSubviews(of: subview, identifier: identifier) {
+                return found
+            }
+        }
+        return nil
+    }
+    
+    private func findInSubviews(of view: NSView, identifier: String) -> NSView? {
+        for subview in view.subviews {
+            if subview.identifier?.rawValue == identifier {
+                return subview
+            }
+            if let found = findInSubviews(of: subview, identifier: identifier) {
+                return found
+            }
+        }
+        return nil
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        
+        // .assumeInside ensures mouseExited fires even if mouse was already inside when tracking started
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect, .assumeInside],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+    }
+}
+
+// MARK: - Hoverable Launch Card
+
+/// Launch card with special hover effect - adds gradient overlay on hover
+/// CSS: glass-panel with bg-gradient-to-br from-white/5 to-transparent on hover
+class HoverableLaunchCard: NSView {
+    
+    private var trackingArea: NSTrackingArea?
+    private var gradientLayer: CAGradientLayer?
+    private var hoverGradientLayer: CAGradientLayer?
+    private var clickButton: NSButton?  // Transparent overlay for clicks
+    var onClick: (() -> Void)?  // Click callback
+    private var isHovered = false {
+        didSet {
+            updateAppearance(animated: true)
+        }
+    }
+    
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupAppearance()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupAppearance()
+    }
+    
+    private func setupClickHandler() {
+        print("[HoverableLaunchCard] setupClickHandler called")
+        // Create transparent button overlay for click handling
+        let button = NSButton(frame: bounds)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.isBordered = false
+        button.title = ""
+        button.bezelStyle = .shadowlessSquare
+        button.setButtonType(.momentaryChange)
+        button.target = self
+        button.action = #selector(buttonClicked)
+        button.alphaValue = 0.001  // Nearly invisible but still clickable
+        addSubview(button, positioned: .above, relativeTo: nil)  // Add on top of all subviews
+        print("[HoverableLaunchCard] Button added ABOVE all subviews, target=\(String(describing: button.target)), action=\(String(describing: button.action))")
+        
+        NSLayoutConstraint.activate([
+            button.topAnchor.constraint(equalTo: topAnchor),
+            button.leadingAnchor.constraint(equalTo: leadingAnchor),
+            button.trailingAnchor.constraint(equalTo: trailingAnchor),
+            button.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+        clickButton = button
+    }
+    
+    // Call this after all subviews are added
+    func finalizeSetup() {
+        print("[HoverableLaunchCard] finalizeSetup - adding click handler on top")
+        setupClickHandler()
+    }
+    
+    @objc private func buttonClicked() {
+        print("[HoverableLaunchCard] buttonClicked! onClick callback: \(onClick != nil ? "SET" : "NIL")")
+        // Animate press
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.08
+            context.allowsImplicitAnimation = true
+            self.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
+        } completionHandler: {
+            // Animate release
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.1
+                context.allowsImplicitAnimation = true
+                self.layer?.setAffineTransform(.identity)
+            } completionHandler: {
+                print("[HoverableLaunchCard] Animation complete, calling onClick")
+                self.onClick?()
+            }
+        }
+    }
+    
+    private func setupAppearance() {
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.borderWidth = 1
+        layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        
+        // Base glass gradient
+        let gradient = CAGradientLayer()
+        gradient.colors = [
+            NSColor.white.withAlphaComponent(0.03).cgColor,
+            NSColor.white.withAlphaComponent(0.0).cgColor
+        ]
+        gradient.locations = [0.0, 1.0]
+        gradient.cornerRadius = 8
+        layer?.insertSublayer(gradient, at: 0)
+        gradientLayer = gradient
+        
+        // Hover gradient (initially invisible)
+        // bg-gradient-to-br from-white/5 to-transparent
+        let hoverGrad = CAGradientLayer()
+        hoverGrad.colors = [
+            NSColor.white.withAlphaComponent(0.05).cgColor,
+            NSColor.white.withAlphaComponent(0.0).cgColor
+        ]
+        hoverGrad.startPoint = CGPoint(x: 0, y: 0)
+        hoverGrad.endPoint = CGPoint(x: 1, y: 1)
+        hoverGrad.cornerRadius = 8
+        hoverGrad.opacity = 0
+        layer?.addSublayer(hoverGrad)
+        hoverGradientLayer = hoverGrad
+    }
+    
+    override func layout() {
+        super.layout()
+        gradientLayer?.frame = bounds
+        hoverGradientLayer?.frame = bounds
+    }
+    
+    private func updateAppearance(animated: Bool) {
+        // Tailwind default: 150ms cubic-bezier(0.4, 0, 0.2, 1)
+        let duration = animated ? 0.15 : 0.0
+        
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(duration)
+        // Tailwind's default timing: cubic-bezier(0.4, 0, 0.2, 1)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1))
+        
+        if isHovered {
+            layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor
+            hoverGradientLayer?.opacity = 1.0
+        } else {
+            layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            hoverGradientLayer?.opacity = 0.0
+        }
+        
+        CATransaction.commit()
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        
+        // .assumeInside ensures mouseExited fires even if mouse was already inside when tracking started
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect, .assumeInside],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
     }
 }

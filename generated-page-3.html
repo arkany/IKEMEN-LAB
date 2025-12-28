@@ -1,0 +1,557 @@
+<html lang="en" class="antialiased"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUGEN Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', sans-serif; }
+      /* Custom Scrollbar for Webkit */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+      /* Custom Checkbox/Toggle Styles */
+      .toggle-checkbox:checked {
+      right: 0;
+      border-color: #fff;
+      }
+      .toggle-checkbox:checked + .toggle-label {
+      background-color: #27272a;
+      }
+      /* Subtle gradients */
+      .glass-panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%);
+      backdrop-filter: blur(10px);
+      }
+    </style>
+    <meta name="disabled-font-classes" content="font-roboto,font-poppins,font-playfair,font-instrument-serif,font-merriweather,font-bricolage,font-space-grotesk,font-work-sans,font-pt-serif,font-geist-mono,font-space-mono,font-quicksand,font-nunito,font-newsreader,font-oswald,font-google-sans-flex">
+    <style id="aura-editor-visibility-style">
+      .invisible { visibility: hidden !important; }
+    </style>
+
+    <link id="all-fonts-link-font-dm-sans" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&amp;display=swap">
+    <style id="all-fonts-style-font-dm-sans">
+      .font-dm-sans { font-family: 'DM Sans', sans-serif !important; }
+    </style>
+    <link id="all-fonts-link-font-jakarta" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap">
+    <style id="all-fonts-style-font-jakarta">
+      .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif !important; }
+    </style>
+    <link id="all-fonts-link-font-geist" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;display=swap">
+    <style id="all-fonts-style-font-geist">
+      .font-geist { font-family: 'Geist', sans-serif !important; }
+    </style>
+    <link id="all-fonts-link-font-montserrat" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&amp;display=swap">
+    <style id="all-fonts-style-font-montserrat">
+      .font-montserrat { font-family: 'Montserrat', sans-serif !important; }
+    </style>
+    <link id="all-fonts-link-font-manrope" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&amp;display=swap">
+    <style id="all-fonts-style-font-manrope">
+      .font-manrope { font-family: 'Manrope', sans-serif !important; }
+    </style>
+  </head>
+  <body class="bg-zinc-950 text-zinc-400 flex h-screen overflow-hidden selection:bg-zinc-800 selection:text-white">
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 flex-shrink-0 border-r border-white/5 bg-zinc-950 flex flex-col justify-between h-full relative z-20">
+      <div class="">
+        <div class="h-16 flex items-center px-6 border-b border-white/5">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 bg-white rounded-md flex items-center justify-center text-zinc-950">
+              <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="14" height="14" viewBox="0 0 24 24" data-icon="lucide:box" data-width="14" data-stroke-width="2.5">
+                <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                  <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                  <path d="m3.3 7l8.7 5l8.7-5M12 22V12"></path>
+                </g>
+              </svg>
+            </div>
+            <span class="text-white font-medium tracking-tight text-sm font-manrope" style="">
+              MUGEN
+              <span class="text-zinc-600 font-normal ml-0.5 font-manrope" style="">
+                MGR
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <nav class="p-3 space-y-1 mt-2">
+          <!-- Active Item -->
+          <a href="#" class="group flex items-center gap-3 px-3 py-2 rounded-md bg-zinc-900 text-white border border-white/5 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:layout-dashboard" data-width="16" data-stroke-width="1.5">
+              <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                <rect width="7" height="9" x="3" y="3" rx="1"></rect>
+                <rect width="7" height="5" x="14" y="3" rx="1"></rect>
+                <rect width="7" height="9" x="14" y="12" rx="1"></rect>
+                <rect width="7" height="5" x="3" y="16" rx="1"></rect>
+              </g>
+            </svg>
+            <span class="text-sm font-medium font-manrope" style="">
+              Dashboard
+            </span>
+          </a>
+
+          <a href="#" class="group flex items-center gap-3 px-3 py-2 rounded-md hover:bg-zinc-900/50 hover:text-zinc-200 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:swords" data-width="16" data-stroke-width="1.5">
+              <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6m-3 3l4 4m-1 1l2-2M14.5 6.5L18 3h3v3l-3.5 3.5M5 14l4 4m-2-1l-3 3m-1-1l2 2"></path>
+            </svg>
+            <span class="text-sm font-medium font-manrope" style="">
+              Characters
+            </span>
+            <span class="ml-auto text-xs font-medium text-zinc-600 bg-zinc-900/50 px-1.5 py-0.5 rounded border border-white/5 font-manrope" style="">
+              128
+            </span>
+          </a>
+
+          <a href="#" class="group flex items-center gap-3 px-3 py-2 rounded-md hover:bg-zinc-900/50 hover:text-zinc-200 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:image" data-width="16" data-stroke-width="1.5">
+              <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+                <circle cx="9" cy="9" r="2"></circle>
+                <path d="m21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+              </g>
+            </svg>
+            <span class="text-sm font-medium font-manrope" style="">
+              Stages
+            </span>
+            <span class="ml-auto text-xs font-medium text-zinc-600 bg-zinc-900/50 px-1.5 py-0.5 rounded border border-white/5 font-manrope" style="">
+              42
+            </span>
+          </a>
+
+          <a href="#" class="group flex items-center gap-3 px-3 py-2 rounded-md hover:bg-zinc-900/50 hover:text-zinc-200 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:blocks" data-width="16" data-stroke-width="1.5">
+              <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                <path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"></path>
+                <rect width="8" height="8" x="14" y="2" rx="1"></rect>
+              </g>
+            </svg>
+            <span class="text-sm font-medium font-manrope" style="">
+              Add-ons
+            </span>
+          </a>
+
+          <a href="#" class="group flex items-center gap-3 px-3 py-2 rounded-md hover:bg-zinc-900/50 hover:text-zinc-200 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:music" data-width="16" data-stroke-width="1.5">
+              <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                <path d="M9 18V5l12-2v13"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <circle cx="18" cy="16" r="3"></circle>
+              </g>
+            </svg>
+            <span class="text-sm font-medium font-manrope" style="">
+              Soundpacks
+            </span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="pt-3 pr-3 pb-3 pl-3">
+        <div class="mb-3 px-3">
+          <h3 class="text-xs uppercase tracking-widest text-zinc-600 font-medium mb-2 font-manrope" style="">
+            System
+          </h3>
+          <div class="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
+            <div class="h-full bg-zinc-100 w-3/4 rounded-full opacity-20"></div>
+          </div>
+          <div class="flex justify-between text-xs mt-1.5 text-zinc-500">
+            <span class="font-manrope" style="">VRAM</span>
+            <span class="font-manrope" style="">75%</span>
+          </div>
+        </div>
+
+        <a href="#" class="group flex items-center gap-3 px-3 py-2 rounded-md hover:bg-zinc-900/50 hover:text-zinc-200 transition-all">
+          <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:settings" data-width="16" data-stroke-width="1.5">
+            <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+              <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0a2.34 2.34 0 0 0 3.319 1.915a2.34 2.34 0 0 1 2.33 4.033a2.34 2.34 0 0 0 0 3.831a2.34 2.34 0 0 1-2.33 4.033a2.34 2.34 0 0 0-3.319 1.915a2.34 2.34 0 0 1-4.659 0a2.34 2.34 0 0 0-3.32-1.915a2.34 2.34 0 0 1-2.33-4.033a2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </g>
+          </svg>
+          <span class="text-sm font-medium font-manrope" style="">
+            Settings
+          </span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-black/20">
+      <!-- Header -->
+      <header class="flex sticky bg-zinc-950/50 h-16 z-10 border-white/5 border-b pr-8 pl-8 top-0 backdrop-blur-sm items-center justify-between">
+        <div class="flex items-center gap-2 text-sm text-zinc-500">
+          <span class="hover:text-zinc-300 cursor-pointer transition-colors font-manrope" style="">
+            Home
+          </span>
+          <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="12" height="12" viewBox="0 0 24 24" data-icon="lucide:chevron-right" data-width="12">
+            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18l6-6l-6-6"></path>
+          </svg>
+          <span class="text-white font-manrope" style="">Dashboard</span>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <div class="relative group">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="14" height="14" viewBox="0 0 24 24" data-icon="lucide:search" data-width="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
+              <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                <path d="m21 21l-4.34-4.34"></path>
+                <circle cx="11" cy="11" r="8"></circle>
+              </g>
+            </svg>
+            <input type="text" placeholder="Search assets..." class="bg-zinc-900/50 border border-white/5 rounded-md py-1.5 pl-9 pr-3 text-xs text-zinc-300 focus:outline-none focus:border-zinc-700 focus:bg-zinc-900 transition-all w-64 placeholder:text-zinc-700">
+          </div>
+          <button class="w-8 h-8 flex items-center justify-center rounded-md border border-white/5 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="14" height="14" viewBox="0 0 24 24" data-icon="lucide:bell" data-width="14" data-stroke-width="1.5">
+              <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.268 21a2 2 0 0 0 3.464 0m-10.47-5.674A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Area -->
+      <div class="flex-1 overflow-y-auto p-8">
+        <div class="max-w-6xl mx-auto space-y-8">
+          <!-- Hero / Stats -->
+          <div class="">
+            <h1 class="text-2xl text-white mb-1 font-montserrat font-semibold tracking-wider" style="">
+              Overview
+            </h1>
+            <p class="text-sm text-zinc-500 mb-6 font-manrope" style="">
+              Manage your local MUGEN instance assets and configuration.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- Stat Card 1 -->
+              <div class="glass-panel p-5 rounded-lg border border-white/5 hover:border-white/10 transition-colors group">
+                <div class="flex justify-between items-start mb-4">
+                  <div class="w-8 h-8 rounded bg-zinc-900 flex items-center justify-center text-zinc-400 border border-white/5 group-hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:users" data-width="16">
+                      <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3.128a4 4 0 0 1 0 7.744M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                      </g>
+                    </svg>
+                  </div>
+                  <span class="flex items-center text-xs text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/10 font-manrope" style="">
+                    +2
+                  </span>
+                </div>
+                <div class="text-2xl text-white mb-1 font-montserrat font-semibold tracking-wider" style="">
+                  128
+                </div>
+                <div class="text-xs text-zinc-500 font-manrope" style="">
+                  Active Fighters
+                </div>
+              </div>
+
+              <!-- Stat Card 2 -->
+              <div class="glass-panel p-5 rounded-lg border border-white/5 hover:border-white/10 transition-colors group">
+                <div class="flex justify-between items-start mb-4">
+                  <div class="w-8 h-8 rounded bg-zinc-900 flex items-center justify-center text-zinc-400 border border-white/5 group-hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:map" data-width="16">
+                      <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0zm.894.211v15M9 3.236v15"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div class="text-2xl text-white mb-1 font-montserrat font-semibold tracking-wider" style="">
+                  42
+                </div>
+                <div class="text-xs text-zinc-500 font-manrope" style="">
+                  Installed Stages
+                </div>
+              </div>
+
+              <!-- Stat Card 3 -->
+              <div class="glass-panel p-5 rounded-lg border border-white/5 hover:border-white/10 transition-colors group">
+                <div class="flex justify-between items-start mb-4">
+                  <div class="w-8 h-8 rounded bg-zinc-900 flex items-center justify-center text-zinc-400 border border-white/5 group-hover:text-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:hard-drive" data-width="16">
+                      <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 12H2m3.45-6.89L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11M6 16h.01M10 16h.01"></path>
+                    </svg>
+                  </div>
+                  <span class="text-xs text-zinc-600 font-manrope" style="">
+                    8GB Limit
+                  </span>
+                </div>
+                <div class="text-2xl text-white mb-1 font-montserrat font-semibold tracking-wider" style="">
+                  2.4
+                  <span class="text-lg text-zinc-600 font-normal ml-1 font-manrope" style="">
+                    GB
+                  </span>
+                </div>
+                <div class="text-xs text-zinc-500 font-manrope" style="">
+                  Storage Used
+                </div>
+              </div>
+
+              <!-- Stat Card 4 -->
+              <div class="glass-panel p-5 rounded-lg border border-white/5 hover:border-white/10 transition-colors group relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                  <div class="w-8 h-8 rounded bg-white text-zinc-950 flex items-center justify-center border border-white/5 shadow-[0_0_15px_rgba(255,255,255,0.15)]">
+                    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:play" data-width="16" data-fill="currentColor">
+                      <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path>
+                    </svg>
+                  </div>
+                  <span class="text-xs text-zinc-500 font-manrope" style="">
+                    v1.1b
+                  </span>
+                </div>
+                <div class="text-lg text-white font-medium tracking-tight mb-1 mt-6 relative z-10 font-manrope" style="">
+                  Launch Game
+                </div>
+                <div class="text-xs text-zinc-500 relative z-10 font-manrope" style="">
+                  Last played 2h ago
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Main Installation Area -->
+            <div class="lg:col-span-2 space-y-6">
+              <!-- Installer Dropzone -->
+              <div class="border border-dashed border-zinc-800 rounded-xl bg-zinc-900/20 p-8 flex flex-col items-center justify-center text-center hover:bg-zinc-900/40 hover:border-zinc-700 transition-all cursor-pointer group">
+                <div class="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center border border-white/5 mb-4 group-hover:scale-110 transition-transform shadow-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="20" height="20" viewBox="0 0 24 24" data-icon="lucide:download-cloud" data-width="20">
+                    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                      <path d="M12 13v8l-4-4m4 4l4-4"></path>
+                      <path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284"></path>
+                    </g>
+                  </svg>
+                </div>
+                <h3 class="text-sm font-medium text-zinc-200 mb-1 font-manrope" style="">
+                  Install Content
+                </h3>
+                <p class="text-xs text-zinc-500 max-w-xs font-manrope" style="">
+                  Drag and drop .zip, .rar, or .def files here to automatically
+                  install characters or stages.
+                </p>
+              </div>
+
+              <!-- Recent List -->
+              <div class="border border-white/5 rounded-xl bg-zinc-900/20 overflow-hidden">
+                <div class="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+                  <h3 class="text-sm font-medium text-white font-manrope" style="">
+                    Recently Installed
+                  </h3>
+                  <button class="text-xs text-zinc-500 hover:text-white transition-colors font-manrope" style="">
+                    View All
+                  </button>
+                </div>
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-zinc-950/50 text-zinc-500 font-medium">
+                    <tr>
+                      <th class="px-5 py-3 font-medium font-manrope" style="">
+                        Name
+                      </th>
+                      <th class="px-5 py-3 font-medium font-manrope" style="">
+                        Type
+                      </th>
+                      <th class="px-5 py-3 font-medium font-manrope" style="">
+                        Date
+                      </th>
+                      <th class="px-5 py-3 font-medium text-right font-manrope" style="">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-white/5">
+                    <tr class="group hover:bg-white/[0.02] transition-colors">
+                      <td class="px-5 py-3">
+                        <div class="flex items-center gap-3">
+                          <div class="w-8 h-8 rounded bg-zinc-800 border border-white/5 flex items-center justify-center text-zinc-600 font-manrope" style="">
+                            K
+                          </div>
+                          <div class="flex flex-col">
+                            <span class="text-zinc-300 font-medium group-hover:text-white transition-colors font-manrope" style="">
+                              Kung Fu Man
+                            </span>
+                            <span class="text-zinc-600 text-[10px] font-manrope" style="">
+                              Elecbyte
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-5 py-3">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/10 text-blue-400 font-manrope" style="">
+                          <span class="w-1 h-1 rounded-full bg-blue-400"></span>
+                          Char
+                        </span>
+                      </td>
+                      <td class="px-5 py-3 text-zinc-500 font-manrope" style="">
+                        Today, 10:42 AM
+                      </td>
+                      <td class="px-5 py-3 text-right">
+                        <label class="inline-flex relative items-center cursor-pointer">
+                          <input type="checkbox" checked="" class="sr-only peer">
+                          <div class="w-8 h-4 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-zinc-600 peer-checked:after:bg-white"></div>
+                        </label>
+                      </td>
+                    </tr>
+                    <tr class="group hover:bg-white/[0.02] transition-colors">
+                      <td class="px-5 py-3">
+                        <div class="flex items-center gap-3">
+                          <div class="w-8 h-8 rounded bg-zinc-800 border border-white/5 flex items-center justify-center text-zinc-600 font-manrope" style="">
+                            R
+                          </div>
+                          <div class="flex flex-col">
+                            <span class="text-zinc-300 font-medium group-hover:text-white transition-colors font-manrope" style="">
+                              Ryu SF3
+                            </span>
+                            <span class="text-zinc-600 text-[10px] font-manrope" style="">
+                              Pots
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-5 py-3">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/10 text-blue-400 font-manrope" style="">
+                          <span class="w-1 h-1 rounded-full bg-blue-400"></span>
+                          Char
+                        </span>
+                      </td>
+                      <td class="px-5 py-3 text-zinc-500 font-manrope" style="">
+                        Yesterday
+                      </td>
+                      <td class="px-5 py-3 text-right">
+                        <label class="inline-flex relative items-center cursor-pointer">
+                          <input type="checkbox" checked="" class="sr-only peer">
+                          <div class="w-8 h-4 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-zinc-600 peer-checked:after:bg-white"></div>
+                        </label>
+                      </td>
+                    </tr>
+                    <tr class="group hover:bg-white/[0.02] transition-colors">
+                      <td class="px-5 py-3">
+                        <div class="flex items-center gap-3">
+                          <div class="w-8 h-8 rounded bg-zinc-800 border border-white/5 flex items-center justify-center text-zinc-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="12" height="12" viewBox="0 0 24 24" data-icon="lucide:image" data-width="12">
+                              <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                                <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+                                <circle cx="9" cy="9" r="2"></circle>
+                                <path d="m21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                              </g>
+                            </svg>
+                          </div>
+                          <div class="flex flex-col">
+                            <span class="text-zinc-300 font-medium group-hover:text-white transition-colors font-manrope" style="">
+                              Training Room
+                            </span>
+                            <span class="text-zinc-600 text-[10px] font-manrope" style="">
+                              Capcom
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-5 py-3">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/10 text-purple-400 font-manrope" style="">
+                          <span class="w-1 h-1 rounded-full bg-purple-400"></span>
+                          Stage
+                        </span>
+                      </td>
+                      <td class="px-5 py-3 text-zinc-500 font-manrope" style="">
+                        Yesterday
+                      </td>
+                      <td class="px-5 py-3 text-right">
+                        <label class="inline-flex relative items-center cursor-pointer">
+                          <input type="checkbox" class="sr-only peer">
+                          <div class="w-8 h-4 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-500 after:border-zinc-400 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-zinc-600 peer-checked:after:bg-white"></div>
+                        </label>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Right Sidebar / Quick Config -->
+            <div class="space-y-6">
+              <!-- Config Panel -->
+              <div class="border border-white/5 rounded-xl bg-zinc-900/20 p-5">
+                <h3 class="text-sm font-medium text-white mb-4 font-manrope" style="">
+                  Quick Settings
+                </h3>
+
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between">
+                    <div class="flex flex-col">
+                      <span class="text-xs text-zinc-300 font-manrope" style="">
+                        V-Sync
+                      </span>
+                      <span class="text-[10px] text-zinc-600 font-manrope" style="">
+                        Limit FPS to 60
+                      </span>
+                    </div>
+                    <label class="inline-flex relative items-center cursor-pointer">
+                      <input type="checkbox" checked="" class="sr-only peer">
+                      <div class="w-8 h-4 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-white peer-checked:after:bg-zinc-900 peer-checked:after:border-zinc-900"></div>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <div class="flex flex-col">
+                      <span class="text-xs text-zinc-300 font-manrope" style="">
+                        Fullscreen
+                      </span>
+                      <span class="text-[10px] text-zinc-600 font-manrope" style="">
+                        Exclusive mode
+                      </span>
+                    </div>
+                    <label class="inline-flex relative items-center cursor-pointer">
+                      <input type="checkbox" class="sr-only peer">
+                      <div class="w-8 h-4 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-white peer-checked:after:bg-zinc-900 peer-checked:after:border-zinc-900"></div>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <div class="flex flex-col">
+                      <span class="text-xs text-zinc-300 font-manrope" style="">
+                        Debug Mode
+                      </span>
+                      <span class="text-[10px] text-zinc-600 font-manrope" style="">
+                        Show hitboxes
+                      </span>
+                    </div>
+                    <label class="inline-flex relative items-center cursor-pointer">
+                      <input type="checkbox" class="sr-only peer">
+                      <div class="w-8 h-4 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-white peer-checked:after:bg-zinc-900 peer-checked:after:border-zinc-900"></div>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-white/5">
+                  <label class="text-xs text-zinc-500 mb-2 block font-manrope" style="">
+                    Master Volume
+                  </label>
+                  <div class="relative w-full h-1 bg-zinc-800 rounded-full">
+                    <div class="absolute h-full bg-white w-2/3 rounded-full"></div>
+                    <div class="absolute h-3 w-3 bg-white rounded-full top-1/2 -translate-y-1/2 left-2/3 shadow cursor-pointer"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Add-on Promo -->
+              <div class="border border-white/5 rounded-xl bg-gradient-to-b from-zinc-900/50 to-zinc-950 p-5 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-3 opacity-10">
+                  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="64" height="64" viewBox="0 0 24 24" data-icon="lucide:sparkles" data-width="64">
+                    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                      <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594zM20 2v4m2-2h-4"></path>
+                      <circle cx="4" cy="20" r="2"></circle>
+                    </g>
+                  </svg>
+                </div>
+                <h3 class="text-sm font-medium text-white mb-1 relative z-10 font-manrope" style="">
+                  New Screenpack
+                </h3>
+                <p class="text-xs text-zinc-500 mb-4 relative z-10 font-manrope" style="">
+                  "Legacy 1.1" is available for installation.
+                </p>
+                <button class="w-full py-1.5 rounded bg-white text-zinc-950 text-xs font-medium hover:bg-zinc-200 transition-colors relative z-10 font-manrope" style="">
+                  Install Pack
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  
+</body></html>

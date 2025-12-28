@@ -31,10 +31,14 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 - [x] Settings panel (resolution, fullscreen, etc.)
 - [x] Portrait fix tool (generate/resize 160x160 portraits)
 - [x] Right-click context menus for characters/stages (Reveal in Finder, Remove)
+- [x] **Design System Overhaul** — Modern dark theme (zinc palette, Manrope/Montserrat/Inter fonts)
+- [x] **Dashboard Page** — Overview with stats cards, drop zone, quick settings, launch button
+- [x] App renamed from "MUGEN MGR" to "IKEMEN Lab"
+- [x] Custom fonts installed (Montserrat-SemiBold, Manrope-Medium/Regular, Inter-Regular)
+- [x] Sidebar redesign with SF Symbols, count badges, VRAM indicator
 
 ### 🔄 In Progress
-- [ ] **Design System Overhaul** — Modern dark theme (zinc palette, Manrope/Montserrat fonts)
-- [ ] **Dashboard Page** — Overview with stats, quick actions, recent installs
+- [ ] Apply design system to remaining views (Characters, Stages, Settings)
 
 ### � Known Issues
 - [x] ~~Stage preview fails for stages using root-relative sprite paths~~ (fixed: now handles both `spr = stages/Bifrost.sff` and `spr = Bifrost.sff`)
@@ -93,25 +97,25 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Overview Header** | 📋 Todo | "Manage your local MUGEN instance assets and configuration" |
-| **Stats Cards Row** | 📋 Todo | 4-column grid with glass panel styling |
-| ├─ Active Fighters | 📋 Todo | Count with +N badge for recent additions |
-| ├─ Installed Stages | 📋 Todo | Count from select.def |
-| ├─ Storage Used | 📋 Todo | Calculate chars/ + stages/ folder sizes, show limit |
-| └─ Launch Game | 📋 Todo | Primary action button with "Last played X ago" |
-| **Install Content Drop Zone** | 📋 Todo | Dashed border, cloud icon, accepts drag-and-drop |
+| **Overview Header** | ✅ Done | "DASHBOARD" title in sidebar |
+| **Stats Cards Row** | ✅ Done | 3-column grid: Characters, Stages, Storage Used |
+| ├─ Active Fighters | ✅ Done | Count from select.def |
+| ├─ Installed Stages | ✅ Done | Count from select.def |
+| ├─ Storage Used | ✅ Done | Calculate chars/ + stages/ folder sizes |
+| └─ Launch Game | ✅ Done | Primary action button in dashboard |
+| **Install Content Drop Zone** | ✅ Done | Dashed border, accepts drag-and-drop |
 | **Recently Installed Table** | 📋 Todo | Name, Type (Char/Stage badge), Date, Status toggle |
-| **Quick Settings Panel** | 📋 Todo | V-Sync, Fullscreen, Debug Mode toggles |
-| **Master Volume Slider** | 📋 Todo | Horizontal slider with track/thumb styling |
+| **Quick Settings Panel** | ✅ Done | Fullscreen, V-Sync toggles |
+| **Volume Sliders** | ✅ Done | BGM Volume, SFX Volume sliders |
 | **Screenpack Promo Card** | 📋 Todo | "New Screenpack available" with Install button |
 
 **Design System (from HTML reference):**
-- Color palette: Tailwind zinc (950/900/800/700/600/500/400)
-- Fonts: Montserrat (headers, semibold, tracking-wider), Manrope (body/nav)
-- Borders: white/5 (subtle), white/10 (hover)
-- Cards: Glass panel effect (gradient from white/3% to transparent)
-- Corner radius: 12px (rounded-xl)
-- Sidebar: 256px width, fixed left
+- Color palette: Tailwind zinc (950/900/800/700/600/500/400) ✅ Implemented
+- Fonts: Montserrat (headers), Manrope (body/nav), Inter (captions) ✅ Implemented
+- Borders: white/5 (subtle), white/10 (hover) ✅ Implemented
+- Cards: Glass panel effect (gradient from white/3% to transparent) ✅ Implemented
+- Corner radius: 12px (rounded-xl) ✅ Implemented
+- Sidebar: 256px width, fixed left ✅ Implemented
 
 ---
 
