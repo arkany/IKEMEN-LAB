@@ -34,6 +34,7 @@
 		025 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127 /* AppSettings.swift */; };
 		026 /* SFFWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128 /* SFFWriter.swift */; };
 		027 /* StageGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129 /* StageGenerator.swift */; };
+		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,11 +47,12 @@
 		107 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		108 /* MacMAME.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacMAME.entitlements; sourceTree = "<group>"; };
 		109 /* MacMAME.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMAME.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		10B1001B2F0114A400EC215A /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		112 /* MacMAME-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "MacMAME-Bridging-Header.h"; sourceTree = "<group>"; };
 		113 /* CharacterBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterBrowserView.swift; sourceTree = "<group>"; };
-		116 /* StageBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageBrowserView.swift; sourceTree = "<group>"; };
 		114 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
 		115 /* Icons */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Icons; sourceTree = "<group>"; };
+		116 /* StageBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageBrowserView.swift; sourceTree = "<group>"; };
 		117 /* SFFParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFFParser.swift; sourceTree = "<group>"; };
 		118 /* CharacterInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterInfo.swift; sourceTree = "<group>"; };
 		119 /* StageInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageInfo.swift; sourceTree = "<group>"; };
@@ -179,6 +181,7 @@
 				113 /* CharacterBrowserView.swift */,
 				126 /* CharacterDetailsView.swift */,
 				116 /* StageBrowserView.swift */,
+				10B1001B2F0114A400EC215A /* DashboardView.swift */,
 				125 /* ScreenpackBrowserView.swift */,
 			);
 			path = UI;
@@ -291,6 +294,7 @@
 				022 /* ScreenpackInfo.swift in Sources */,
 				023 /* ScreenpackBrowserView.swift in Sources */,
 				025 /* AppSettings.swift in Sources */,
+				10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */,
 				026 /* SFFWriter.swift in Sources */,
 				027 /* StageGenerator.swift in Sources */,
 			);

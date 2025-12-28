@@ -68,6 +68,7 @@ class GameWindowController: NSWindowController {
     private var selectedNavItem: NavItem? = nil
     
     // UI Elements - Main Area
+    private var dashboardView: DashboardView!
     private var dropZoneView: DropZoneView!
     private var characterBrowserView: CharacterBrowserView!
     private var characterDetailsView: CharacterDetailsView!
@@ -549,7 +550,19 @@ class GameWindowController: NSWindowController {
         mainAreaView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.2).cgColor // bg-black/20 from HTML
         contentView.addSubview(mainAreaView)
         
-        // Drop Zone (visible in empty state)
+        // Dashboard View
+        dashboardView = DashboardView(frame: .zero)
+        dashboardView.translatesAutoresizingMaskIntoConstraints = false
+        dashboardView.isHidden = true
+        dashboardView.onLaunchGame = { [weak self] in
+            self?.launchIkemen()
+        }
+        dashboardView.onFilesDropped = { [weak self] urls in
+            self?.handleDroppedFiles(urls)
+        }
+        mainAreaView.addSubview(dashboardView)
+        
+        // Drop Zone (visible in empty state - legacy, kept for other views)
         dropZoneView = DropZoneView(frame: .zero)
         dropZoneView.translatesAutoresizingMaskIntoConstraints = false
         dropZoneView.onFilesDropped = { [weak self] urls in
@@ -649,6 +662,12 @@ class GameWindowController: NSWindowController {
         characterDetailsWidthConstraint = characterDetailsView.widthAnchor.constraint(equalToConstant: 280)
         
         NSLayoutConstraint.activate([
+            // Dashboard fills main area
+            dashboardView.topAnchor.constraint(equalTo: mainAreaView.topAnchor),
+            dashboardView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor),
+            dashboardView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor),
+            dashboardView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor),
+            
             // View mode toggle in top-right
             viewModeToggle.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
             viewModeToggle.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
@@ -718,24 +737,29 @@ class GameWindowController: NSWindowController {
         // Show/hide appropriate views based on selection
         switch selectedNavItem {
         case .dashboard:
-            // Dashboard view - show drop zone for now (TODO: implement dashboard)
-            dropZoneView.isHidden = false
+            // Dashboard view
+            dashboardView.isHidden = false
+            dropZoneView.isHidden = true
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = true
             screenpackBrowserView.isHidden = true
+            updateDashboardStats()
         case .characters:
+            dashboardView.isHidden = true
             dropZoneView.isHidden = true
             characterBrowserView.isHidden = false
             stageBrowserView.isHidden = true
             screenpackBrowserView.isHidden = true
             characterBrowserView.viewMode = currentViewMode
         case .stages:
+            dashboardView.isHidden = true
             dropZoneView.isHidden = true
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = false
             screenpackBrowserView.isHidden = true
             stageBrowserView.viewMode = currentViewMode
         case .screenpacks:
+            dashboardView.isHidden = true
             dropZoneView.isHidden = true
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = true
@@ -743,12 +767,14 @@ class GameWindowController: NSWindowController {
             screenpackBrowserView.viewMode = currentViewMode
         case .addons:
             // TODO: Implement add-ons browser
+            dashboardView.isHidden = true
             dropZoneView.isHidden = false
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = true
             screenpackBrowserView.isHidden = true
         case .settings:
             // Show settings panel
+            dashboardView.isHidden = true
             dropZoneView.isHidden = true
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = true
@@ -756,11 +782,45 @@ class GameWindowController: NSWindowController {
             showSettingsContent()
         case nil:
             // Empty state - show drop zone
+            dashboardView.isHidden = true
             dropZoneView.isHidden = false
             characterBrowserView.isHidden = true
             stageBrowserView.isHidden = true
             screenpackBrowserView.isHidden = true
         }
+    }
+    
+    private func updateDashboardStats() {
+        // Get counts from nav label badges
+        let characterCount = Int(navLabels[.characters]?.stringValue ?? "0") ?? 0
+        let stageCount = Int(navLabels[.stages]?.stringValue ?? "0") ?? 0
+        
+        // Calculate storage size
+        var storageBytes: Int64? = nil
+        let ikemenPath = ikemenBridge.workingDirectory?.path ?? "/Users/davidphillips/Sites/macmame/Ikemen-GO"
+        let charsPath = ikemenPath + "/chars"
+        let stagesPath = ikemenPath + "/stages"
+        
+        if let charsSize = folderSize(at: charsPath), let stagesSize = folderSize(at: stagesPath) {
+            storageBytes = charsSize + stagesSize
+        }
+        
+        dashboardView?.updateStats(characters: characterCount, stages: stageCount, storageBytes: storageBytes)
+    }
+    
+    private func folderSize(at path: String) -> Int64? {
+        let fileManager = FileManager.default
+        guard let enumerator = fileManager.enumerator(atPath: path) else { return nil }
+        
+        var totalSize: Int64 = 0
+        while let file = enumerator.nextObject() as? String {
+            let fullPath = (path as NSString).appendingPathComponent(file)
+            if let attrs = try? fileManager.attributesOfItem(atPath: fullPath),
+               let size = attrs[.size] as? Int64 {
+                totalSize += size
+            }
+        }
+        return totalSize
     }
     
     // MARK: - Character Details Panel
