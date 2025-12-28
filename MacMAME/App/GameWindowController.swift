@@ -716,6 +716,9 @@ class GameWindowController: NSWindowController {
     }
     
     private func updateMainAreaContent() {
+        // Guard against being called before UI is fully initialized
+        guard mainAreaView != nil else { return }
+        
         // Remove settings view if not on settings tab
         if selectedNavItem != .settings {
             mainAreaView.subviews.filter { $0.identifier?.rawValue == "settingsView" }.forEach { $0.removeFromSuperview() }
@@ -728,69 +731,71 @@ class GameWindowController: NSWindowController {
         
         // Show/hide view mode toggle for content browsers
         let showToggle = selectedNavItem == .characters || selectedNavItem == .stages || selectedNavItem == .screenpacks
-        viewModeToggle.isHidden = !showToggle
+        viewModeToggle?.isHidden = !showToggle
         
         // Show/hide create stage button (only on stages tab and when feature is enabled)
         let showCreateStageButton = selectedNavItem == .stages && AppSettings.shared.enablePNGStageCreation
-        createStageButton.isHidden = !showCreateStageButton
+        createStageButton?.isHidden = !showCreateStageButton
         
         // Show/hide appropriate views based on selection
         switch selectedNavItem {
         case .dashboard:
             // Dashboard view
-            dashboardView.isHidden = false
-            dropZoneView.isHidden = true
-            characterBrowserView.isHidden = true
-            stageBrowserView.isHidden = true
-            screenpackBrowserView.isHidden = true
+            dashboardView?.isHidden = false
+            dropZoneView?.isHidden = true
+            characterBrowserView?.isHidden = true
+            stageBrowserView?.isHidden = true
+            screenpackBrowserView?.isHidden = true
             updateDashboardStats()
         case .characters:
-            dashboardView.isHidden = true
-            dropZoneView.isHidden = true
-            characterBrowserView.isHidden = false
-            stageBrowserView.isHidden = true
-            screenpackBrowserView.isHidden = true
-            characterBrowserView.viewMode = currentViewMode
+            dashboardView?.isHidden = true
+            dropZoneView?.isHidden = true
+            characterBrowserView?.isHidden = false
+            stageBrowserView?.isHidden = true
+            screenpackBrowserView?.isHidden = true
+            characterBrowserView?.viewMode = currentViewMode
         case .stages:
-            dashboardView.isHidden = true
-            dropZoneView.isHidden = true
-            characterBrowserView.isHidden = true
-            stageBrowserView.isHidden = false
-            screenpackBrowserView.isHidden = true
-            stageBrowserView.viewMode = currentViewMode
+            dashboardView?.isHidden = true
+            dropZoneView?.isHidden = true
+            characterBrowserView?.isHidden = true
+            stageBrowserView?.isHidden = false
+            screenpackBrowserView?.isHidden = true
+            stageBrowserView?.viewMode = currentViewMode
         case .screenpacks:
-            dashboardView.isHidden = true
-            dropZoneView.isHidden = true
-            characterBrowserView.isHidden = true
-            stageBrowserView.isHidden = true
-            screenpackBrowserView.isHidden = false
-            screenpackBrowserView.viewMode = currentViewMode
+            dashboardView?.isHidden = true
+            dropZoneView?.isHidden = true
+            characterBrowserView?.isHidden = true
+            stageBrowserView?.isHidden = true
+            screenpackBrowserView?.isHidden = false
+            screenpackBrowserView?.viewMode = currentViewMode
         case .addons:
             // TODO: Implement add-ons browser
-            dashboardView.isHidden = true
-            dropZoneView.isHidden = false
-            characterBrowserView.isHidden = true
-            stageBrowserView.isHidden = true
-            screenpackBrowserView.isHidden = true
+            dashboardView?.isHidden = true
+            dropZoneView?.isHidden = false
+            characterBrowserView?.isHidden = true
+            stageBrowserView?.isHidden = true
+            screenpackBrowserView?.isHidden = true
         case .settings:
             // Show settings panel
-            dashboardView.isHidden = true
-            dropZoneView.isHidden = true
-            characterBrowserView.isHidden = true
-            stageBrowserView.isHidden = true
-            screenpackBrowserView.isHidden = true
+            dashboardView?.isHidden = true
+            dropZoneView?.isHidden = true
+            characterBrowserView?.isHidden = true
+            stageBrowserView?.isHidden = true
+            screenpackBrowserView?.isHidden = true
             showSettingsContent()
         case nil:
             // Empty state - show drop zone
-            dashboardView.isHidden = true
-            dropZoneView.isHidden = false
-            characterBrowserView.isHidden = true
-            stageBrowserView.isHidden = true
-            screenpackBrowserView.isHidden = true
+            dashboardView?.isHidden = true
+            dropZoneView?.isHidden = false
+            characterBrowserView?.isHidden = true
+            stageBrowserView?.isHidden = true
+            screenpackBrowserView?.isHidden = true
         }
     }
     
     private func updateDashboardStats() {
+        guard dashboardView != nil, ikemenBridge != nil else { return }
+        
         // Get counts from nav label badges
         let characterCount = Int(navLabels[.characters]?.stringValue ?? "0") ?? 0
         let stageCount = Int(navLabels[.stages]?.stringValue ?? "0") ?? 0
