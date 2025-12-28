@@ -271,7 +271,7 @@ class CharacterBrowserView: NSView {
         // Draw initial in darker gray
         let initial = String(character.displayName.prefix(1)).uppercased()
         let attrs: [NSAttributedString.Key: Any] = [
-            .font: DesignFonts.jersey(size: 40),
+            .font: DesignFonts.header(size: 32),
             .foregroundColor: NSColor(white: 0.5, alpha: 1.0)
         ]
         let attrString = NSAttributedString(string: initial, attributes: attrs)
@@ -490,20 +490,20 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         portraitImageView.layer?.backgroundColor = DesignColors.defaultPlaceholder.cgColor
         containerView.addSubview(portraitImageView)
         
-        // Name label - Jersey 10, 24px, gray, centered
+        // Name label - header style, centered
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.jersey(size: 24)
+        nameLabel.font = DesignFonts.header(size: 16)
         nameLabel.textColor = DesignColors.grayText
         nameLabel.alignment = .center
         nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.maximumNumberOfLines = 1
         containerView.addSubview(nameLabel)
         
-        // Author label - Jersey 10, 16px, gray, centered
+        // Author label - body style, centered
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.jersey(size: 16)
+        authorLabel.font = DesignFonts.body(size: 12)
         authorLabel.textColor = DesignColors.grayText
         authorLabel.alignment = .center
         authorLabel.lineBreakMode = .byTruncatingTail
@@ -620,7 +620,7 @@ class CharacterListItem: NSCollectionViewItem {
         // Name
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.jersey(size: 24)
+        nameLabel.font = DesignFonts.header(size: 16)
         nameLabel.textColor = DesignColors.creamText
         nameLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(nameLabel)
@@ -628,7 +628,7 @@ class CharacterListItem: NSCollectionViewItem {
         // Author
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.jersey(size: 16)
+        authorLabel.font = DesignFonts.body(size: 12)
         authorLabel.textColor = DesignColors.grayText
         authorLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(authorLabel)

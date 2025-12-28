@@ -377,7 +377,7 @@ class StageGridItem: NSCollectionViewItem {
         
         sizeBadgeLabel = NSTextField(labelWithString: "Wide")
         sizeBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
-        sizeBadgeLabel.font = DesignFonts.jersey(size: 12)
+        sizeBadgeLabel.font = DesignFonts.caption(size: 11)
         sizeBadgeLabel.textColor = DesignColors.greenAccent
         sizeBadge.addSubview(sizeBadgeLabel)
         
@@ -394,14 +394,14 @@ class StageGridItem: NSCollectionViewItem {
         
         disabledBadgeLabel = NSTextField(labelWithString: "Disabled")
         disabledBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
-        disabledBadgeLabel.font = DesignFonts.jersey(size: 12)
+        disabledBadgeLabel.font = DesignFonts.caption(size: 11)
         disabledBadgeLabel.textColor = DesignColors.redAccent
         disabledBadge.addSubview(disabledBadgeLabel)
         
         // Name label
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.jersey(size: 24)
+        nameLabel.font = DesignFonts.header(size: 16)
         nameLabel.textColor = DesignColors.grayText
         nameLabel.alignment = .center
         nameLabel.lineBreakMode = .byTruncatingTail
@@ -411,7 +411,7 @@ class StageGridItem: NSCollectionViewItem {
         // Author label
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.jersey(size: 16)
+        authorLabel.font = DesignFonts.body(size: 12)
         authorLabel.textColor = DesignColors.grayText
         authorLabel.alignment = .center
         authorLabel.lineBreakMode = .byTruncatingTail
@@ -578,7 +578,7 @@ class StageListItem: NSCollectionViewItem {
         // Disabled label (shown before name)
         disabledLabel = NSTextField(labelWithString: "[Disabled]")
         disabledLabel.translatesAutoresizingMaskIntoConstraints = false
-        disabledLabel.font = DesignFonts.jersey(size: 14)
+        disabledLabel.font = DesignFonts.caption(size: 11)
         disabledLabel.textColor = DesignColors.redAccent
         disabledLabel.isHidden = true
         containerView.addSubview(disabledLabel)
@@ -586,7 +586,7 @@ class StageListItem: NSCollectionViewItem {
         // Name
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.jersey(size: 24)
+        nameLabel.font = DesignFonts.header(size: 16)
         nameLabel.textColor = DesignColors.creamText
         nameLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(nameLabel)
@@ -594,7 +594,7 @@ class StageListItem: NSCollectionViewItem {
         // Author
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.jersey(size: 16)
+        authorLabel.font = DesignFonts.body(size: 12)
         authorLabel.textColor = DesignColors.grayText
         authorLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(authorLabel)
@@ -602,7 +602,7 @@ class StageListItem: NSCollectionViewItem {
         // Size category
         sizeLabel = NSTextField(labelWithString: "")
         sizeLabel.translatesAutoresizingMaskIntoConstraints = false
-        sizeLabel.font = DesignFonts.jersey(size: 18)
+        sizeLabel.font = DesignFonts.body(size: 14)
         sizeLabel.textColor = DesignColors.greenAccent
         sizeLabel.alignment = .right
         containerView.addSubview(sizeLabel)
@@ -610,7 +610,7 @@ class StageListItem: NSCollectionViewItem {
         // Width value
         widthLabel = NSTextField(labelWithString: "")
         widthLabel.translatesAutoresizingMaskIntoConstraints = false
-        widthLabel.font = DesignFonts.jersey(size: 14)
+        widthLabel.font = DesignFonts.caption(size: 12)
         widthLabel.textColor = DesignColors.grayText
         widthLabel.alignment = .right
         containerView.addSubview(widthLabel)

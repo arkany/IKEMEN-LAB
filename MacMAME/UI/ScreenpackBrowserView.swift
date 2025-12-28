@@ -258,14 +258,14 @@ class ScreenpackGridItem: NSCollectionViewItem {
         
         activeBadgeLabel = NSTextField(labelWithString: "Active")
         activeBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
-        activeBadgeLabel.font = DesignFonts.jersey(size: 12)
+        activeBadgeLabel.font = DesignFonts.caption(size: 11)
         activeBadgeLabel.textColor = DesignColors.greenAccent
         activeBadge.addSubview(activeBadgeLabel)
         
         // Resolution label (top-left)
         resolutionLabel = NSTextField(labelWithString: "")
         resolutionLabel.translatesAutoresizingMaskIntoConstraints = false
-        resolutionLabel.font = DesignFonts.jersey(size: 12)
+        resolutionLabel.font = DesignFonts.caption(size: 11)
         resolutionLabel.textColor = DesignColors.grayText
         resolutionLabel.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.8)
         resolutionLabel.wantsLayer = true
@@ -277,7 +277,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
         // Name label
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.jersey(size: 24)
+        nameLabel.font = DesignFonts.header(size: 16)
         nameLabel.textColor = DesignColors.grayText
         nameLabel.alignment = .center
         nameLabel.lineBreakMode = .byTruncatingTail
@@ -287,7 +287,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
         // Author label
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.jersey(size: 16)
+        authorLabel.font = DesignFonts.body(size: 12)
         authorLabel.textColor = DesignColors.grayText
         authorLabel.alignment = .center
         authorLabel.lineBreakMode = .byTruncatingTail
@@ -298,7 +298,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
         activateButton = NSButton(title: "Activate", target: self, action: #selector(activateClicked))
         activateButton.translatesAutoresizingMaskIntoConstraints = false
         activateButton.bezelStyle = .rounded
-        activateButton.font = DesignFonts.jersey(size: 14)
+        activateButton.font = DesignFonts.body(size: 12)
         activateButton.isHidden = true
         containerView.addSubview(activateButton)
         
@@ -461,7 +461,7 @@ class ScreenpackListItem: NSCollectionViewItem {
         // Name
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.jersey(size: 24)
+        nameLabel.font = DesignFonts.header(size: 16)
         nameLabel.textColor = DesignColors.creamText
         nameLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(nameLabel)
@@ -469,7 +469,7 @@ class ScreenpackListItem: NSCollectionViewItem {
         // Author
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.jersey(size: 16)
+        authorLabel.font = DesignFonts.body(size: 12)
         authorLabel.textColor = DesignColors.grayText
         authorLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(authorLabel)
@@ -477,14 +477,14 @@ class ScreenpackListItem: NSCollectionViewItem {
         // Resolution
         resolutionLabel = NSTextField(labelWithString: "")
         resolutionLabel.translatesAutoresizingMaskIntoConstraints = false
-        resolutionLabel.font = DesignFonts.jersey(size: 18)
+        resolutionLabel.font = DesignFonts.body(size: 14)
         resolutionLabel.textColor = DesignColors.grayText
         containerView.addSubview(resolutionLabel)
         
         // Status (Active indicator)
         statusLabel = NSTextField(labelWithString: "")
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.font = DesignFonts.jersey(size: 18)
+        statusLabel.font = DesignFonts.body(size: 14)
         statusLabel.textColor = DesignColors.greenAccent
         containerView.addSubview(statusLabel)
         
@@ -492,7 +492,7 @@ class ScreenpackListItem: NSCollectionViewItem {
         activateButton = NSButton(title: "Activate", target: self, action: #selector(activateClicked))
         activateButton.translatesAutoresizingMaskIntoConstraints = false
         activateButton.bezelStyle = .rounded
-        activateButton.font = DesignFonts.jersey(size: 14)
+        activateButton.font = DesignFonts.body(size: 12)
         activateButton.isHidden = true
         containerView.addSubview(activateButton)
         

@@ -175,19 +175,6 @@ public struct DesignFonts {
     public static func stat(size: CGFloat) -> NSFont {
         return header(size: size)
     }
-    
-    // MARK: - Legacy Font (for compatibility)
-    
-    /// Get the Jersey font at the specified size, with fallback to monospaced system font
-    public static func jersey(size: CGFloat) -> NSFont {
-        if let font = NSFont(name: "Jersey15-Regular", size: size) {
-            return font
-        }
-        if let font = NSFont(name: "Jersey10-Regular", size: size) {
-            return font
-        }
-        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
-    }
 }
 
 // MARK: - Typography Styles

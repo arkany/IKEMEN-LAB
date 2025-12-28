@@ -85,21 +85,6 @@ class GameWindowController: NSWindowController {
     var isGameLoaded: Bool { ikemenBridge.isEngineRunning }
     var isPaused: Bool = false
     
-    // MARK: - Fonts
-    
-    private func jerseyFont(size: CGFloat) -> NSFont {
-        // Try Jersey 15 first (has more character coverage)
-        if let font = NSFont(name: "Jersey15-Regular", size: size) {
-            return font
-        }
-        // Try Jersey 10
-        if let font = NSFont(name: "Jersey10-Regular", size: size) {
-            return font
-        }
-        // Fallback to monospace system font for retro feel
-        return NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
-    }
-    
     // MARK: - Icons
     
     private func loadIcon(named name: String, tintColor: NSColor? = nil) -> NSImage? {
@@ -164,6 +149,9 @@ class GameWindowController: NSWindowController {
         setupSidebar()
         setupMainArea()
         setupConstraints()
+        
+        // Select dashboard by default (after all views are initialized)
+        selectNavItem(.dashboard)
     }
     
     // MARK: - Sidebar Setup
@@ -370,9 +358,6 @@ class GameWindowController: NSWindowController {
             statusLabel.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding),
             statusLabel.bottomAnchor.constraint(equalTo: bottomStack.topAnchor, constant: -12),
         ])
-        
-        // Select dashboard by default
-        selectNavItem(.dashboard)
     }
     
     /// Create a new-style nav button matching the HTML design
@@ -980,7 +965,7 @@ class GameWindowController: NSWindowController {
         
         // Title
         let titleLabel = NSTextField(labelWithString: "Settings")
-        titleLabel.font = jerseyFont(size: 48)
+        titleLabel.font = DesignFonts.header(size: 32)
         titleLabel.textColor = DesignColors.textPrimary
         stackView.addArrangedSubview(titleLabel)
         
@@ -1035,7 +1020,7 @@ class GameWindowController: NSWindowController {
         section.alignment = .leading
         
         let sectionTitle = NSTextField(labelWithString: title)
-        sectionTitle.font = jerseyFont(size: 32)
+        sectionTitle.font = DesignFonts.header(size: 20)
         sectionTitle.textColor = DesignColors.textSecondary
         section.addArrangedSubview(sectionTitle)
         
@@ -1053,7 +1038,7 @@ class GameWindowController: NSWindowController {
         row.alignment = .centerY
         
         let label = NSTextField(labelWithString: "Resolution")
-        label.font = jerseyFont(size: 24)
+        label.font = DesignFonts.body(size: 16)
         label.textColor = DesignColors.textPrimary
         label.widthAnchor.constraint(equalToConstant: 150).isActive = true
         row.addArrangedSubview(label)
@@ -1093,7 +1078,7 @@ class GameWindowController: NSWindowController {
         row.alignment = .centerY
         
         let labelField = NSTextField(labelWithString: label)
-        labelField.font = jerseyFont(size: 24)
+        labelField.font = DesignFonts.body(size: 16)
         labelField.textColor = DesignColors.textPrimary
         labelField.widthAnchor.constraint(equalToConstant: 150).isActive = true
         row.addArrangedSubview(labelField)
@@ -1120,7 +1105,7 @@ class GameWindowController: NSWindowController {
         row.alignment = .centerY
         
         let labelField = NSTextField(labelWithString: label)
-        labelField.font = jerseyFont(size: 24)
+        labelField.font = DesignFonts.body(size: 16)
         labelField.textColor = DesignColors.textPrimary
         labelField.widthAnchor.constraint(equalToConstant: 150).isActive = true
         row.addArrangedSubview(labelField)
@@ -1142,7 +1127,7 @@ class GameWindowController: NSWindowController {
         }
         
         let valueLabel = NSTextField(labelWithString: "\(slider.intValue)%")
-        valueLabel.font = jerseyFont(size: 20)
+        valueLabel.font = DesignFonts.body(size: 14)
         valueLabel.textColor = DesignColors.textSecondary
         valueLabel.widthAnchor.constraint(equalToConstant: 50).isActive = true
         valueLabel.identifier = NSUserInterfaceItemIdentifier("Sound.\(key).label")
@@ -1165,7 +1150,7 @@ class GameWindowController: NSWindowController {
         row.alignment = .centerY
         
         let labelField = NSTextField(labelWithString: label)
-        labelField.font = jerseyFont(size: 24)
+        labelField.font = DesignFonts.body(size: 16)
         labelField.textColor = DesignColors.textPrimary
         labelField.widthAnchor.constraint(equalToConstant: 200).isActive = true
         row.addArrangedSubview(labelField)
@@ -1724,9 +1709,6 @@ class DropZoneView: NSView {
     private var sublineLabel: NSTextField!
     private var dashedBorderLayer: CAShapeLayer?
     
-    private func jerseyFont(size: CGFloat) -> NSFont {
-        return NSFont(name: "Jersey10-Regular", size: size) ?? NSFont.systemFont(ofSize: size, weight: .medium)
-    }
     private var borderColor: NSColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
     private var textColor: NSColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
     
@@ -1760,18 +1742,18 @@ class DropZoneView: NSView {
         // Cream text color per Figma
         let creamColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
         
-        // Main label - Jersey 10 at 28px per Figma
+        // Main label - Montserrat header style
         label = NSTextField(labelWithString: "Drop characters or\nstages here")
-        label.font = jerseyFont(size: 28)
+        label.font = DesignFonts.header(size: 20)
         label.textColor = creamColor
         label.alignment = .center
         label.maximumNumberOfLines = 2
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
         
-        // Subline label - Jersey 10 at 20px per Figma
+        // Subline label - body style
         sublineLabel = NSTextField(labelWithString: "(.zip, .rar, .7z or folder)")
-        sublineLabel.font = jerseyFont(size: 20)
+        sublineLabel.font = DesignFonts.body(size: 14)
         sublineLabel.textColor = creamColor
         sublineLabel.alignment = .center
         sublineLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -1805,9 +1787,9 @@ class DropZoneView: NSView {
         // Keep cream color for text per Figma
         let creamColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
         label.textColor = creamColor
-        label.font = jerseyFont(size: 28)
+        label.font = DesignFonts.header(size: 20)
         sublineLabel.textColor = creamColor
-        sublineLabel.font = jerseyFont(size: 20)
+        sublineLabel.font = DesignFonts.body(size: 14)
     }
     
     override func draw(_ dirtyRect: NSRect) {
