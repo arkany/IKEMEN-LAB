@@ -871,6 +871,95 @@ public final class ContentManager {
         return paths
     }
     
+    // MARK: - Character Management
+    
+    /// Remove a character from select.def and move files to Trash
+    /// - Parameters:
+    ///   - character: The character to remove
+    ///   - workingDir: The Ikemen GO working directory
+    public func removeCharacter(_ character: CharacterInfo, in workingDir: URL) throws {
+        // First remove from select.def
+        try removeCharacterFromSelectDef(character, in: workingDir)
+        
+        // Then move the character directory to Trash
+        try fileManager.trashItem(at: character.path, resultingItemURL: nil)
+        print("Moved character directory to Trash: \(character.path.lastPathComponent)")
+    }
+    
+    /// Remove a character entry from select.def
+    private func removeCharacterFromSelectDef(_ character: CharacterInfo, in workingDir: URL) throws {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard fileManager.fileExists(atPath: selectDefPath.path) else { return }
+        
+        var content = try String(contentsOf: selectDefPath, encoding: .utf8)
+        
+        let possiblePaths = buildCharacterPaths(for: character, in: workingDir)
+        
+        // Find and remove the character entry
+        let lines = content.components(separatedBy: "\n")
+        var newLines: [String] = []
+        var inCharactersSection = false
+        
+        for line in lines {
+            var trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // Track section
+            if trimmedLine.lowercased().hasPrefix("[characters]") {
+                inCharactersSection = true
+                newLines.append(line)
+                continue
+            } else if trimmedLine.hasPrefix("[") && !trimmedLine.lowercased().hasPrefix("[characters]") {
+                inCharactersSection = false
+            }
+            
+            // Only match in characters section
+            if !inCharactersSection {
+                newLines.append(line)
+                continue
+            }
+            
+            var isOurCharacter = false
+            for path in possiblePaths {
+                if trimmedLine.lowercased().hasPrefix(path.lowercased()) {
+                    isOurCharacter = true
+                    break
+                }
+            }
+            
+            if !isOurCharacter {
+                newLines.append(line)
+            } else {
+                print("Removed character from select.def: \(trimmedLine)")
+            }
+        }
+        
+        content = newLines.joined(separator: "\n")
+        try content.write(to: selectDefPath, atomically: true, encoding: .utf8)
+    }
+    
+    /// Build possible path variations for a character to match in select.def
+    private func buildCharacterPaths(for character: CharacterInfo, in workingDir: URL) -> [String] {
+        var paths: [String] = []
+        
+        // Common formats in select.def:
+        // kfm (folder name only)
+        // chars/kfm (with chars prefix)
+        // kfm/kfm.def (folder/def)
+        // chars/kfm/kfm.def
+        
+        let folderName = character.path.lastPathComponent
+        paths.append(folderName)
+        paths.append("chars/\(folderName)")
+        
+        // Use the def file name
+        let defFileName = character.defFile.lastPathComponent
+        paths.append("\(folderName)/\(defFileName)")
+        paths.append("chars/\(folderName)/\(defFileName)")
+        
+        return paths
+    }
+    
     // MARK: - Validation
     
     /// Validate character portrait and return any warnings

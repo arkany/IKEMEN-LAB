@@ -14,6 +14,9 @@ public struct CharacterInfo: Identifiable, Hashable {
     public let directory: URL
     public let defFile: URL
     
+    /// Alias for directory - the character's root folder
+    public var path: URL { directory }
+    
     public init(directory: URL, defFile: URL) {
         self.directory = directory
         self.defFile = defFile

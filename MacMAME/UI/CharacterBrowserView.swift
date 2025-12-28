@@ -7,6 +7,56 @@ extension NSPasteboard.PasteboardType {
     static let characterDrag = NSPasteboard.PasteboardType("com.macmame.character-drag")
 }
 
+// MARK: - Custom Collection View for Context Menu Support
+
+/// NSCollectionView subclass that properly handles right-click/control-click context menus
+class CharacterCollectionView: NSCollectionView {
+    
+    var menuProvider: ((IndexPath) -> NSMenu?)?
+    
+    private func showContextMenu(for event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        
+        if let indexPath = indexPathForItem(at: point),
+           let menu = menuProvider?(indexPath) {
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+        }
+    }
+    
+    // Handle Control+Click (sends mouseDown with control modifier)
+    override func mouseDown(with event: NSEvent) {
+        if event.modifierFlags.contains(.control) {
+            showContextMenu(for: event)
+        } else {
+            super.mouseDown(with: event)
+        }
+    }
+    
+    // Handle right-click / two-finger tap
+    override func rightMouseDown(with event: NSEvent) {
+        showContextMenu(for: event)
+    }
+    
+    override var acceptsFirstResponder: Bool { true }
+}
+
+// MARK: - Custom Clip View to forward right-click events
+
+/// Custom clip view that forwards right-click to the document view
+class CharacterClipView: NSClipView {
+    override func rightMouseDown(with event: NSEvent) {
+        documentView?.rightMouseDown(with: event)
+    }
+    
+    override func mouseDown(with event: NSEvent) {
+        if event.modifierFlags.contains(.control) {
+            documentView?.mouseDown(with: event)
+        } else {
+            super.mouseDown(with: event)
+        }
+    }
+}
+
 /// A visual browser for viewing installed characters with thumbnails
 /// Uses shared design system from UIHelpers.swift
 class CharacterBrowserView: NSView {
@@ -14,7 +64,7 @@ class CharacterBrowserView: NSView {
     // MARK: - Properties
     
     private var scrollView: NSScrollView!
-    private var collectionView: NSCollectionView!
+    private var collectionView: CharacterCollectionView!
     private var flowLayout: NSCollectionViewFlowLayout!
     private var characters: [CharacterInfo] = []
     private var portraitCache: [String: NSImage] = [:]
@@ -36,6 +86,8 @@ class CharacterBrowserView: NSView {
     
     var onCharacterSelected: ((CharacterInfo) -> Void)?
     var onCharacterDoubleClicked: ((CharacterInfo) -> Void)?
+    var onCharacterRevealInFinder: ((CharacterInfo) -> Void)?
+    var onCharacterRemove: ((CharacterInfo) -> Void)?
     
     // MARK: - Initialization
     
@@ -60,9 +112,10 @@ class CharacterBrowserView: NSView {
     // MARK: - Collection View Setup
     
     private func setupCollectionView() {
-        // Create scroll view
+        // Create scroll view with custom clip view for right-click forwarding
         scrollView = NSScrollView(frame: bounds)
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.contentView = CharacterClipView()  // Use custom clip view
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
@@ -77,8 +130,8 @@ class CharacterBrowserView: NSView {
         flowLayout.minimumLineSpacing = cardSpacing
         flowLayout.sectionInset = NSEdgeInsets(top: sectionInset, left: sectionInset, bottom: sectionInset, right: sectionInset)
         
-        // Create collection view
-        collectionView = NSCollectionView(frame: bounds)
+        // Create collection view (using custom subclass)
+        collectionView = CharacterCollectionView(frame: bounds)
         collectionView.collectionViewLayout = flowLayout
         collectionView.delegate = self
         collectionView.dataSource = self
@@ -93,6 +146,11 @@ class CharacterBrowserView: NSView {
         // Register item classes
         collectionView.register(CharacterCollectionViewItem.self, forItemWithIdentifier: CharacterCollectionViewItem.identifier)
         collectionView.register(CharacterListItem.self, forItemWithIdentifier: CharacterListItem.identifier)
+        
+        // Set up context menu provider
+        collectionView.menuProvider = { [weak self] indexPath in
+            self?.buildContextMenu(for: indexPath)
+        }
         
         scrollView.documentView = collectionView
         
@@ -234,6 +292,41 @@ class CharacterBrowserView: NSView {
     func refresh() {
         portraitCache.removeAll()
         updateCharacters(IkemenBridge.shared.characters)
+    }
+    
+    // MARK: - Context Menu
+    
+    private func buildContextMenu(for indexPath: IndexPath) -> NSMenu? {
+        guard indexPath.item < characters.count else { return nil }
+        let character = characters[indexPath.item]
+        
+        let menu = NSMenu()
+        
+        // Reveal in Finder
+        let revealItem = NSMenuItem(title: "Reveal in Finder", action: #selector(revealInFinderAction(_:)), keyEquivalent: "")
+        revealItem.representedObject = character
+        revealItem.target = self
+        menu.addItem(revealItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        // Remove Character
+        let removeItem = NSMenuItem(title: "Remove Character…", action: #selector(removeCharacterAction(_:)), keyEquivalent: "")
+        removeItem.representedObject = character
+        removeItem.target = self
+        menu.addItem(removeItem)
+        
+        return menu
+    }
+    
+    @objc private func revealInFinderAction(_ sender: NSMenuItem) {
+        guard let character = sender.representedObject as? CharacterInfo else { return }
+        onCharacterRevealInFinder?(character)
+    }
+    
+    @objc private func removeCharacterAction(_ sender: NSMenuItem) {
+        guard let character = sender.representedObject as? CharacterInfo else { return }
+        onCharacterRemove?(character)
     }
 }
 

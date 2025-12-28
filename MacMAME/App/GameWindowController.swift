@@ -537,6 +537,12 @@ class GameWindowController: NSWindowController {
             self?.statusLabel.stringValue = character.displayName
             self?.showCharacterDetails(character)
         }
+        characterBrowserView.onCharacterRevealInFinder = { [weak self] character in
+            self?.revealCharacterInFinder(character)
+        }
+        characterBrowserView.onCharacterRemove = { [weak self] character in
+            self?.confirmRemoveCharacter(character)
+        }
         mainAreaView.addSubview(characterBrowserView)
         
         // Character Details Panel (hidden initially, slides in from right)
@@ -832,6 +838,46 @@ class GameWindowController: NSWindowController {
             statusLabel.stringValue = "Removed: \(stage.name)"
             
             // Refresh the stage list
+            IkemenBridge.shared.loadContent()
+        } catch {
+            statusLabel.stringValue = "Failed to remove: \(error.localizedDescription)"
+        }
+    }
+    
+    // MARK: - Character Management
+    
+    private func revealCharacterInFinder(_ character: CharacterInfo) {
+        NSWorkspace.shared.activateFileViewerSelecting([character.path])
+    }
+    
+    private func confirmRemoveCharacter(_ character: CharacterInfo) {
+        let alert = NSAlert()
+        alert.messageText = "Remove \"\(character.displayName)\"?"
+        alert.informativeText = "This will move the character files to Trash and remove it from select.def."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Cancel")
+        
+        guard let window = self.window else { return }
+        
+        alert.beginSheetModal(for: window) { [weak self] response in
+            if response == .alertFirstButtonReturn {
+                self?.removeCharacter(character)
+            }
+        }
+    }
+    
+    private func removeCharacter(_ character: CharacterInfo) {
+        guard let workingDir = IkemenBridge.shared.workingDirectory else {
+            statusLabel.stringValue = "No working directory set"
+            return
+        }
+        
+        do {
+            try ContentManager.shared.removeCharacter(character, in: workingDir)
+            statusLabel.stringValue = "Removed: \(character.displayName)"
+            
+            // Refresh the character list
             IkemenBridge.shared.loadContent()
         } catch {
             statusLabel.stringValue = "Failed to remove: \(error.localizedDescription)"
