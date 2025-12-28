@@ -347,7 +347,8 @@ class IkemenBridge: ObservableObject {
         for item in stageItems {
             // Check if it's a .def file at top level
             if item.pathExtension.lowercased() == "def" {
-                let stageInfo = StageInfo(defFile: item)
+                let isDisabled = ContentManager.shared.isStageDisabled(StageInfo(defFile: item), in: workingDir)
+                let stageInfo = StageInfo(defFile: item, isDisabled: isDisabled)
                 foundStages.append(stageInfo)
             }
             
@@ -356,7 +357,8 @@ class IkemenBridge: ObservableObject {
             if fileManager.fileExists(atPath: item.path, isDirectory: &isDirectory), isDirectory.boolValue {
                 if let subItems = try? fileManager.contentsOfDirectory(at: item, includingPropertiesForKeys: nil) {
                     for subItem in subItems where subItem.pathExtension.lowercased() == "def" {
-                        let stageInfo = StageInfo(defFile: subItem)
+                        let isDisabled = ContentManager.shared.isStageDisabled(StageInfo(defFile: subItem), in: workingDir)
+                        let stageInfo = StageInfo(defFile: subItem, isDisabled: isDisabled)
                         foundStages.append(stageInfo)
                     }
                 }

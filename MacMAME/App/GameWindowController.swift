@@ -558,6 +558,15 @@ class GameWindowController: NSWindowController {
         stageBrowserView.onStageSelected = { [weak self] stage in
             self?.statusLabel.stringValue = stage.name
         }
+        stageBrowserView.onStageDisableToggle = { [weak self] stage in
+            self?.toggleStageDisabled(stage)
+        }
+        stageBrowserView.onStageRemove = { [weak self] stage in
+            self?.confirmRemoveStage(stage)
+        }
+        stageBrowserView.onStageRevealInFinder = { stage in
+            NSWorkspace.shared.activateFileViewerSelecting([stage.defFile])
+        }
         mainAreaView.addSubview(stageBrowserView)
         
         // Screenpack Browser (hidden initially)
@@ -766,6 +775,66 @@ class GameWindowController: NSWindowController {
             } catch {
                 statusLabel.stringValue = "Failed to save: \(error.localizedDescription)"
             }
+        }
+    }
+    
+    // MARK: - Stage Management
+    
+    private func toggleStageDisabled(_ stage: StageInfo) {
+        guard let workingDir = IkemenBridge.shared.workingDirectory else {
+            statusLabel.stringValue = "No working directory set"
+            return
+        }
+        
+        do {
+            if stage.isDisabled {
+                // Enable the stage
+                try ContentManager.shared.enableStage(stage, in: workingDir)
+                statusLabel.stringValue = "Enabled: \(stage.name)"
+            } else {
+                // Disable the stage
+                try ContentManager.shared.disableStage(stage, in: workingDir)
+                statusLabel.stringValue = "Disabled: \(stage.name)"
+            }
+            
+            // Refresh the stage list
+            IkemenBridge.shared.loadContent()
+        } catch {
+            statusLabel.stringValue = "Failed: \(error.localizedDescription)"
+        }
+    }
+    
+    private func confirmRemoveStage(_ stage: StageInfo) {
+        let alert = NSAlert()
+        alert.messageText = "Remove \"\(stage.name)\"?"
+        alert.informativeText = "This will move the stage files to Trash and remove it from select.def."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Cancel")
+        
+        guard let window = self.window else { return }
+        
+        alert.beginSheetModal(for: window) { [weak self] response in
+            if response == .alertFirstButtonReturn {
+                self?.removeStage(stage)
+            }
+        }
+    }
+    
+    private func removeStage(_ stage: StageInfo) {
+        guard let workingDir = IkemenBridge.shared.workingDirectory else {
+            statusLabel.stringValue = "No working directory set"
+            return
+        }
+        
+        do {
+            try ContentManager.shared.removeStage(stage, in: workingDir)
+            statusLabel.stringValue = "Removed: \(stage.name)"
+            
+            // Refresh the stage list
+            IkemenBridge.shared.loadContent()
+        } catch {
+            statusLabel.stringValue = "Failed to remove: \(error.localizedDescription)"
         }
     }
     

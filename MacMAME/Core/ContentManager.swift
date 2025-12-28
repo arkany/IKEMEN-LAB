@@ -622,6 +622,255 @@ public final class ContentManager {
         }
     }
     
+    // MARK: - Stage Management
+    
+    /// Disable a stage in select.def by commenting it out
+    /// - Parameters:
+    ///   - stage: The stage to disable
+    ///   - workingDir: The Ikemen GO working directory
+    /// - Returns: true if successfully disabled
+    @discardableResult
+    public func disableStage(_ stage: StageInfo, in workingDir: URL) throws -> Bool {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard fileManager.fileExists(atPath: selectDefPath.path) else {
+            throw IkemenError.installFailed("select.def not found")
+        }
+        
+        var content = try String(contentsOf: selectDefPath, encoding: .utf8)
+        
+        // Build possible paths for this stage
+        let stageDefPath = stage.defFile.path
+        let possiblePaths = buildStagePaths(for: stage, in: workingDir)
+        
+        var modified = false
+        
+        // Find and comment out the stage entry
+        let lines = content.components(separatedBy: "\n")
+        var newLines: [String] = []
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // Skip already commented lines
+            if trimmedLine.hasPrefix(";") {
+                newLines.append(line)
+                continue
+            }
+            
+            // Check if this line contains our stage
+            var isOurStage = false
+            for path in possiblePaths {
+                if trimmedLine.lowercased().hasPrefix(path.lowercased()) {
+                    isOurStage = true
+                    break
+                }
+            }
+            
+            if isOurStage {
+                // Comment out the line
+                newLines.append(";\(line)")
+                modified = true
+                print("Disabled stage: \(trimmedLine)")
+            } else {
+                newLines.append(line)
+            }
+        }
+        
+        if modified {
+            content = newLines.joined(separator: "\n")
+            try content.write(to: selectDefPath, atomically: true, encoding: .utf8)
+        }
+        
+        return modified
+    }
+    
+    /// Enable a previously disabled stage in select.def by uncommenting it
+    /// - Parameters:
+    ///   - stage: The stage to enable
+    ///   - workingDir: The Ikemen GO working directory
+    /// - Returns: true if successfully enabled
+    @discardableResult
+    public func enableStage(_ stage: StageInfo, in workingDir: URL) throws -> Bool {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard fileManager.fileExists(atPath: selectDefPath.path) else {
+            throw IkemenError.installFailed("select.def not found")
+        }
+        
+        var content = try String(contentsOf: selectDefPath, encoding: .utf8)
+        
+        let possiblePaths = buildStagePaths(for: stage, in: workingDir)
+        
+        var modified = false
+        
+        // Find and uncomment the stage entry
+        let lines = content.components(separatedBy: "\n")
+        var newLines: [String] = []
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // Check if this is a commented stage line
+            if trimmedLine.hasPrefix(";") {
+                let uncommented = String(trimmedLine.dropFirst()).trimmingCharacters(in: .whitespaces)
+                
+                var isOurStage = false
+                for path in possiblePaths {
+                    if uncommented.lowercased().hasPrefix(path.lowercased()) {
+                        isOurStage = true
+                        break
+                    }
+                }
+                
+                if isOurStage {
+                    // Uncomment the line
+                    newLines.append(uncommented)
+                    modified = true
+                    print("Enabled stage: \(uncommented)")
+                } else {
+                    newLines.append(line)
+                }
+            } else {
+                newLines.append(line)
+            }
+        }
+        
+        if modified {
+            content = newLines.joined(separator: "\n")
+            try content.write(to: selectDefPath, atomically: true, encoding: .utf8)
+        }
+        
+        return modified
+    }
+    
+    /// Remove a stage completely (delete files and remove from select.def)
+    /// - Parameters:
+    ///   - stage: The stage to remove
+    ///   - workingDir: The Ikemen GO working directory
+    public func removeStage(_ stage: StageInfo, in workingDir: URL) throws {
+        // First remove from select.def
+        try removeStageFromSelectDef(stage, in: workingDir)
+        
+        // Then move the stage files to Trash
+        let stageDir = stage.defFile.deletingLastPathComponent()
+        let stageParentDir = stageDir.deletingLastPathComponent()
+        
+        // Check if the stage is in its own subdirectory or at root of stages/
+        let stagesDir = workingDir.appendingPathComponent("stages")
+        
+        if stageDir.path == stagesDir.path {
+            // Stage files are at root of stages/ - just trash the .def and .sff files
+            try? fileManager.trashItem(at: stage.defFile, resultingItemURL: nil)
+            if let sffFile = stage.sffFile {
+                try? fileManager.trashItem(at: sffFile, resultingItemURL: nil)
+            }
+            print("Moved stage files to Trash: \(stage.defFile.lastPathComponent)")
+        } else {
+            // Stage is in its own subdirectory - trash the whole directory
+            try fileManager.trashItem(at: stageDir, resultingItemURL: nil)
+            print("Moved stage directory to Trash: \(stageDir.lastPathComponent)")
+        }
+    }
+    
+    /// Remove a stage entry from select.def
+    private func removeStageFromSelectDef(_ stage: StageInfo, in workingDir: URL) throws {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard fileManager.fileExists(atPath: selectDefPath.path) else { return }
+        
+        var content = try String(contentsOf: selectDefPath, encoding: .utf8)
+        
+        let possiblePaths = buildStagePaths(for: stage, in: workingDir)
+        
+        // Find and remove the stage entry (whether commented or not)
+        let lines = content.components(separatedBy: "\n")
+        var newLines: [String] = []
+        
+        for line in lines {
+            var trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // Remove comment prefix for matching
+            if trimmedLine.hasPrefix(";") {
+                trimmedLine = String(trimmedLine.dropFirst()).trimmingCharacters(in: .whitespaces)
+            }
+            
+            var isOurStage = false
+            for path in possiblePaths {
+                if trimmedLine.lowercased().hasPrefix(path.lowercased()) {
+                    isOurStage = true
+                    break
+                }
+            }
+            
+            if !isOurStage {
+                newLines.append(line)
+            } else {
+                print("Removed stage from select.def: \(trimmedLine)")
+            }
+        }
+        
+        content = newLines.joined(separator: "\n")
+        try content.write(to: selectDefPath, atomically: true, encoding: .utf8)
+    }
+    
+    /// Check if a stage is disabled (commented out) in select.def
+    public func isStageDisabled(_ stage: StageInfo, in workingDir: URL) -> Bool {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard let content = try? String(contentsOf: selectDefPath, encoding: .utf8) else {
+            return false
+        }
+        
+        let possiblePaths = buildStagePaths(for: stage, in: workingDir)
+        
+        let lines = content.components(separatedBy: "\n")
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // Check commented lines
+            if trimmedLine.hasPrefix(";") {
+                let uncommented = String(trimmedLine.dropFirst()).trimmingCharacters(in: .whitespaces)
+                
+                for path in possiblePaths {
+                    if uncommented.lowercased().hasPrefix(path.lowercased()) {
+                        return true
+                    }
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    /// Build possible path variations for a stage to match in select.def
+    private func buildStagePaths(for stage: StageInfo, in workingDir: URL) -> [String] {
+        var paths: [String] = []
+        
+        let stagesDir = workingDir.appendingPathComponent("stages")
+        let defPath = stage.defFile.path
+        
+        // Try to get relative path from stages directory
+        if defPath.hasPrefix(stagesDir.path) {
+            let relativePath = String(defPath.dropFirst(stagesDir.path.count + 1)) // +1 for "/"
+            paths.append("stages/\(relativePath)")
+            paths.append(relativePath)
+        }
+        
+        // Also try just the filename
+        paths.append(stage.defFile.lastPathComponent)
+        
+        // Try folder/filename format for stages in subdirectories
+        let parentDir = stage.defFile.deletingLastPathComponent().lastPathComponent
+        if parentDir != "stages" {
+            paths.append("stages/\(parentDir)/\(stage.defFile.lastPathComponent)")
+            paths.append("\(parentDir)/\(stage.defFile.lastPathComponent)")
+        }
+        
+        return paths
+    }
+    
     // MARK: - Validation
     
     /// Validate character portrait and return any warnings

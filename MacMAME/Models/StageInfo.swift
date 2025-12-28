@@ -12,6 +12,7 @@ public struct StageInfo: Identifiable, Hashable {
     public let sffFile: URL?       // Sprite file for preview extraction
     public let boundLeft: Int      // Camera left bound (negative = wider stage)
     public let boundRight: Int     // Camera right bound (positive = wider stage)
+    public var isDisabled: Bool    // Whether stage is commented out in select.def
     
     /// Total horizontal camera range (larger = wider stage)
     public var totalWidth: Int {
@@ -40,9 +41,10 @@ public struct StageInfo: Identifiable, Hashable {
         return SFFParser.extractStagePreview(from: sff)
     }
     
-    public init(defFile: URL) {
+    public init(defFile: URL, isDisabled: Bool = false) {
         self.defFile = defFile
         self.id = defFile.deletingPathExtension().lastPathComponent
+        self.isDisabled = isDisabled
         
         // Parse .def file using shared parser
         let parsed = DEFParser.parse(url: defFile)

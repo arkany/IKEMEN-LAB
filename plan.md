@@ -31,32 +31,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 - [x] Settings panel (resolution, fullscreen, etc.)
 - [x] Portrait fix tool (generate/resize 160x160 portraits)
 
-### 🔄 In Progress
-- [ ] Drag-and-drop feedback UI - show success/failure message inside the drop zone area (needs design)
-
-### 📋 Planned
-- [x] Screenpack management (browse, activate, install, component detection)
-- [x] Character roster arrangement (drag-to-reorder in select.def)
-- [x] Character details panel (author, version, palette count, editable name)
-- [x] Character move list viewer (parse .cmd file for commands like `~D, DF, F, x` → "↓↘→ + LP")
-- [ ] Right-click context menu for characters/stages:
-  - Delete (move to Trash, remove from select.def)
-  - Reveal in Finder
-  - Duplicate
-- [ ] Animated idle stance in character details (parse .air Action 0, extract sprites from .sff, animate with timing)
-- [ ] Light/dark mode support
-- [ ] Detect screenpack character limit (parse `rows` × `columns` from system.def, e.g., MMMBE = 14×39 = 546 slots)
-- [ ] Content validator/fixer for imported chars & stages:
-  - Path issues: root-relative vs file-relative, Windows backslashes, case sensitivity
-  - Missing files: sprite/sound references that don't exist
-  - Portrait problems: wrong size, missing 9000,0 sprite
-  - Encoding issues: Shift-JIS, Latin-1, BOM markers
-  - Auto-fix safe issues on import, report others
-- [ ] Netplay IP manager (save/edit friend IPs in config.ini `[Netplay]` section - game handles actual connection)
-- [ ] Bundle Ikemen GO inside the .app for distribution
-- [ ] App Store preparation (sandbox, signing)
-
-### 🐛 Known Issues
+### � Known Issues
 - [x] ~~Stage preview fails for stages using root-relative sprite paths~~ (fixed: now handles both `spr = stages/Bifrost.sff` and `spr = Bifrost.sff`)
 
 ### 🛠️ Technical Debt / Refactoring
@@ -86,6 +61,130 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 ---
 
+## Roadmap
+
+### 🚀 MVP — "The Core Pipeline"
+**Focus:** Automated install + metadata foundation  
+**Goal:** Make installing characters effortless, normalize chaos into clean structured data
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Download → unzip → validate → install | ✅ Done | ZIP, RAR, 7z, folders supported |
+| Fix common folder issues | ✅ Done | Auto-detect correct path structure |
+| Normalize folder names + metadata | 📋 Todo | Sanitize names, consistent casing |
+| Auto-generate portraits (basic) | ✅ Done | Portrait fix tool (160x160) |
+| Update select.def | ✅ Done | Auto-add with correct paths |
+| Local metadata index (SQLite) | 📋 Todo | Persistent character/stage database |
+| Basic search (name, author) | 📋 Todo | Filter library by text |
+| Drag-and-drop feedback UI | 🔄 In Progress | Show success/failure in drop zone |
+
+**Why this phase matters:** This gives you the compiler core. Everything else plugs into this.
+
+---
+
+### 🧩 v1 — "The Library Era"
+**Focus:** Collections + Roster Builder + Better Metadata  
+**Goal:** Turn your library into a browsable, semantic system; make rosters reproducible and shareable
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Character roster arrangement | ✅ Done | Drag-to-reorder in select.def |
+| Character details panel | ✅ Done | Author, version, palette count, editable name |
+| Character move list viewer | ✅ Done | Parse .cmd → "↓↘→ + LP" notation |
+| Local Library Manager UI | ✅ Done | Visual browser with grid/list views |
+| Screenpack management | ✅ Done | Browse, activate, install, component detection |
+| Collections system | 📋 Todo | Named groups of characters (e.g., "Marvel", "SNK Bosses") |
+| Random roster generation | 📋 Todo | Generate random select.def from pools |
+| Auto-tagging (basic rules) | 📋 Todo | Infer source game, style from filenames/metadata |
+| Detect duplicates + outdated versions | 📋 Todo | Hash-based or name-based duplicate detection |
+| Detect screenpack character limit | 📋 Todo | Parse `rows` × `columns` from system.def |
+
+**Why this phase matters:** This is where your tool stops being an installer and becomes a curation engine.
+
+---
+
+### ⚡ v2 — "The Smart Layer"
+**Focus:** Style detection + advanced previews + browser extension  
+**Goal:** Add intelligence, reduce friction, make browsing MUGEN Archive feel modern
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Animated idle stance preview | 📋 Todo | Parse .air Action 0, animate sprites with timing |
+| Content validator/fixer | 📋 Todo | Path issues, missing files, encoding, auto-fix on import |
+| Style Detection Engine | 📋 Todo | POTS / MVC2 / KOF / CVS / Anime / Chibi classification |
+| HD vs SD detection | 📋 Todo | Resolution-based sprite analysis |
+| AI patch detection | 📋 Todo | Identify AI-enhanced characters |
+| Hitbox/frame data viewer | 📋 Todo | Parse .cns/.air for frame data when available |
+| Similar character suggestions | 📋 Todo | "If you like X, try Y" based on style/source |
+| Browser extension | 📋 Todo | "Install to MacMugen" button on MUGEN Archive |
+| Scrape metadata from web | 📋 Todo | Pull author, version, tags from download pages |
+
+**Why this phase matters:** This is where the system becomes smart and frictionless — your signature.
+
+---
+
+### 🏛️ v3 — "The Ecosystem"
+**Focus:** Full UX polish + stage integration + sharing  
+**Goal:** Make the tool feel like a full platform, support stages as first-class citizens
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Stage installer pipeline | ✅ Done | Drag-and-drop for stages |
+| Stage metadata + tagging | 📋 Todo | Source game, style, resolution tags |
+| Stage collections | 📋 Todo | Named groups of stages |
+| Stage roster pools | 📋 Todo | Random stage selection per match |
+| Portrait generator v2 | 📋 Todo | Better cropping, style presets, batch processing |
+| Auto-fixer v2 | 📋 Todo | CNS patching, missing sprites, AI tweaks |
+| Right-click context menus | 📋 Todo | Delete, Reveal in Finder, Duplicate |
+| Light/dark mode support | 📋 Todo | Respect system appearance |
+| Export/share curated sets | 📋 Todo | Export collection as shareable package |
+| Netplay IP manager | 📋 Todo | Save/edit friend IPs in config.ini |
+
+**Why this phase matters:** This is where your tool becomes the definitive MUGEN/IKEMEN manager.
+
+---
+
+### 🌐 v4 — "Distribution & Polish"
+**Focus:** App Store readiness + professional polish  
+**Goal:** Ship a product users can download and trust
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Bundle Ikemen GO inside .app | 📋 Todo | Self-contained distribution |
+| Custom app icon | 📋 Todo | Professional branding |
+| First-run wizard | 📋 Todo | Guide new users through setup |
+| "Get Characters" resource links | 📋 Todo | Curated links to community sites |
+| Code signing & notarization | 📋 Todo | Gatekeeper-friendly distribution |
+| App Store sandboxing | 📋 Todo | Comply with App Store requirements |
+| Sparkle auto-updater | 📋 Todo | For direct distribution channel |
+| Crash reporting | 📋 Todo | Track and fix issues |
+| Help documentation | 📋 Todo | User guide and FAQ |
+
+**Why this phase matters:** This gets MacMugen into users' hands professionally.
+
+---
+
+### 🌌 v5 — "The Platform"
+**Focus:** Optional long-term expansions  
+**Goal:** Turn the tool into a creative + management suite with community features
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Plugin system | 💭 Future | Allow community extensions |
+| Cloud sync for metadata | 💭 Future | Sync library state (not assets) across devices |
+| Community-shared collections | 💭 Future | Browse/import others' curated sets |
+| Advanced AI tagging | 💭 Future | ML-based style/quality classification |
+| Auto-balance rosters | 💭 Future | Suggest balanced character matchups |
+| Stage/music pairing suggestions | 💭 Future | Recommend music for stages |
+| Play stats dashboard | 💭 Future | Parse stats.json for win rates, playtime |
+| Screenshot/video capture | 💭 Future | Built-in recording |
+| Tournament bracket mode | 💭 Future | Manage local tournaments |
+| Character tier list editor | 💭 Future | Community-driven rankings |
+
+**Why this phase matters:** This is where the tool becomes something the community rallies around.
+
+---
+
 ## What We're Building vs What Exists
 
 | Component | Ikemen GO (exists) | MacMugen (we build) |
@@ -101,6 +200,9 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 | First-run wizard | ❌ | ✅ |
 | Menu bar integration | ❌ | ✅ |
 | App Store ready | ❌ | ✅ |
+| Collections/curation | ❌ | ✅ |
+| Style detection | ❌ | ✅ |
+| Browser extension | ❌ | ✅ |
 
 ---
 
@@ -113,15 +215,17 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 │  │     Swift/AppKit UI Layer             │  │
 │  │  • Content Browser                    │  │
 │  │  • Preferences                        │  │
+│  │  • Collections Manager                │  │
 │  │  • Netplay Lobby                      │  │
 │  └───────────────────────────────────────┘  │
 │                    │                        │
 │                    ▼                        │
 │  ┌───────────────────────────────────────┐  │
-│  │     IkemenBridge.swift                │  │
-│  │  • Launch/manage Ikemen process       │  │
-│  │  • Pass configuration                 │  │
-│  │  • Monitor status                     │  │
+│  │     Core Services                     │  │
+│  │  • IkemenBridge (process mgmt)        │  │
+│  │  • ContentManager (install/organize)  │  │
+│  │  • MetadataStore (SQLite index)       │  │
+│  │  • StyleDetector (classification)     │  │
 │  └───────────────────────────────────────┘  │
 │                    │                        │
 │                    ▼                        │
@@ -132,157 +236,6 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 │  └───────────────────────────────────────┘  │
 └─────────────────────────────────────────────┘
 ```
-
----
-
-## Phase 0 — Setup & Research ✅ (Mostly Complete)
-
-### Completed
-- [x] Xcode project structure  
-- [x] Basic AppKit shell (window, menu bar)
-- [x] Metal rendering foundation (may not need for wrapper approach)
-
-### Remaining  
-- [ ] Download and test Ikemen GO macOS build
-- [ ] Understand Ikemen GO's config files (mugen.cfg, select.def)
-- [ ] Document command-line arguments if any
-- [ ] Determine best way to bundle and launch
-
----
-
-## Phase 1 — Minimal Wrapper (Proof of Life)
-
-**Outcome:** MacMugen.app launches Ikemen GO and it just works.
-
-### Tasks
-- [ ] Download Ikemen GO macOS release
-- [ ] Bundle Ikemen_GO binary inside MacMugen.app
-- [ ] Create `IkemenBridge.swift` to launch subprocess
-- [ ] Handle process lifecycle (launch, quit, crash)
-- [ ] Set working directory to content folder
-- [ ] Basic "Launch Game" button in UI
-
-### Deliverables
-- MacMugen.app that launches Ikemen GO
-- User can play if they manually add characters
-
----
-
-## Phase 2 — Content Management
-
-**Outcome:** Easy drag-and-drop character/stage installation.
-
-### Features
-- [ ] Content directory setup (~/Library/Application Support/MacMugen/)
-- [ ] Drag-and-drop `.zip` installation for characters
-- [ ] Drag-and-drop `.zip` installation for stages  
-- [ ] Character browser with thumbnails (parse .sff for portrait)
-- [ ] Stage browser with previews
-- [ ] Automatic `select.def` generation/editing
-- [ ] Enable/disable characters without deleting
-- [ ] Delete characters with confirmation
-
-### Content Structure
-```
-~/Library/Application Support/MacMugen/
-├── chars/           # Character folders
-├── stages/          # Stage folders  
-├── data/            # Ikemen config (we manage select.def)
-├── font/            # Fonts
-└── sound/           # Sound effects
-```
-
-### Deliverables
-- Content browser window
-- Functional drag-and-drop installation
-- Characters appear in game after install
-
----
-
-## Phase 3 — Preferences & Configuration  
-
-**Outcome:** Native macOS preferences for game settings.
-
-### Features
-- [ ] Video settings (resolution, fullscreen, vsync)
-- [ ] Audio settings (volume levels)
-- [ ] Input/controller configuration
-- [ ] Content paths configuration
-- [ ] Write settings to Ikemen's config files
-- [ ] Keyboard shortcut customization
-
-### Deliverables
-- Preferences window (⌘,)
-- Settings persist and apply to Ikemen GO
-
----
-
-## Phase 4 — Netplay UI
-
-**Outcome:** Friendly interface for managing netplay connection info.
-
-### Features
-- [ ] Manage saved IP addresses in config.ini `[Netplay]` section
-- [ ] Add/edit/delete friend IPs with nicknames (`IP.FriendName = 192.168.1.100`)
-- [ ] Configure listen port (default: 7500)
-- [ ] Toggle rollback vs delay netcode (`RollbackNetcode = 0/1`)
-- [ ] Display local IP for sharing with friends
-
-### Notes
-- Ikemen GO handles actual connections through its in-game Network menu
-- We just pre-configure the IP list so friends appear in the connection menu
-- Config location: `save/config.ini` under `[Netplay]`
-- Rollback netcode uses GGPO (experimental but better for online play)
-
-### Deliverables
-- Netplay settings panel in MacMugen preferences
-- Saved IPs appear in Ikemen GO's connection menu
-
----
-
-## Phase 5 — Polish & Distribution
-
-**Outcome:** Ready for users (and potentially App Store).
-
-### Features
-- [ ] Custom app icon
-- [ ] First-run experience / setup wizard
-- [ ] "Get Characters" links to community resources
-- [ ] Sparkle auto-updater (for direct distribution)
-- [ ] Proper code signing and notarization
-- [ ] Sandboxing (if targeting App Store)
-- [ ] Crash reporting
-- [ ] Help documentation
-
-### Distribution Options
-1. **Direct download** (DMG) — Easier, full flexibility
-2. **App Store** — Wider reach, sandboxing constraints
-
-### Deliverables
-- Signed, notarized MacMugen.app
-- Website/landing page
-- User documentation
-
----
-
-## Phase 6 — Nice-to-Haves (Future)
-
-- [ ] Stage thumbnail generator for stages missing 9000,1 sprite:
-  - Show "Missing Thumbnail" label on stage list items without preview
-  - Add "Generate" button on right side of list item
-  - Extract background sprite (group 0), scale down, inject as 9000,1
-- [ ] Character favorites and ratings
-- [ ] Play stats dashboard (parse `save/stats.json`):
-  - Top winning characters (from `clearcount`)
-  - Arcade mode rankings & high scores
-  - Total playtime per mode
-  - Win/loss records
-- [ ] Screenshot capture
-- [ ] Video recording
-- [ ] Twitch/streaming integration
-- [ ] Tournament bracket mode
-- [ ] Character tier list editor
-- [ ] Hitbox visualization toggle
 
 ---
 
@@ -300,21 +253,32 @@ MacMugen/
 │   │   ├── IkemenBridge.swift          # Launch/manage Ikemen
 │   │   ├── ContentManager.swift        # Chars/stages management
 │   │   ├── ConfigManager.swift         # Read/write Ikemen configs
-│   │   └── SelectDefParser.swift       # Parse/edit select.def
+│   │   ├── SelectDefParser.swift       # Parse/edit select.def
+│   │   ├── SFFParser.swift             # SFF v1/v2 sprite extraction
+│   │   ├── DEFParser.swift             # Generic .def file parsing
+│   │   ├── ImageCache.swift            # NSCache for thumbnails
+│   │   ├── MetadataStore.swift         # SQLite database (planned)
+│   │   └── StyleDetector.swift         # Style classification (planned)
 │   ├── Views/
 │   │   ├── ContentBrowserView.swift
 │   │   ├── CharacterGridView.swift
 │   │   ├── StageListView.swift
+│   │   ├── CollectionsView.swift       # (planned)
 │   │   └── NetplayView.swift
 │   ├── Models/
-│   │   ├── Character.swift
-│   │   ├── Stage.swift
+│   │   ├── CharacterInfo.swift
+│   │   ├── StageInfo.swift
+│   │   ├── Collection.swift            # (planned)
 │   │   └── GameConfig.swift
+│   ├── Shared/
+│   │   └── UIHelpers.swift
 │   └── Resources/
 │       ├── Assets.xcassets
 │       └── MainMenu.xib
 ├── Ikemen/                              # Bundled Ikemen GO
 │   └── (Ikemen_GO binary + base files)
+├── BrowserExtension/                    # (planned)
+│   └── (Safari/Chrome extension)
 └── docs/
     └── user-guide.md
 ```
@@ -323,11 +287,14 @@ MacMugen/
 
 ## Success Metrics
 
-1. **Phase 1**: App launches Ikemen GO successfully
-2. **Phase 2**: Can install a character via drag-and-drop, appears in game
-3. **Phase 3**: Can change resolution in preferences, applies to game
-4. **Phase 4**: Can host/join netplay match through UI
-5. **Phase 5**: Non-technical user can download, install, and play
+| Phase | Success Criteria |
+|-------|------------------|
+| **MVP** | Can install character via drag-and-drop, search library, appears in game |
+| **v1** | Can create collections, generate random rosters, detect duplicates |
+| **v2** | Style detection works, browser extension installs characters |
+| **v3** | Stages have full parity with characters, can export/share sets |
+| **v4** | Non-technical user can download, install, and play |
+| **v5** | Community sharing ecosystem established |
 
 ---
 
@@ -347,3 +314,4 @@ MacMugen/
 3. **Faster to ship** — Wrapper approach = playable sooner
 4. **Stay current** — Can update bundled Ikemen GO as new versions release
 5. **Legal clarity** — Ikemen GO is MIT licensed, clean to bundle
+6. **Curation is the killer feature** — The MUGEN community has 30+ years of content; organizing it is the real value
