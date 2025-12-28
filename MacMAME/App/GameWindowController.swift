@@ -145,7 +145,7 @@ class GameWindowController: NSWindowController {
     private func configureWindow() {
         guard let window = window else { return }
         
-        window.title = "MUGEN Manager"
+        window.title = "IKEMEN Lab"
         window.center()
         window.backgroundColor = DesignColors.background
         window.minSize = NSSize(width: 900, height: 600)
@@ -211,13 +211,13 @@ class GameWindowController: NSWindowController {
         logoContainer.addSubview(logoIcon)
         
         // App name
-        let appNameLabel = NSTextField(labelWithString: "MUGEN")
+        let appNameLabel = NSTextField(labelWithString: "IKEMEN")
         appNameLabel.translatesAutoresizingMaskIntoConstraints = false
         appNameLabel.font = DesignFonts.body(size: 14)
         appNameLabel.textColor = DesignColors.textPrimary
         headerView.addSubview(appNameLabel)
         
-        let appSubLabel = NSTextField(labelWithString: "MGR")
+        let appSubLabel = NSTextField(labelWithString: "Lab")
         appSubLabel.translatesAutoresizingMaskIntoConstraints = false
         appSubLabel.font = DesignFonts.label(size: 14)
         appSubLabel.textColor = DesignColors.textDisabled
