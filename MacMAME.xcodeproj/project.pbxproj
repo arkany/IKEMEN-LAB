@@ -34,6 +34,8 @@
 		025 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127 /* AppSettings.swift */; };
 		026 /* SFFWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128 /* SFFWriter.swift */; };
 		027 /* StageGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129 /* StageGenerator.swift */; };
+		028 /* MetadataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130 /* MetadataStore.swift */; };
+		029 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 900 /* GRDB */; };
 		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
 /* End PBXBuildFile section */
 
@@ -66,6 +68,7 @@
 		127 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		128 /* SFFWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFFWriter.swift; sourceTree = "<group>"; };
 		129 /* StageGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageGenerator.swift; sourceTree = "<group>"; };
+		130 /* MetadataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataStore.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -81,6 +84,7 @@
 				008 /* MetalKit.framework in Frameworks */,
 				009 /* QuartzCore.framework in Frameworks */,
 				010 /* GameController.framework in Frameworks */,
+				029 /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -158,6 +162,7 @@
 				127 /* AppSettings.swift */,
 				128 /* SFFWriter.swift */,
 				129 /* StageGenerator.swift */,
+				130 /* MetadataStore.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -221,6 +226,9 @@
 			dependencies = (
 			);
 			name = MacMAME;
+			packageProductDependencies = (
+				900 /* GRDB */,
+			);
 			productName = MacMAME;
 			productReference = 109 /* MacMAME.app */;
 			productType = "com.apple.product-type.application";
@@ -249,6 +257,9 @@
 				Base,
 			);
 			mainGroup = 400;
+			packageReferences = (
+				901 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+			);
 			productRefGroup = 403 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -297,6 +308,7 @@
 				10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */,
 				026 /* SFFWriter.swift in Sources */,
 				027 /* StageGenerator.swift in Sources */,
+				028 /* MetadataStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -499,6 +511,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		901 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.29.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		900 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 901 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 700 /* Project object */;
 }

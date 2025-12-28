@@ -1505,6 +1505,19 @@ class GameWindowController: NSWindowController {
     private func setupBridge() {
         ikemenBridge = IkemenBridge.shared
         
+        // Initialize metadata database
+        if let workingDir = ikemenBridge.workingDirectory {
+            do {
+                try MetadataStore.shared.initialize(workingDir: workingDir)
+                // Do initial reindex if database is empty
+                if try MetadataStore.shared.characterCount() == 0 {
+                    try MetadataStore.shared.reindexAll(from: workingDir)
+                }
+            } catch {
+                print("Failed to initialize MetadataStore: \(error)")
+            }
+        }
+        
         // Observe state changes
         ikemenBridge.$engineState
             .receive(on: DispatchQueue.main)

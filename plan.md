@@ -84,7 +84,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 | Normalize folder names + metadata | ✅ Done | Sanitize names (spaces→underscores, Title_Case, preserve acronyms) |
 | Auto-generate portraits (basic) | ✅ Done | Portrait fix tool (160x160) |
 | Update select.def | ✅ Done | Auto-add with correct paths |
-| Local metadata index (SQLite) | 📋 Todo | Persistent character/stage database |
+| Local metadata index (SQLite) | ✅ Done | GRDB.swift for persistent database |
 | Basic search (name, author) | 📋 Todo | Filter library by text |
 | Drag-and-drop feedback UI | 🔄 In Progress | Show success/failure in drop zone |
 
@@ -197,6 +197,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 | Sparkle auto-updater | 📋 Todo | For direct distribution channel |
 | Crash reporting | 📋 Todo | Track and fix issues |
 | Help documentation | 📋 Todo | User guide and FAQ |
+| Sanitization results UI | 📋 Todo | Collapsed list showing renamed folders after install |
 
 **Why this phase matters:** This gets MacMugen into users' hands professionally.
 

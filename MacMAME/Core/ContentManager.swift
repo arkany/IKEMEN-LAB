@@ -525,6 +525,13 @@ public final class ContentManager {
             try addCharacterToSelectDef(defEntry, in: workingDir)
         }
         
+        // Index in metadata database
+        if let contents = try? fileManager.contentsOfDirectory(at: destPath, includingPropertiesForKeys: nil),
+           let defFile = contents.first(where: { $0.pathExtension.lowercased() == "def" }) {
+            let info = CharacterInfo(directory: destPath, defFile: defFile)
+            try? MetadataStore.shared.indexCharacter(info)
+        }
+        
         // Check for portrait issues and generate warning
         var warnings = validateCharacterPortrait(in: destPath)
         
@@ -632,6 +639,10 @@ public final class ContentManager {
                 installedStages.append(sanitizedBaseName)
                 // Clear cached images
                 ImageCache.shared.clearStage(sanitizedBaseName)
+                
+                // Index in metadata database
+                let info = StageInfo(defFile: destPath)
+                try? MetadataStore.shared.indexStage(info)
             }
         }
         
@@ -1029,6 +1040,9 @@ public final class ContentManager {
         // First remove from select.def
         try removeStageFromSelectDef(stage, in: workingDir)
         
+        // Remove from metadata database
+        try? MetadataStore.shared.deleteStage(id: stage.id)
+        
         // Then move the stage files to Trash
         let stageDir = stage.defFile.deletingLastPathComponent()
         let stageParentDir = stageDir.deletingLastPathComponent()
@@ -1157,6 +1171,9 @@ public final class ContentManager {
     public func removeCharacter(_ character: CharacterInfo, in workingDir: URL) throws {
         // First remove from select.def
         try removeCharacterFromSelectDef(character, in: workingDir)
+        
+        // Remove from metadata database
+        try? MetadataStore.shared.deleteCharacter(id: character.id)
         
         // Then move the character directory to Trash
         try fileManager.trashItem(at: character.path, resultingItemURL: nil)
