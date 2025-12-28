@@ -414,26 +414,38 @@ class GameWindowController: NSWindowController {
         
         // Count badge (for Characters/Stages)
         if item.showsCount {
+            // Create a container for proper vertical centering
+            let badgeContainer = NSView()
+            badgeContainer.translatesAutoresizingMaskIntoConstraints = false
+            badgeContainer.wantsLayer = true
+            badgeContainer.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
+            badgeContainer.layer?.cornerRadius = 4
+            badgeContainer.layer?.borderWidth = 1
+            badgeContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
+            badgeContainer.setContentHuggingPriority(.required, for: .horizontal)
+            
             let badge = NSTextField(labelWithString: "0")
             badge.translatesAutoresizingMaskIntoConstraints = false
             badge.font = NSFont.systemFont(ofSize: 11, weight: .medium)
             badge.textColor = DesignColors.textDisabled
             badge.alignment = .center
-            badge.wantsLayer = true
-            badge.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
-            badge.layer?.cornerRadius = 4
-            badge.layer?.borderWidth = 1
-            badge.layer?.borderColor = DesignColors.borderSubtle.cgColor
+            badge.backgroundColor = .clear
+            badge.isBordered = false
             badge.identifier = NSUserInterfaceItemIdentifier("navBadge")
+            badge.setContentHuggingPriority(.required, for: .horizontal)
+            
+            badgeContainer.addSubview(badge)
             
             // Store reference for updating
             navLabels[item] = badge
             
             NSLayoutConstraint.activate([
-                badge.widthAnchor.constraint(greaterThanOrEqualToConstant: 28),
-                badge.heightAnchor.constraint(equalToConstant: 20),
+                badgeContainer.heightAnchor.constraint(equalToConstant: 20),
+                badge.leadingAnchor.constraint(equalTo: badgeContainer.leadingAnchor, constant: 8),
+                badge.trailingAnchor.constraint(equalTo: badgeContainer.trailingAnchor, constant: -8),
+                badge.centerYAnchor.constraint(equalTo: badgeContainer.centerYAnchor),
             ])
-            stack.addArrangedSubview(badge)
+            stack.addArrangedSubview(badgeContainer)
         }
         
         container.addSubview(stack)
