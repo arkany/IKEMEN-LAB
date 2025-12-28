@@ -477,16 +477,41 @@ public final class ContentManager {
         }
         
         // Sanitize the folder name for consistency
-        let sanitizedName = sanitizeFolderName(charName)
-        let destPath = charsDir.appendingPathComponent(sanitizedName)
+        var sanitizedName = sanitizeFolderName(charName)
+        var destPath = charsDir.appendingPathComponent(sanitizedName)
         
-        // Check if character already exists
-        let isUpdate = fileManager.fileExists(atPath: destPath.path)
-        if isUpdate {
-            // Remove old version
-            try fileManager.removeItem(at: destPath)
-            // Clear cached images
-            ImageCache.shared.clearCharacter(sanitizedName)
+        // Check if destination exists - distinguish between update vs collision
+        var isUpdate = false
+        if fileManager.fileExists(atPath: destPath.path) {
+            // Check if this is the same character (same display name) or a different one
+            let existingDefPath = destPath.appendingPathComponent("\(sanitizedName).def")
+            var isSameCharacter = false
+            
+            if fileManager.fileExists(atPath: existingDefPath.path),
+               let existingParsed = DEFParser.parse(url: existingDefPath) {
+                let existingName = existingParsed.name ?? sanitizedName
+                isSameCharacter = (existingName.lowercased() == displayName.lowercased())
+            }
+            
+            if isSameCharacter {
+                // True update - replace existing
+                isUpdate = true
+                try fileManager.removeItem(at: destPath)
+                ImageCache.shared.clearCharacter(sanitizedName)
+            } else {
+                // Collision - different character with same sanitized name
+                // Append number to make unique
+                var counter = 2
+                var uniqueName = "\(sanitizedName)_\(counter)"
+                var uniquePath = charsDir.appendingPathComponent(uniqueName)
+                while fileManager.fileExists(atPath: uniquePath.path) {
+                    counter += 1
+                    uniqueName = "\(sanitizedName)_\(counter)"
+                    uniquePath = charsDir.appendingPathComponent(uniqueName)
+                }
+                sanitizedName = uniqueName
+                destPath = uniquePath
+            }
         }
         
         // Copy to chars directory
@@ -565,19 +590,40 @@ public final class ContentManager {
             let originalName = file.deletingPathExtension().lastPathComponent
             
             // Sanitize the filename (without extension)
-            let sanitizedBaseName = sanitizeFolderName(originalName)
-            let sanitizedFileName = ext.isEmpty ? sanitizedBaseName : "\(sanitizedBaseName).\(ext)"
+            var sanitizedBaseName = sanitizeFolderName(originalName)
+            var sanitizedFileName = ext.isEmpty ? sanitizedBaseName : "\(sanitizedBaseName).\(ext)"
+            var destPath = stagesDir.appendingPathComponent(sanitizedFileName)
             
-            let destPath = stagesDir.appendingPathComponent(sanitizedFileName)
+            // Check for collision with different file
+            if fileManager.fileExists(atPath: destPath.path) {
+                // For stages, we can't easily compare "same stage" vs "different stage"
+                // So we check if the original name matches (case-insensitive)
+                let existingIsUpdate = originalName.lowercased() == sanitizedBaseName.lowercased()
+                
+                if !existingIsUpdate {
+                    // Collision - append number to make unique
+                    var counter = 2
+                    var uniqueBase = "\(sanitizedBaseName)_\(counter)"
+                    var uniqueFile = ext.isEmpty ? uniqueBase : "\(uniqueBase).\(ext)"
+                    var uniquePath = stagesDir.appendingPathComponent(uniqueFile)
+                    while fileManager.fileExists(atPath: uniquePath.path) {
+                        counter += 1
+                        uniqueBase = "\(sanitizedBaseName)_\(counter)"
+                        uniqueFile = ext.isEmpty ? uniqueBase : "\(uniqueBase).\(ext)"
+                        uniquePath = stagesDir.appendingPathComponent(uniqueFile)
+                    }
+                    sanitizedBaseName = uniqueBase
+                    sanitizedFileName = uniqueFile
+                    destPath = uniquePath
+                } else {
+                    // True update - remove old file
+                    try fileManager.removeItem(at: destPath)
+                }
+            }
             
             // Track if we renamed
             if sanitizedFileName != file.lastPathComponent {
                 renamedFiles.append((file.lastPathComponent, sanitizedFileName))
-            }
-            
-            // Remove existing file if present
-            if fileManager.fileExists(atPath: destPath.path) {
-                try fileManager.removeItem(at: destPath)
             }
             
             try fileManager.copyItem(at: file, to: destPath)
