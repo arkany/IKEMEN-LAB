@@ -1,5 +1,136 @@
 import Cocoa
 
+// MARK: - Custom Search Field
+
+/// Custom styled search field matching the HTML design
+/// bg-zinc-900/50, border-white/5, rounded-md, placeholder-zinc-700
+class StyledSearchField: NSView {
+    
+    var onTextChanged: ((String) -> Void)?
+    
+    private var textField: NSTextField!
+    private var searchIcon: NSImageView!
+    private var clearButton: NSButton!
+    
+    var stringValue: String {
+        get { textField.stringValue }
+        set { 
+            textField.stringValue = newValue
+            clearButton.isHidden = newValue.isEmpty
+        }
+    }
+    
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setup()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+    
+    private func setup() {
+        wantsLayer = true
+        
+        // Background: bg-zinc-900/50 (#18181b at 50% opacity)
+        layer?.backgroundColor = NSColor(red: 0.094, green: 0.094, blue: 0.106, alpha: 0.5).cgColor
+        
+        // Border: border-white/5
+        layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        layer?.borderWidth = 1
+        
+        // Rounded: rounded-md (6px)
+        layer?.cornerRadius = 6
+        
+        // Search icon (magnifying glass)
+        searchIcon = NSImageView()
+        searchIcon.translatesAutoresizingMaskIntoConstraints = false
+        searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search")
+        searchIcon.contentTintColor = DesignColors.textTertiary // zinc-500
+        searchIcon.imageScaling = .scaleProportionallyDown
+        addSubview(searchIcon)
+        
+        // Text field
+        textField = NSTextField()
+        textField.translatesAutoresizingMaskIntoConstraints = false
+        textField.isBordered = false
+        textField.drawsBackground = false
+        textField.focusRingType = .none
+        textField.font = DesignFonts.caption(size: 12) // text-xs
+        textField.textColor = DesignColors.textSecondary // zinc-300
+        textField.placeholderString = "Search assets..."
+        textField.placeholderAttributedString = NSAttributedString(
+            string: "Search assets...",
+            attributes: [
+                .foregroundColor: NSColor(white: 0.4, alpha: 1.0), // zinc-700
+                .font: DesignFonts.caption(size: 12)
+            ]
+        )
+        textField.delegate = self
+        textField.target = self
+        textField.action = #selector(textFieldAction(_:))
+        addSubview(textField)
+        
+        // Clear button (x icon)
+        clearButton = NSButton()
+        clearButton.translatesAutoresizingMaskIntoConstraints = false
+        clearButton.isBordered = false
+        clearButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Clear")
+        clearButton.contentTintColor = DesignColors.textTertiary
+        clearButton.target = self
+        clearButton.action = #selector(clearClicked)
+        clearButton.isHidden = true
+        addSubview(clearButton)
+        
+        NSLayoutConstraint.activate([
+            // Height: py-1.5 = 6px top + 6px bottom + ~20px text = ~32px
+            heightAnchor.constraint(equalToConstant: 32),
+            
+            // Search icon: left-3 (12px from left), centered vertically
+            searchIcon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            searchIcon.centerYAnchor.constraint(equalTo: centerYAnchor),
+            searchIcon.widthAnchor.constraint(equalToConstant: 14),
+            searchIcon.heightAnchor.constraint(equalToConstant: 14),
+            
+            // Text field: pl-9 (36px from left after icon), pr-3 (12px from right)
+            textField.leadingAnchor.constraint(equalTo: searchIcon.trailingAnchor, constant: 8),
+            textField.trailingAnchor.constraint(equalTo: clearButton.leadingAnchor, constant: -4),
+            textField.centerYAnchor.constraint(equalTo: centerYAnchor),
+            
+            // Clear button: 12px from right
+            clearButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            clearButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            clearButton.widthAnchor.constraint(equalToConstant: 16),
+            clearButton.heightAnchor.constraint(equalToConstant: 16),
+        ])
+    }
+    
+    @objc private func textFieldAction(_ sender: NSTextField) {
+        clearButton.isHidden = sender.stringValue.isEmpty
+        onTextChanged?(sender.stringValue)
+    }
+    
+    @objc private func clearClicked() {
+        textField.stringValue = ""
+        clearButton.isHidden = true
+        onTextChanged?("")
+        window?.makeFirstResponder(textField)
+    }
+    
+    override func mouseDown(with event: NSEvent) {
+        // Focus the text field when clicking anywhere in the search box
+        window?.makeFirstResponder(textField)
+    }
+}
+
+extension StyledSearchField: NSTextFieldDelegate {
+    func controlTextDidChange(_ obj: Notification) {
+        clearButton.isHidden = textField.stringValue.isEmpty
+        onTextChanged?(textField.stringValue)
+    }
+}
+
 // MARK: - Content Header View
 
 /// Shared header view for content pages with breadcrumb navigation and search field
@@ -14,7 +145,7 @@ class ContentHeaderView: NSView {
     // MARK: - Properties
     
     private var breadcrumbStack: NSStackView!
-    private var searchField: NSSearchField!
+    private var searchField: StyledSearchField!
     private var homeLabel: NSTextField!
     private var chevronImage: NSImageView!
     private var currentPageLabel: NSTextField!
@@ -109,27 +240,21 @@ class ContentHeaderView: NSView {
     }
     
     private func setupSearchField() {
-        // Custom search field to match HTML design
-        searchField = NSSearchField()
+        // Custom styled search field matching HTML design
+        searchField = StyledSearchField(frame: .zero)
         searchField.translatesAutoresizingMaskIntoConstraints = false
-        searchField.placeholderString = "Search assets..."
-        searchField.font = DesignFonts.caption(size: 12)
-        searchField.focusRingType = .none
-        searchField.target = self
-        searchField.action = #selector(searchFieldChanged(_:))
-        searchField.sendsSearchStringImmediately = false
-        searchField.sendsWholeSearchString = false
-        
-        // Style the search field
-        // Note: AppKit doesn't allow full customization, but we can get close
-        if let cell = searchField.cell as? NSSearchFieldCell {
-            cell.searchButtonCell?.isTransparent = false
+        searchField.onTextChanged = { [weak self] text in
+            self?.handleSearchTextChanged(text)
         }
-        
-        // Apply dark styling via appearance
-        searchField.appearance = NSAppearance(named: .darkAqua)
-        
         addSubview(searchField)
+    }
+    
+    private func handleSearchTextChanged(_ text: String) {
+        // Debounce search to avoid too many queries while typing
+        searchDebounceTimer?.invalidate()
+        searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] _ in
+            self?.onSearch?(text)
+        }
     }
     
     private func setupConstraints() {
@@ -169,15 +294,6 @@ class ContentHeaderView: NSView {
     
     @objc private func homeClicked() {
         onHomeClicked?()
-    }
-    
-    @objc private func searchFieldChanged(_ sender: NSSearchField) {
-        // Debounce search to avoid too many queries while typing
-        searchDebounceTimer?.invalidate()
-        searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] _ in
-            guard let self = self else { return }
-            self.onSearch?(sender.stringValue)
-        }
     }
     
     // MARK: - Mouse Tracking
