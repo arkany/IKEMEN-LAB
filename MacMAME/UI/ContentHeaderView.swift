@@ -4,6 +4,7 @@ import Cocoa
 
 /// Custom styled search field matching the HTML design
 /// bg-zinc-900/50, border-white/5, rounded-md, placeholder-zinc-700
+/// Includes hover, focus, and disabled states
 class StyledSearchField: NSView {
     
     var onTextChanged: ((String) -> Void)?
@@ -11,12 +12,31 @@ class StyledSearchField: NSView {
     private var textField: NSTextField!
     private var searchIcon: NSImageView!
     private var clearButton: NSButton!
+    private var trackingArea: NSTrackingArea?
+    
+    // State tracking
+    private var isHovered = false
+    private var isFocused = false
+    
+    // Colors for different states
+    private let normalBorderColor = NSColor.white.withAlphaComponent(0.05)
+    private let hoverBorderColor = NSColor.white.withAlphaComponent(0.10)
+    private let focusBorderColor = NSColor.white.withAlphaComponent(0.20)
+    private let normalBgColor = NSColor(red: 0.094, green: 0.094, blue: 0.106, alpha: 0.5)
+    private let hoverBgColor = NSColor(red: 0.094, green: 0.094, blue: 0.106, alpha: 0.6)
     
     var stringValue: String {
         get { textField.stringValue }
         set { 
             textField.stringValue = newValue
             clearButton.isHidden = newValue.isEmpty
+        }
+    }
+    
+    var isEnabled: Bool = true {
+        didSet {
+            textField.isEnabled = isEnabled
+            updateAppearance()
         }
     }
     
@@ -34,10 +54,10 @@ class StyledSearchField: NSView {
         wantsLayer = true
         
         // Background: bg-zinc-900/50 (#18181b at 50% opacity)
-        layer?.backgroundColor = NSColor(red: 0.094, green: 0.094, blue: 0.106, alpha: 0.5).cgColor
+        layer?.backgroundColor = normalBgColor.cgColor
         
         // Border: border-white/5
-        layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        layer?.borderColor = normalBorderColor.cgColor
         layer?.borderWidth = 1
         
         // Rounded: rounded-md (6px)
@@ -104,6 +124,84 @@ class StyledSearchField: NSView {
             clearButton.widthAnchor.constraint(equalToConstant: 16),
             clearButton.heightAnchor.constraint(equalToConstant: 16),
         ])
+        
+        // Setup mouse tracking for hover state
+        setupTrackingArea()
+    }
+    
+    // MARK: - Tracking Area for Hover
+    
+    private func setupTrackingArea() {
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea!)
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        setupTrackingArea()
+    }
+    
+    // MARK: - Mouse Events
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+        updateAppearance()
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+        updateAppearance()
+    }
+    
+    override func mouseDown(with event: NSEvent) {
+        // Focus the text field when clicking anywhere in the search box
+        window?.makeFirstResponder(textField)
+    }
+    
+    // MARK: - Appearance Updates
+    
+    private func updateAppearance() {
+        guard let layer = layer else { return }
+        
+        // Animate the transition
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.15
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            
+            if !isEnabled {
+                // Disabled state: dimmed
+                layer.backgroundColor = normalBgColor.withAlphaComponent(0.3).cgColor
+                layer.borderColor = normalBorderColor.withAlphaComponent(0.5).cgColor
+                searchIcon.alphaValue = 0.5
+                textField.alphaValue = 0.5
+            } else if isFocused {
+                // Focus state: brighter border (white/20)
+                layer.backgroundColor = hoverBgColor.cgColor
+                layer.borderColor = focusBorderColor.cgColor
+                searchIcon.alphaValue = 1.0
+                textField.alphaValue = 1.0
+            } else if isHovered {
+                // Hover state: slightly brighter border (white/10)
+                layer.backgroundColor = hoverBgColor.cgColor
+                layer.borderColor = hoverBorderColor.cgColor
+                searchIcon.alphaValue = 1.0
+                textField.alphaValue = 1.0
+            } else {
+                // Normal state
+                layer.backgroundColor = normalBgColor.cgColor
+                layer.borderColor = normalBorderColor.cgColor
+                searchIcon.alphaValue = 1.0
+                textField.alphaValue = 1.0
+            }
+        }
     }
     
     @objc private func textFieldAction(_ sender: NSTextField) {
@@ -117,17 +215,22 @@ class StyledSearchField: NSView {
         onTextChanged?("")
         window?.makeFirstResponder(textField)
     }
-    
-    override func mouseDown(with event: NSEvent) {
-        // Focus the text field when clicking anywhere in the search box
-        window?.makeFirstResponder(textField)
-    }
 }
 
 extension StyledSearchField: NSTextFieldDelegate {
     func controlTextDidChange(_ obj: Notification) {
         clearButton.isHidden = textField.stringValue.isEmpty
         onTextChanged?(textField.stringValue)
+    }
+    
+    func controlTextDidBeginEditing(_ obj: Notification) {
+        isFocused = true
+        updateAppearance()
+    }
+    
+    func controlTextDidEndEditing(_ obj: Notification) {
+        isFocused = false
+        updateAppearance()
     }
 }
 
