@@ -374,7 +374,7 @@ class MetricsManager: NSObject, MXMetricManagerSubscriber {
 ## Code Organization
 
 ```
-MacMAME/
+IKEMEN Lab/
 ├── App/
 │   ├── AppDelegate.swift
 │   ├── MainMenu.xib

@@ -573,18 +573,12 @@ func testLoadAndRunGame() async throws {
 ### Xcode Scheme Configuration
 
 ```
-MacMAME.xcodeproj/
-├── MacMAME (App target)
-│   ├── Dependencies: MAMECore.framework
+IKEMEN Lab.xcodeproj/
+├── IKEMEN Lab (App target)
 │   └── Build Phases:
 │       ├── Compile Swift
-│       ├── Embed Frameworks (MAMECore)
 │       └── Copy Resources
-├── MAMECore (Framework target)
-│   └── Build Phases:
-│       ├── Run Script: build-mame.sh
-│       └── Copy Headers
-└── MacMAMETests (Test target)
+└── IKEMEN LabTests (Test target)
 ```
 
 ### CI/CD (GitHub Actions)
@@ -602,7 +596,7 @@ jobs:
       - name: Build MAME Core
         run: ./scripts/build-mame-macos.sh
       - name: Build App
-        run: xcodebuild -scheme MacMAME -configuration Release
+        run: xcodebuild -scheme "IKEMEN Lab" -configuration Release
       - name: Run Tests
-        run: xcodebuild test -scheme MacMAME
+        run: xcodebuild test -scheme "IKEMEN Lab"
 ```
