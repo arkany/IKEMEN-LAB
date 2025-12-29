@@ -38,6 +38,7 @@
 		029 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 900 /* GRDB */; };
 		030 /* ContentHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 131 /* ContentHeaderView.swift */; };
 		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
+		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +52,7 @@
 		108 /* MacMAME.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacMAME.entitlements; sourceTree = "<group>"; };
 		109 /* MacMAME.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMAME.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		10B1001B2F0114A400EC215A /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		10B1001E2F0114A500EC215A /* ToastNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastNotification.swift; sourceTree = "<group>"; };
 		112 /* MacMAME-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "MacMAME-Bridging-Header.h"; sourceTree = "<group>"; };
 		113 /* CharacterBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterBrowserView.swift; sourceTree = "<group>"; };
 		114 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
@@ -190,6 +192,7 @@
 				131 /* ContentHeaderView.swift */,
 				116 /* StageBrowserView.swift */,
 				10B1001B2F0114A400EC215A /* DashboardView.swift */,
+				10B1001E2F0114A500EC215A /* ToastNotification.swift */,
 				125 /* ScreenpackBrowserView.swift */,
 			);
 			path = UI;
@@ -309,6 +312,7 @@
 				023 /* ScreenpackBrowserView.swift in Sources */,
 				025 /* AppSettings.swift in Sources */,
 				10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */,
+				10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */,
 				026 /* SFFWriter.swift in Sources */,
 				027 /* StageGenerator.swift in Sources */,
 				028 /* MetadataStore.swift in Sources */,

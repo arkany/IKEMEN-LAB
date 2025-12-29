@@ -14,22 +14,54 @@ public enum BrowserViewMode {
 /// Based on Tailwind zinc palette with subtle white overlays
 public struct DesignColors {
     
+    // MARK: - Zinc Palette (Tailwind)
+    
+    /// zinc-950 (#09090b)
+    public static let zinc950 = NSColor(red: 0x09/255.0, green: 0x09/255.0, blue: 0x0b/255.0, alpha: 1.0)
+    
+    /// zinc-900 (#18181b)
+    public static let zinc900 = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0)
+    
+    /// zinc-800 (#27272a)
+    public static let zinc800 = NSColor(red: 0x27/255.0, green: 0x27/255.0, blue: 0x2a/255.0, alpha: 1.0)
+    
+    /// zinc-700 (#3f3f46)
+    public static let zinc700 = NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0)
+    
+    /// zinc-600 (#52525b)
+    public static let zinc600 = NSColor(red: 0x52/255.0, green: 0x52/255.0, blue: 0x5b/255.0, alpha: 1.0)
+    
+    /// zinc-500 (#71717a)
+    public static let zinc500 = NSColor(red: 0x71/255.0, green: 0x71/255.0, blue: 0x7a/255.0, alpha: 1.0)
+    
+    /// zinc-400 (#a1a1aa)
+    public static let zinc400 = NSColor(red: 0xa1/255.0, green: 0xa1/255.0, blue: 0xaa/255.0, alpha: 1.0)
+    
+    /// zinc-300 (#d4d4d8)
+    public static let zinc300 = NSColor(red: 0xd4/255.0, green: 0xd4/255.0, blue: 0xd8/255.0, alpha: 1.0)
+    
+    /// zinc-200 (#e4e4e7)
+    public static let zinc200 = NSColor(red: 0xe4/255.0, green: 0xe4/255.0, blue: 0xe7/255.0, alpha: 1.0)
+    
+    /// zinc-100 (#f4f4f5)
+    public static let zinc100 = NSColor(red: 0xf4/255.0, green: 0xf4/255.0, blue: 0xf5/255.0, alpha: 1.0)
+    
     // MARK: - Core Backgrounds
     
     /// Main app background - zinc-950 (#09090b)
-    public static let background = NSColor(red: 0x09/255.0, green: 0x09/255.0, blue: 0x0b/255.0, alpha: 1.0)
+    public static let background = zinc950
     
     /// Sidebar/panel background - zinc-950
-    public static let sidebarBackground = NSColor(red: 0x09/255.0, green: 0x09/255.0, blue: 0x0b/255.0, alpha: 1.0)
+    public static let sidebarBackground = zinc950
     
     /// Card/panel backgrounds - zinc-900 (#18181b)
-    public static let cardBackground = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0)
+    public static let cardBackground = zinc900
     
     /// Slightly darker than card - zinc-900/50 with black overlay
     public static let panelBackground = NSColor(red: 0x0c/255.0, green: 0x0c/255.0, blue: 0x0e/255.0, alpha: 1.0)
     
     /// Input/control backgrounds - zinc-900/50
-    public static let inputBackground = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 0.5)
+    public static let inputBackground = zinc900.withAlphaComponent(0.5)
     
     // MARK: - Text Colors
     
@@ -37,16 +69,16 @@ public struct DesignColors {
     public static let textPrimary = NSColor.white
     
     /// Secondary text - zinc-400 (#a1a1aa)
-    public static let textSecondary = NSColor(red: 0xa1/255.0, green: 0xa1/255.0, blue: 0xaa/255.0, alpha: 1.0)
+    public static let textSecondary = zinc400
     
     /// Tertiary/muted text - zinc-500 (#71717a)
-    public static let textTertiary = NSColor(red: 0x71/255.0, green: 0x71/255.0, blue: 0x7a/255.0, alpha: 1.0)
+    public static let textTertiary = zinc500
     
     /// Disabled/placeholder text - zinc-600 (#52525b)
-    public static let textDisabled = NSColor(red: 0x52/255.0, green: 0x52/255.0, blue: 0x5b/255.0, alpha: 1.0)
+    public static let textDisabled = zinc600
     
     /// Hover text - zinc-200 (#e4e4e7)
-    public static let textHover = NSColor(red: 0xe4/255.0, green: 0xe4/255.0, blue: 0xe7/255.0, alpha: 1.0)
+    public static let textHover = zinc200
     
     // MARK: - Borders
     

@@ -459,248 +459,646 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
     }
 }
 
-// MARK: - Character Collection View Item
-
+// MARK: - Character Collection View Item (Grid Card)
+/// Matches HTML design: aspect-square card with gradient overlay, name/author at bottom-left
+/// States: default, hover, selected (active)
 class CharacterCollectionViewItem: NSCollectionViewItem {
     
     static let identifier = NSUserInterfaceItemIdentifier("CharacterCollectionViewItem")
     
+    private var containerView: NSView!
     private var portraitImageView: NSImageView!
+    private var gradientLayer: CAGradientLayer!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
-    private var containerView: NSView!
+    private var statusDot: NSView!
+    private var placeholderLabel: NSTextField!
+    
+    private var trackingArea: NSTrackingArea?
+    private var isHovered = false
+    
+    // Animation duration (200ms as requested)
+    private let animationDuration: CGFloat = 0.2
     
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 160, height: 160))
         view.wantsLayer = true
-        
         setupViews()
     }
     
     private func setupViews() {
-        // Container - matches Figma card design
+        // Container - rounded-xl (12px), with border
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        containerView.layer?.cornerRadius = 12
+        containerView.layer?.masksToBounds = true
+        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
         containerView.layer?.borderWidth = 1
-        containerView.layer?.borderColor = NSColor.clear.cgColor
+        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         view.addSubview(containerView)
         
-        // Portrait image - 100x100 from Figma
+        // Portrait image - fills container
         portraitImageView = NSImageView(frame: .zero)
         portraitImageView.translatesAutoresizingMaskIntoConstraints = false
         portraitImageView.imageScaling = .scaleProportionallyUpOrDown
         portraitImageView.wantsLayer = true
-        portraitImageView.layer?.backgroundColor = DesignColors.defaultPlaceholder.cgColor
+        portraitImageView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
         containerView.addSubview(portraitImageView)
         
-        // Name label - header style, centered
+        // Placeholder initial (shows when no portrait)
+        placeholderLabel = NSTextField(labelWithString: "")
+        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        placeholderLabel.font = DesignFonts.header(size: 48)
+        placeholderLabel.textColor = NSColor.white.withAlphaComponent(0.05)
+        placeholderLabel.alignment = .center
+        containerView.addSubview(placeholderLabel)
+        
+        // Gradient overlay - from-zinc-900/90 via-transparent to-transparent
+        gradientLayer = CAGradientLayer()
+        gradientLayer.colors = [
+            NSColor.clear.cgColor,
+            NSColor.clear.cgColor,
+            DesignColors.zinc900.withAlphaComponent(0.9).cgColor
+        ]
+        gradientLayer.locations = [0.0, 0.3, 1.0]
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
+        containerView.layer?.addSublayer(gradientLayer)
+        
+        // Status dot (top-right) - emerald-500 for active
+        statusDot = NSView()
+        statusDot.translatesAutoresizingMaskIntoConstraints = false
+        statusDot.wantsLayer = true
+        statusDot.layer?.cornerRadius = 4
+        statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
+        statusDot.layer?.shadowColor = DesignColors.positive.cgColor
+        statusDot.layer?.shadowOffset = .zero
+        statusDot.layer?.shadowRadius = 4
+        statusDot.layer?.shadowOpacity = 0.5
+        statusDot.isHidden = true
+        containerView.addSubview(statusDot)
+        
+        // Name label - bottom-left, white, semibold
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.header(size: 16)
-        nameLabel.textColor = DesignColors.grayText
-        nameLabel.alignment = .center
+        nameLabel.font = DesignFonts.body(size: 14)
+        nameLabel.textColor = .white
         nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.maximumNumberOfLines = 1
         containerView.addSubview(nameLabel)
         
-        // Author label - body style, centered
+        // Author label - below name, zinc-400/500, smaller
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.body(size: 12)
-        authorLabel.textColor = DesignColors.grayText
-        authorLabel.alignment = .center
+        authorLabel.font = DesignFonts.caption(size: 10)
+        authorLabel.textColor = DesignColors.textTertiary
         authorLabel.lineBreakMode = .byTruncatingTail
         authorLabel.maximumNumberOfLines = 1
         containerView.addSubview(authorLabel)
         
-        // Layout per Figma: 12px padding, 4px gaps
+        // Layout
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            // Portrait: 12px from top, centered, 100x100
-            portraitImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
-            portraitImageView.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
-            portraitImageView.widthAnchor.constraint(equalToConstant: 100),
-            portraitImageView.heightAnchor.constraint(equalToConstant: 100),
+            portraitImageView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            portraitImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            portraitImageView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            portraitImageView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             
-            // Name: 4px below portrait
-            nameLabel.topAnchor.constraint(equalTo: portraitImageView.bottomAnchor, constant: 4),
-            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 4),
-            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -4),
+            placeholderLabel.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            placeholderLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             
-            // Author: 4px below name
-            authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 4),
-            authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 4),
-            authorLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -4),
+            statusDot.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 8),
+            statusDot.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
+            statusDot.widthAnchor.constraint(equalToConstant: 8),
+            statusDot.heightAnchor.constraint(equalToConstant: 8),
+            
+            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
+            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
+            nameLabel.bottomAnchor.constraint(equalTo: authorLabel.topAnchor, constant: -2),
+            
+            authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
+            authorLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
+            authorLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12),
         ])
+    }
+    
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        gradientLayer.frame = containerView.bounds
+        setupTrackingArea()
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupTrackingArea()
+    }
+    
+    private func setupTrackingArea() {
+        if let existing = trackingArea {
+            view.removeTrackingArea(existing)
+        }
+        trackingArea = NSTrackingArea(
+            rect: view.bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow],
+            owner: self,
+            userInfo: nil
+        )
+        view.addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+        updateAppearance(animated: true)
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+        updateAppearance(animated: true)
     }
     
     override var isSelected: Bool {
         didSet {
-            updateSelectionAppearance()
+            updateAppearance(animated: true)
         }
     }
     
-    private func updateSelectionAppearance() {
-        if isSelected {
-            // Figma: border-[#fd4e5b], shadow 0px 0px 18px rgba(253,78,91,0.4)
-            containerView.layer?.borderColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.borderWidth = 1
+    private func updateAppearance(animated: Bool) {
+        let duration = animated ? animationDuration : 0
+        
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             
-            // Add glow shadow
-            containerView.layer?.shadowColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.shadowOffset = CGSize.zero
-            containerView.layer?.shadowRadius = 18
-            containerView.layer?.shadowOpacity = 0.4
-        } else {
-            containerView.layer?.borderColor = NSColor.clear.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowOpacity = 0
+            if isSelected {
+                // Active state: border-white/20, ring-1 ring-white/10, bg-zinc-900/40
+                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.4).cgColor
+                // Add subtle glow
+                containerView.layer?.shadowColor = NSColor.white.cgColor
+                containerView.layer?.shadowOffset = .zero
+                containerView.layer?.shadowRadius = 8
+                containerView.layer?.shadowOpacity = 0.1
+            } else if isHovered {
+                // Hover state: border-white/10, bg-zinc-900/30
+                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+                containerView.layer?.shadowOpacity = 0
+            } else {
+                // Default state: border-white/5, bg-zinc-900/10
+                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+                containerView.layer?.shadowOpacity = 0
+            }
         }
+        
+        // Placeholder text color change on hover
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(duration)
+        placeholderLabel.textColor = isHovered ? NSColor.white.withAlphaComponent(0.1) : NSColor.white.withAlphaComponent(0.05)
+        
+        // Name color change: white when selected, zinc-300 on hover, zinc-300 default
+        if isSelected {
+            nameLabel.textColor = .white
+        } else if isHovered {
+            nameLabel.textColor = .white
+        } else {
+            nameLabel.textColor = DesignColors.zinc300
+        }
+        CATransaction.commit()
     }
     
     func configure(with character: CharacterInfo) {
         nameLabel.stringValue = character.displayName
-        authorLabel.stringValue = "by \(character.author)"
+        authorLabel.stringValue = "\(character.author) • \(character.versionDate.isEmpty ? "v1.0" : character.versionDate)"
+        placeholderLabel.stringValue = String(character.displayName.prefix(1)).uppercased()
         portraitImageView.image = nil
+        placeholderLabel.isHidden = false
+        
+        // Show status dot if this is the first character (placeholder logic - could be enhanced)
+        statusDot.isHidden = true
     }
     
     func setPortrait(_ image: NSImage?) {
         portraitImageView.image = image
+        placeholderLabel.isHidden = (image != nil)
         if image != nil {
             portraitImageView.layer?.backgroundColor = NSColor.clear.cgColor
+        }
+    }
+    
+    /// Show/hide status indicator (e.g., for warnings)
+    func setStatus(_ status: CharacterStatus) {
+        switch status {
+        case .active:
+            statusDot.isHidden = false
+            statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
+            statusDot.layer?.shadowColor = DesignColors.positive.cgColor
+        case .warning:
+            statusDot.isHidden = false
+            statusDot.layer?.backgroundColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0).cgColor
+            statusDot.layer?.shadowColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0).cgColor
+        case .none:
+            statusDot.isHidden = true
         }
     }
     
     override func prepareForReuse() {
         super.prepareForReuse()
         portraitImageView.image = nil
-        portraitImageView.layer?.backgroundColor = DesignColors.defaultPlaceholder.cgColor
+        portraitImageView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
+        placeholderLabel.isHidden = false
         nameLabel.stringValue = ""
         authorLabel.stringValue = ""
+        statusDot.isHidden = true
         isSelected = false
+        isHovered = false
+        updateAppearance(animated: false)
     }
 }
 
-// MARK: - Character List Item (Row View)
+/// Status for character cards
+enum CharacterStatus {
+    case none
+    case active
+    case warning
+}
+
+// MARK: - Character List Item (Table Row)
+/// Matches HTML design: table row with columns for icon, name+path, author, series badge, version, date
+/// Uses hover states with 200ms transitions
 
 class CharacterListItem: NSCollectionViewItem {
     
     static let identifier = NSUserInterfaceItemIdentifier("CharacterListItem")
     
     private var containerView: NSView!
-    private var portraitImageView: NSImageView!
+    private var iconView: NSView!
+    private var iconImageView: NSImageView!
+    private var iconInitialLabel: NSTextField!
     private var nameLabel: NSTextField!
+    private var pathLabel: NSTextField!
+    private var statusDot: NSView!
     private var authorLabel: NSTextField!
+    private var seriesBadge: NSView!
+    private var seriesLabel: NSTextField!
+    private var versionLabel: NSTextField!
+    private var dateLabel: NSTextField!
+    private var moreButton: NSButton!
+    
+    private var trackingArea: NSTrackingArea?
+    private var isHovered = false
+    
+    private let animationDuration: CGFloat = 0.2
+    
+    // Column widths matching HTML percentages
+    private let iconColumnWidth: CGFloat = 48  // Padding + 32px icon
+    private let authorColumnWidth: CGFloat = 100
+    private let seriesColumnWidth: CGFloat = 80
+    private let versionColumnWidth: CGFloat = 60
+    private let dateColumnWidth: CGFloat = 80
+    private let moreColumnWidth: CGFloat = 40
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 60))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 52))
         view.wantsLayer = true
-        
         setupViews()
     }
     
     private func setupViews() {
+        // Container - row with bottom border
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        containerView.layer?.borderWidth = 1
-        containerView.layer?.borderColor = NSColor.clear.cgColor
+        containerView.layer?.backgroundColor = NSColor.clear.cgColor
         view.addSubview(containerView)
         
-        // Small portrait thumbnail
-        portraitImageView = NSImageView(frame: .zero)
-        portraitImageView.translatesAutoresizingMaskIntoConstraints = false
-        portraitImageView.imageScaling = .scaleProportionallyUpOrDown
-        portraitImageView.wantsLayer = true
-        portraitImageView.layer?.backgroundColor = DesignColors.defaultPlaceholder.cgColor
-        containerView.addSubview(portraitImageView)
+        // Bottom border line
+        let borderLine = NSView()
+        borderLine.translatesAutoresizingMaskIntoConstraints = false
+        borderLine.wantsLayer = true
+        borderLine.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        containerView.addSubview(borderLine)
         
-        // Name
+        // Icon container with gradient background
+        iconView = NSView()
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.wantsLayer = true
+        iconView.layer?.cornerRadius = 4
+        iconView.layer?.borderWidth = 1
+        iconView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        
+        // Create gradient layer for icon bg
+        let gradientLayer = CAGradientLayer()
+        gradientLayer.colors = [
+            DesignColors.zinc800.cgColor,
+            DesignColors.zinc900.cgColor
+        ]
+        gradientLayer.startPoint = CGPoint(x: 0, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 1, y: 1)
+        gradientLayer.cornerRadius = 4
+        iconView.layer?.addSublayer(gradientLayer)
+        containerView.addSubview(iconView)
+        
+        // Icon image
+        iconImageView = NSImageView()
+        iconImageView.translatesAutoresizingMaskIntoConstraints = false
+        iconImageView.imageScaling = .scaleProportionallyUpOrDown
+        iconImageView.wantsLayer = true
+        iconView.addSubview(iconImageView)
+        
+        // Icon initial placeholder
+        iconInitialLabel = NSTextField(labelWithString: "")
+        iconInitialLabel.translatesAutoresizingMaskIntoConstraints = false
+        iconInitialLabel.font = NSFont.systemFont(ofSize: 10, weight: .bold)
+        iconInitialLabel.textColor = DesignColors.zinc500
+        iconInitialLabel.alignment = .center
+        iconView.addSubview(iconInitialLabel)
+        
+        // Name + path stack
+        let nameStack = NSStackView()
+        nameStack.translatesAutoresizingMaskIntoConstraints = false
+        nameStack.orientation = .vertical
+        nameStack.alignment = .leading
+        nameStack.spacing = 2
+        containerView.addSubview(nameStack)
+        
+        // Name row with status dot
+        let nameRow = NSStackView()
+        nameRow.orientation = .horizontal
+        nameRow.alignment = .centerY
+        nameRow.spacing = 6
+        
         nameLabel = NSTextField(labelWithString: "")
-        nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.header(size: 16)
-        nameLabel.textColor = DesignColors.creamText
+        nameLabel.font = DesignFonts.body(size: 14)
+        nameLabel.textColor = DesignColors.zinc300
         nameLabel.lineBreakMode = .byTruncatingTail
-        containerView.addSubview(nameLabel)
+        nameRow.addArrangedSubview(nameLabel)
+        
+        statusDot = NSView()
+        statusDot.translatesAutoresizingMaskIntoConstraints = false
+        statusDot.wantsLayer = true
+        statusDot.layer?.cornerRadius = 3
+        statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
+        statusDot.isHidden = true
+        nameRow.addArrangedSubview(statusDot)
+        nameStack.addArrangedSubview(nameRow)
+        
+        // Path label (mono font)
+        pathLabel = NSTextField(labelWithString: "")
+        pathLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        pathLabel.textColor = DesignColors.zinc600
+        pathLabel.lineBreakMode = .byTruncatingTail
+        nameStack.addArrangedSubview(pathLabel)
         
         // Author
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.body(size: 12)
-        authorLabel.textColor = DesignColors.grayText
+        authorLabel.font = DesignFonts.body(size: 13)
+        authorLabel.textColor = DesignColors.zinc500
         authorLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(authorLabel)
         
+        // Series badge
+        seriesBadge = NSView()
+        seriesBadge.translatesAutoresizingMaskIntoConstraints = false
+        seriesBadge.wantsLayer = true
+        seriesBadge.layer?.cornerRadius = 4
+        seriesBadge.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        seriesBadge.layer?.borderWidth = 1
+        seriesBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        containerView.addSubview(seriesBadge)
+        
+        seriesLabel = NSTextField(labelWithString: "")
+        seriesLabel.translatesAutoresizingMaskIntoConstraints = false
+        seriesLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        seriesLabel.textColor = DesignColors.zinc400
+        seriesBadge.addSubview(seriesLabel)
+        
+        // Version
+        versionLabel = NSTextField(labelWithString: "")
+        versionLabel.translatesAutoresizingMaskIntoConstraints = false
+        versionLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        versionLabel.textColor = DesignColors.zinc500
+        versionLabel.alignment = .left
+        containerView.addSubview(versionLabel)
+        
+        // Date
+        dateLabel = NSTextField(labelWithString: "")
+        dateLabel.translatesAutoresizingMaskIntoConstraints = false
+        dateLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        dateLabel.textColor = DesignColors.zinc600
+        dateLabel.alignment = .right
+        containerView.addSubview(dateLabel)
+        
+        // More button (ellipsis)
+        moreButton = NSButton(title: "•••", target: nil, action: nil)
+        moreButton.translatesAutoresizingMaskIntoConstraints = false
+        moreButton.bezelStyle = .inline
+        moreButton.isBordered = false
+        moreButton.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        moreButton.contentTintColor = DesignColors.zinc400
+        moreButton.alphaValue = 0 // Hidden by default, shown on hover
+        containerView.addSubview(moreButton)
+        
+        // Layout constraints
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            // Portrait: 44x44, centered vertically
-            portraitImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
-            portraitImageView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            portraitImageView.widthAnchor.constraint(equalToConstant: 44),
-            portraitImageView.heightAnchor.constraint(equalToConstant: 44),
+            borderLine.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            borderLine.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            borderLine.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            borderLine.heightAnchor.constraint(equalToConstant: 1),
             
-            // Name
-            nameLabel.leadingAnchor.constraint(equalTo: portraitImageView.trailingAnchor, constant: 12),
-            nameLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 10),
-            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            // Icon: 32x32 with padding
+            iconView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            iconView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 32),
+            iconView.heightAnchor.constraint(equalToConstant: 32),
             
-            // Author
-            authorLabel.leadingAnchor.constraint(equalTo: portraitImageView.trailingAnchor, constant: 12),
-            authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
+            iconImageView.centerXAnchor.constraint(equalTo: iconView.centerXAnchor),
+            iconImageView.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),
+            iconImageView.widthAnchor.constraint(equalToConstant: 28),
+            iconImageView.heightAnchor.constraint(equalToConstant: 28),
+            
+            iconInitialLabel.centerXAnchor.constraint(equalTo: iconView.centerXAnchor),
+            iconInitialLabel.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),
+            
+            statusDot.widthAnchor.constraint(equalToConstant: 6),
+            statusDot.heightAnchor.constraint(equalToConstant: 6),
+            
+            // Name stack
+            nameStack.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
+            nameStack.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            nameStack.trailingAnchor.constraint(lessThanOrEqualTo: authorLabel.leadingAnchor, constant: -16),
+            
+            // Author (fixed position from right side)
+            authorLabel.trailingAnchor.constraint(equalTo: seriesBadge.leadingAnchor, constant: -16),
+            authorLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            authorLabel.widthAnchor.constraint(equalToConstant: authorColumnWidth),
+            
+            // Series badge
+            seriesBadge.trailingAnchor.constraint(equalTo: versionLabel.leadingAnchor, constant: -16),
+            seriesBadge.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            
+            seriesLabel.topAnchor.constraint(equalTo: seriesBadge.topAnchor, constant: 2),
+            seriesLabel.bottomAnchor.constraint(equalTo: seriesBadge.bottomAnchor, constant: -2),
+            seriesLabel.leadingAnchor.constraint(equalTo: seriesBadge.leadingAnchor, constant: 8),
+            seriesLabel.trailingAnchor.constraint(equalTo: seriesBadge.trailingAnchor, constant: -8),
+            
+            // Version
+            versionLabel.trailingAnchor.constraint(equalTo: dateLabel.leadingAnchor, constant: -16),
+            versionLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            versionLabel.widthAnchor.constraint(equalToConstant: versionColumnWidth),
+            
+            // Date
+            dateLabel.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor, constant: -8),
+            dateLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            dateLabel.widthAnchor.constraint(equalToConstant: dateColumnWidth),
+            
+            // More button
+            moreButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            moreButton.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            moreButton.widthAnchor.constraint(equalToConstant: moreColumnWidth),
         ])
+    }
+    
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        // Update gradient layer frame
+        if let gradientLayer = iconView.layer?.sublayers?.first as? CAGradientLayer {
+            gradientLayer.frame = iconView.bounds
+        }
+        setupTrackingArea()
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupTrackingArea()
+    }
+    
+    private func setupTrackingArea() {
+        if let existing = trackingArea {
+            view.removeTrackingArea(existing)
+        }
+        trackingArea = NSTrackingArea(
+            rect: view.bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow],
+            owner: self,
+            userInfo: nil
+        )
+        view.addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+        updateAppearance(animated: true)
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+        updateAppearance(animated: true)
     }
     
     override var isSelected: Bool {
         didSet {
-            updateSelectionAppearance()
+            updateAppearance(animated: true)
         }
     }
     
-    private func updateSelectionAppearance() {
-        if isSelected {
-            containerView.layer?.borderColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.shadowOffset = CGSize.zero
-            containerView.layer?.shadowRadius = 10
-            containerView.layer?.shadowOpacity = 0.3
-        } else {
-            containerView.layer?.borderColor = NSColor.clear.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowOpacity = 0
+    private func updateAppearance(animated: Bool) {
+        let duration = animated ? animationDuration : 0
+        
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            
+            if isSelected {
+                // Selected row: subtle bg highlight
+                containerView.animator().layer?.backgroundColor = NSColor.white.withAlphaComponent(0.02).cgColor
+                nameLabel.animator().textColor = .white
+            } else if isHovered {
+                // Hover: bg-white/5
+                containerView.animator().layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+                nameLabel.animator().textColor = .white
+                moreButton.animator().alphaValue = 1.0
+            } else {
+                // Default
+                containerView.animator().layer?.backgroundColor = NSColor.clear.cgColor
+                nameLabel.animator().textColor = DesignColors.zinc300
+                moreButton.animator().alphaValue = 0
+            }
         }
     }
     
     func configure(with character: CharacterInfo) {
         nameLabel.stringValue = character.displayName
-        authorLabel.stringValue = "by \(character.author)"
-        portraitImageView.image = nil
+        
+        // Path: directory relative to chars folder
+        let pathString = character.directory.lastPathComponent + "/" + character.defFile.lastPathComponent
+        pathLabel.stringValue = pathString
+        
+        // Author
+        authorLabel.stringValue = character.author
+        
+        // Series - could derive from character metadata, using "MUGEN" as default
+        seriesLabel.stringValue = "MUGEN"
+        
+        // Version
+        let version = character.versionDate.isEmpty ? "v1.0" : character.versionDate
+        versionLabel.stringValue = version
+        
+        // Date - placeholder, could derive from file modification date
+        dateLabel.stringValue = "—"
+        
+        // Placeholder initial
+        iconInitialLabel.stringValue = String(character.displayName.prefix(1)).uppercased()
+        iconImageView.image = nil
+        iconInitialLabel.isHidden = false
+        
+        // Status dot hidden by default
+        statusDot.isHidden = true
     }
     
     func setPortrait(_ image: NSImage?) {
-        portraitImageView.image = image
-        if image != nil {
-            portraitImageView.layer?.backgroundColor = NSColor.clear.cgColor
+        iconImageView.image = image
+        iconInitialLabel.isHidden = (image != nil)
+    }
+    
+    /// Show status indicator
+    func setStatus(_ status: CharacterStatus) {
+        switch status {
+        case .active:
+            statusDot.isHidden = false
+            statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
+        case .warning:
+            statusDot.isHidden = false
+            statusDot.layer?.backgroundColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0).cgColor
+        case .none:
+            statusDot.isHidden = true
         }
     }
     
     override func prepareForReuse() {
         super.prepareForReuse()
-        portraitImageView.image = nil
-        portraitImageView.layer?.backgroundColor = DesignColors.defaultPlaceholder.cgColor
+        iconImageView.image = nil
+        iconInitialLabel.isHidden = false
         nameLabel.stringValue = ""
+        pathLabel.stringValue = ""
         authorLabel.stringValue = ""
+        seriesLabel.stringValue = ""
+        versionLabel.stringValue = ""
+        dateLabel.stringValue = ""
+        statusDot.isHidden = true
         isSelected = false
+        isHovered = false
+        updateAppearance(animated: false)
     }
 }

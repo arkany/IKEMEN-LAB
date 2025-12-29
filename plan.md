@@ -40,8 +40,11 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 - [x] **Search** — Filter characters/stages by name/author (SQLite + header search field)
 
 ### 🔄 In Progress
-- [ ] Apply design system to remaining views (Characters, Stages, Settings)
-- [ ] Drag-and-drop feedback UI — Show success/failure in drop zone
+- [x] **Character Browser UI Overhaul** — Match HTML reference design:
+  - [x] Grid view: Cards with gradient overlay, name/author at bottom, status dot, hover states (200ms)
+  - [x] List view: Table with columns (Icon, Name, Author, Series, Version, Date)
+  - [x] Detail panel: Always visible (420px), hero header, attributes bars, palettes, move list
+- [ ] Apply design system to remaining views (Stages, Settings)
 
 ### ⚠️ Known Issues
 - [x] ~~Stage preview fails for stages using root-relative sprite paths~~ (fixed: now handles both `spr = stages/Bifrost.sff` and `spr = Bifrost.sff`)
@@ -89,7 +92,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 | Update select.def | ✅ Done | Auto-add with correct paths |
 | Local metadata index (SQLite) | ✅ Done | GRDB.swift for persistent database |
 | Basic search (name, author) | ✅ Done | Filter library by text (header search field) |
-| Drag-and-drop feedback UI | 🔄 In Progress | Show success/failure in drop zone |
+| Drag-and-drop feedback UI | ✅ Done | Toast notifications for success/failure |
 
 **Why this phase matters:** This gives you the compiler core. Everything else plugs into this.
 

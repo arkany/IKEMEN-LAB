@@ -1,13 +1,20 @@
 import Cocoa
 
+/// A flipped NSView that draws content from top-left instead of bottom-left
+/// Used for scroll view document views to align content to top
+private class FlippedView: NSView {
+    override var isFlipped: Bool { true }
+}
+
 /// Dashboard view - the main landing page with stats, quick actions, and recent activity
 class DashboardView: NSView {
     
     // MARK: - Callbacks
     var onLaunchGame: (() -> Void)?
     var onFilesDropped: (([URL]) -> Void)?
-    var onCharactersClicked: (() -> Void)?
-    var onStagesClicked: (() -> Void)?
+    var onRefreshStats: (() -> Void)?
+    var onNavigateToCharacters: (() -> Void)?
+    var onNavigateToStages: (() -> Void)?
     
     // MARK: - UI Elements
     private var scrollView: NSScrollView!
@@ -56,8 +63,8 @@ class DashboardView: NSView {
         scrollView.backgroundColor = .clear
         addSubview(scrollView)
         
-        // Content view
-        let documentView = NSView()
+        // Content view - flipped so content starts at top
+        let documentView = FlippedView()
         documentView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.documentView = documentView
         
@@ -85,7 +92,7 @@ class DashboardView: NSView {
             contentStack.topAnchor.constraint(equalTo: documentView.topAnchor, constant: 32),
             contentStack.leadingAnchor.constraint(equalTo: documentView.leadingAnchor, constant: 32),
             contentStack.trailingAnchor.constraint(equalTo: documentView.trailingAnchor, constant: -32),
-            contentStack.bottomAnchor.constraint(lessThanOrEqualTo: documentView.bottomAnchor, constant: -32),
+            contentStack.bottomAnchor.constraint(equalTo: documentView.bottomAnchor, constant: -32),
             contentStack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -64),
             
             documentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
@@ -123,32 +130,30 @@ class DashboardView: NSView {
         cardsContainer.translatesAutoresizingMaskIntoConstraints = false
         
         // Fighters card - clickable to navigate to Characters
-        let (fightersCard, fightersLabel) = createStatCard(
+        let (fCard, fightersLabel) = createStatCard(
             icon: "person.2.fill",
             title: "Active Fighters",
             value: "0"
         )
         fightersCountLabel = fightersLabel
-        fightersCard.onClick = { [weak self] in
-            print("[DashboardView] Fighters card onClick triggered")
-            self?.charactersCardClicked()
+        fCard.onClick = { [weak self] in
+            self?.onNavigateToCharacters?()
         }
-        cardsContainer.addArrangedSubview(fightersCard)
+        cardsContainer.addArrangedSubview(fCard)
         
         // Stages card - clickable to navigate to Stages
-        let (stagesCard, stagesLabel) = createStatCard(
+        let (sCard, stagesLabel) = createStatCard(
             icon: "photo.fill",
             title: "Installed Stages",
             value: "0"
         )
         stagesCountLabel = stagesLabel
-        stagesCard.onClick = { [weak self] in
-            print("[DashboardView] Stages card onClick triggered")
-            self?.stagesCardClicked()
+        sCard.onClick = { [weak self] in
+            self?.onNavigateToStages?()
         }
-        cardsContainer.addArrangedSubview(stagesCard)
+        cardsContainer.addArrangedSubview(sCard)
         
-        // Storage card
+        // Storage card (display only)
         let (storageCard, storageValueLabel) = createStatCard(
             icon: "externaldrive.fill",
             title: "Storage Used",
@@ -161,10 +166,13 @@ class DashboardView: NSView {
         let launchCard = createLaunchCard()
         cardsContainer.addArrangedSubview(launchCard)
         
-        // Width constraint for cards container
-        cardsContainer.widthAnchor.constraint(greaterThanOrEqualToConstant: 600).isActive = true
-        
         contentStack.addArrangedSubview(cardsContainer)
+        
+        // Make cards container fill the width of the content stack
+        NSLayoutConstraint.activate([
+            cardsContainer.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor),
+            cardsContainer.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor),
+        ])
     }
     
     private func createStatCard(icon: String, title: String, value: String) -> (HoverableStatCard, NSTextField) {
@@ -228,9 +236,6 @@ class DashboardView: NSView {
             stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: card.bottomAnchor, constant: -20),
         ])
-        
-        // Add click button on top of all subviews
-        card.finalizeSetup()
         
         return (card, valueLabel)
     }
@@ -306,9 +311,6 @@ class DashboardView: NSView {
             print("[DashboardView] Launch card onClick triggered")
             self?.launchButtonClicked()
         }
-        
-        // Add click button on top of all subviews
-        card.finalizeSetup()
         
         return card
     }
@@ -454,16 +456,6 @@ class DashboardView: NSView {
         onLaunchGame?()
     }
     
-    @objc private func charactersCardClicked() {
-        print("[DashboardView] charactersCardClicked - calling onCharactersClicked callback")
-        onCharactersClicked?()
-    }
-    
-    @objc private func stagesCardClicked() {
-        print("[DashboardView] stagesCardClicked - calling onStagesClicked callback")
-        onStagesClicked?()
-    }
-    
     @objc private func settingToggled(_ sender: NSSwitch) {
         saveSettings()
     }
@@ -562,6 +554,10 @@ class DashboardView: NSView {
             storageLabel?.stringValue = "—"
         }
     }
+    
+    func refreshStats() {
+        onRefreshStats?()
+    }
 }
 
 // MARK: - Dashboard Drop Zone
@@ -572,14 +568,28 @@ class DashboardDropZone: NSView {
     
     private var isDragging = false {
         didSet {
-            needsDisplay = true
+            updateAppearance(animated: true)
         }
     }
     
+    private var isHovered = false {
+        didSet {
+            updateAppearance(animated: true)
+        }
+    }
+    
+    private var trackingArea: NSTrackingArea?
     private var dashedBorderLayer: CAShapeLayer?
+    private var iconContainer: NSView!
     private var iconView: NSImageView!
     private var label: NSTextField!
     private var subLabel: NSTextField!
+    
+    // Design colors from HTML: zinc-800 (#27272a), zinc-900 (#18181b), zinc-700 (#3f3f46)
+    private let borderDefault = NSColor(red: 0x27/255.0, green: 0x27/255.0, blue: 0x2a/255.0, alpha: 1.0)  // zinc-800
+    private let borderHover = NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0)    // zinc-700
+    private let bgDefault = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 0.2)      // bg-zinc-900/20
+    private let bgHover = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 0.4)        // bg-zinc-900/40
     
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -594,73 +604,172 @@ class DashboardDropZone: NSView {
     private func setup() {
         wantsLayer = true
         layer?.cornerRadius = 12
-        layer?.backgroundColor = NSColor.clear.cgColor
+        layer?.backgroundColor = bgDefault.cgColor  // bg-zinc-900/20 default
         
-        // Dashed border
+        // Dashed border - zinc-800 default
         let dashedBorder = CAShapeLayer()
-        dashedBorder.strokeColor = DesignColors.borderDashed.cgColor
+        dashedBorder.strokeColor = borderDefault.cgColor
         dashedBorder.fillColor = nil
         dashedBorder.lineDashPattern = [8, 6]
-        dashedBorder.lineWidth = 2
+        dashedBorder.lineWidth = 1
         layer?.addSublayer(dashedBorder)
         self.dashedBorderLayer = dashedBorder
         
         // Register for drag
         registerForDraggedTypes([.fileURL])
         
-        // Icon
+        // Icon container - use Auto Layout, scale via bounds-center transform
+        iconContainer = NSView()
+        iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.wantsLayer = true
+        iconContainer.layer?.backgroundColor = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0).cgColor  // bg-zinc-900
+        iconContainer.layer?.cornerRadius = 24  // rounded-full for 48px container
+        iconContainer.layer?.borderWidth = 1
+        iconContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor  // border-white/5
+        // Add shadow
+        iconContainer.layer?.shadowColor = NSColor.black.cgColor
+        iconContainer.layer?.shadowOpacity = 0.3
+        iconContainer.layer?.shadowOffset = CGSize(width: 0, height: 2)
+        iconContainer.layer?.shadowRadius = 4
+        addSubview(iconContainer)
+        
+        // Icon (cloud download style from HTML)
         iconView = NSImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
-        iconView.image = NSImage(systemSymbolName: "arrow.down.doc.fill", accessibilityDescription: nil)
-        iconView.contentTintColor = DesignColors.textTertiary
-        iconView.symbolConfiguration = .init(pointSize: 32, weight: .light)
-        addSubview(iconView)
+        iconView.image = NSImage(systemSymbolName: "icloud.and.arrow.down", accessibilityDescription: nil)
+        iconView.contentTintColor = DesignColors.textSecondary
+        iconView.symbolConfiguration = .init(pointSize: 20, weight: .regular)
+        iconContainer.addSubview(iconView)
         
-        // Label
-        label = NSTextField(labelWithString: "Drop characters or stages here")
+        // Label - "Install Content"
+        label = NSTextField(labelWithString: "Install Content")
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = DesignFonts.body(size: 16)
-        label.textColor = DesignColors.textSecondary
+        label.font = DesignFonts.body(size: 14)
+        label.textColor = DesignColors.textSecondary  // zinc-200
         label.alignment = .center
         addSubview(label)
         
         // Sub-label
-        subLabel = NSTextField(labelWithString: "Supports .zip, .rar, .7z archives or folders")
+        subLabel = NSTextField(labelWithString: "Drag and drop .zip, .rar, or .def files here to automatically\ninstall characters or stages.")
         subLabel.translatesAutoresizingMaskIntoConstraints = false
         subLabel.font = DesignFonts.caption(size: 12)
-        subLabel.textColor = DesignColors.textTertiary
+        subLabel.textColor = DesignColors.textTertiary  // zinc-500
         subLabel.alignment = .center
+        subLabel.maximumNumberOfLines = 2
         addSubview(subLabel)
         
         NSLayoutConstraint.activate([
-            iconView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            iconView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -24),
+            // Icon container: 48x48 centered
+            iconContainer.widthAnchor.constraint(equalToConstant: 48),
+            iconContainer.heightAnchor.constraint(equalToConstant: 48),
+            iconContainer.centerXAnchor.constraint(equalTo: centerXAnchor),
+            iconContainer.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -32),
+            
+            // Icon centered in container
+            iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
             
             label.centerXAnchor.constraint(equalTo: centerXAnchor),
-            label.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 12),
+            label.topAnchor.constraint(equalTo: iconContainer.bottomAnchor, constant: 16),
             
             subLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
             subLabel.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 4),
+            subLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 24),
+            subLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -24),
         ])
     }
     
     override func layout() {
         super.layout()
-        let path = CGPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), cornerWidth: 12, cornerHeight: 12, transform: nil)
+        let path = CGPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), cornerWidth: 12, cornerHeight: 12, transform: nil)
         dashedBorderLayer?.path = path
         dashedBorderLayer?.frame = bounds
     }
     
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
+    private func updateAppearance(animated: Bool) {
+        let duration = animated ? 0.2 : 0.0
         
-        if isDragging {
-            dashedBorderLayer?.strokeColor = DesignColors.positive.cgColor
-            layer?.backgroundColor = DesignColors.positive.withAlphaComponent(0.1).cgColor
-        } else {
-            dashedBorderLayer?.strokeColor = DesignColors.borderDashed.cgColor
-            layer?.backgroundColor = NSColor.clear.cgColor
+        // Animate border and background colors
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            context.allowsImplicitAnimation = true
+            
+            if isDragging {
+                dashedBorderLayer?.strokeColor = DesignColors.positive.cgColor
+                layer?.backgroundColor = DesignColors.positive.withAlphaComponent(0.15).cgColor
+            } else if isHovered {
+                dashedBorderLayer?.strokeColor = borderHover.cgColor
+                layer?.backgroundColor = bgHover.cgColor
+            } else {
+                dashedBorderLayer?.strokeColor = borderDefault.cgColor
+                layer?.backgroundColor = bgDefault.cgColor
+            }
         }
+        
+        // Determine target scale
+        let targetScale: CGFloat
+        if isDragging {
+            targetScale = 1.15
+        } else if isHovered {
+            targetScale = 1.1
+        } else {
+            targetScale = 1.0
+        }
+        
+        // Scale from center using bounds-based transform
+        // The key: translate to center, scale, translate back
+        let bounds = iconContainer.bounds
+        let centerX = bounds.midX
+        let centerY = bounds.midY
+        
+        var transform = CATransform3DIdentity
+        transform = CATransform3DTranslate(transform, centerX, centerY, 0)
+        transform = CATransform3DScale(transform, targetScale, targetScale, 1.0)
+        transform = CATransform3DTranslate(transform, -centerX, -centerY, 0)
+        
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = duration
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                context.allowsImplicitAnimation = true
+                iconContainer.layer?.transform = transform
+            }
+        } else {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            iconContainer.layer?.transform = transform
+            CATransaction.commit()
+        }
+    }
+    
+    // MARK: - Cursor (pointer on hover)
+    
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+    
+    // MARK: - Hover Tracking
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        if let existingArea = trackingArea {
+            removeTrackingArea(existingArea)
+        }
+        
+        let options: NSTrackingArea.Options = [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect]
+        trackingArea = NSTrackingArea(rect: bounds, options: options, owner: self, userInfo: nil)
+        addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
     }
     
     // MARK: - Drag & Drop
@@ -719,15 +828,16 @@ class DashboardDropZone: NSView {
 /// glass-panel p-5 rounded-lg border border-white/5 hover:border-white/10 transition-colors
 class HoverableStatCard: NSView {
     
+    var onClick: (() -> Void)?  // Click callback for navigation
+    
     private var trackingArea: NSTrackingArea?
     private var gradientLayer: CAGradientLayer?
-    var onClick: (() -> Void)?  // Click callback
+    
     private var isHovered = false {
         didSet {
             updateAppearance(animated: true)
         }
     }
-    private var isPressed = false
     
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -737,68 +847,6 @@ class HoverableStatCard: NSView {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupAppearance()
-    }
-    
-    // No longer needed - clicks handled via mouseDown
-    func finalizeSetup() {
-        // Intentionally empty - kept for API compatibility
-    }
-    
-    // MARK: - Mouse Click Handling
-    
-    override func mouseDown(with event: NSEvent) {
-        guard onClick != nil else {
-            super.mouseDown(with: event)
-            return
-        }
-        
-        isPressed = true
-        
-        // Visual press feedback
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(0.08)
-        layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
-        CATransaction.commit()
-    }
-    
-    override func mouseUp(with event: NSEvent) {
-        guard isPressed else {
-            super.mouseUp(with: event)
-            return
-        }
-        
-        isPressed = false
-        
-        // Visual release feedback
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(0.1)
-        layer?.setAffineTransform(.identity)
-        CATransaction.commit()
-        
-        // Check if mouse is still inside the card
-        let location = convert(event.locationInWindow, from: nil)
-        if bounds.contains(location) {
-            // Trigger click callback
-            onClick?()
-        }
-    }
-    
-    override var acceptsFirstResponder: Bool { true }
-    
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
-        // Accept click without requiring window to be active first
-        return true
-    }
-    
-    // CRITICAL: Override hitTest to make the entire card clickable
-    // Without this, subviews (labels, icons, stack views) intercept mouse events
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        // If we have an onClick handler and the point is inside our bounds,
-        // return self so we receive the mouseDown event
-        if onClick != nil && bounds.contains(point) {
-            return self
-        }
-        return super.hitTest(point)
     }
     
     private func setupAppearance() {
@@ -822,13 +870,6 @@ class HoverableStatCard: NSView {
     override func layout() {
         super.layout()
         gradientLayer?.frame = bounds
-    }
-    
-    // Show pointer cursor when hoverable
-    override func resetCursorRects() {
-        if onClick != nil {
-            addCursorRect(bounds, cursor: .pointingHand)
-        }
     }
     
     private func updateAppearance(animated: Bool) {
@@ -918,6 +959,31 @@ class HoverableStatCard: NSView {
     override func mouseExited(with event: NSEvent) {
         isHovered = false
     }
+    
+    override func mouseDown(with event: NSEvent) {
+        guard onClick != nil else { return }
+        // Visual feedback - slightly dim on press
+        alphaValue = 0.8
+    }
+    
+    override func mouseUp(with event: NSEvent) {
+        guard onClick != nil else { return }
+        alphaValue = 1.0
+        
+        // Check if still inside bounds (user didn't drag out)
+        let localPoint = convert(event.locationInWindow, from: nil)
+        if bounds.contains(localPoint) {
+            onClick?()
+        }
+    }
+    
+    override var acceptsFirstResponder: Bool { onClick != nil }
+    
+    override func resetCursorRects() {
+        if onClick != nil {
+            addCursorRect(bounds, cursor: .pointingHand)
+        }
+    }
 }
 
 // MARK: - Hoverable Launch Card
@@ -945,11 +1011,6 @@ class HoverableLaunchCard: NSView {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupAppearance()
-    }
-    
-    // No longer needed - clicks handled via mouseDown
-    func finalizeSetup() {
-        // Intentionally empty - kept for API compatibility
     }
     
     // MARK: - Mouse Click Handling
@@ -998,12 +1059,15 @@ class HoverableLaunchCard: NSView {
         return true
     }
     
-    // CRITICAL: Override hitTest to make the entire card clickable
-    // Without this, subviews (labels, icons, stack views) intercept mouse events
+    // Make the entire card clickable by returning self when we have a click handler
+    // This prevents subviews (labels, icons, stack views) from intercepting mouse events
     override func hitTest(_ point: NSPoint) -> NSView? {
+        // Convert point from superview coordinates to local coordinates
+        let localPoint = convert(point, from: superview)
+        
         // If we have an onClick handler and the point is inside our bounds,
         // return self so we receive the mouseDown event
-        if onClick != nil && bounds.contains(point) {
+        if onClick != nil && bounds.contains(localPoint) {
             return self
         }
         return super.hitTest(point)

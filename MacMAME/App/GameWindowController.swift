@@ -1,5 +1,6 @@
 import Cocoa
 import Combine
+import Metal
 import UniformTypeIdentifiers
 
 /// Navigation item for the sidebar
@@ -63,6 +64,11 @@ class GameWindowController: NSWindowController {
     private var statusLabel: NSTextField!
     private var charactersCountLabel: NSTextField!
     private var stagesCountLabel: NSTextField!
+    
+    // VRAM monitoring
+    private var vramFillView: NSView!
+    private var vramPercentLabel: NSTextField!
+    private var vramFillWidthConstraint: NSLayoutConstraint!
     private var navButtons: [NavItem: NSButton] = [:]
     private var navLabels: [NavItem: NSTextField] = [:]  // For updating counts
     private var selectedNavItem: NavItem? = nil
@@ -154,6 +160,9 @@ class GameWindowController: NSWindowController {
         setupSidebar()
         setupMainArea()
         setupConstraints()
+        
+        // Initialize toast notifications with main area as parent
+        ToastManager.shared.setParentView(mainAreaView)
         
         // Select dashboard by default (after all views are initialized)
         selectNavItem(.dashboard)
@@ -259,12 +268,12 @@ class GameWindowController: NSWindowController {
         vramTrack.layer?.cornerRadius = 3
         vramContainer.addSubview(vramTrack)
         
-        let vramFill = NSView()
-        vramFill.translatesAutoresizingMaskIntoConstraints = false
-        vramFill.wantsLayer = true
-        vramFill.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
-        vramFill.layer?.cornerRadius = 3
-        vramTrack.addSubview(vramFill)
+        vramFillView = NSView()
+        vramFillView.translatesAutoresizingMaskIntoConstraints = false
+        vramFillView.wantsLayer = true
+        vramFillView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        vramFillView.layer?.cornerRadius = 3
+        vramTrack.addSubview(vramFillView)
         
         // VRAM labels
         let vramLabelStack = NSStackView()
@@ -273,28 +282,29 @@ class GameWindowController: NSWindowController {
         vramLabelStack.distribution = .equalSpacing
         vramContainer.addSubview(vramLabelStack)
         
-        let vramLabel = NSTextField(labelWithString: "VRAM")
+        let vramLabel = NSTextField(labelWithString: "GPU")
         vramLabel.font = NSFont.systemFont(ofSize: 11)
         vramLabel.textColor = DesignColors.textTertiary
         vramLabelStack.addArrangedSubview(vramLabel)
         
-        let vramPercent = NSTextField(labelWithString: "75%")
-        vramPercent.font = NSFont.systemFont(ofSize: 11)
-        vramPercent.textColor = DesignColors.textTertiary
-        vramLabelStack.addArrangedSubview(vramPercent)
+        vramPercentLabel = NSTextField(labelWithString: "—")
+        vramPercentLabel.font = NSFont.systemFont(ofSize: 11)
+        vramPercentLabel.textColor = DesignColors.textTertiary
+        vramLabelStack.addArrangedSubview(vramPercentLabel)
         
         // Settings nav button
         let settingsButton = createNewNavButton(for: .settings)
         navButtons[.settings] = settingsButton
         bottomStack.addArrangedSubview(settingsButton)
         
-        // === Status Label (hidden by default, shows on status updates) ===
+        // === Status Label (hidden by default, reserved for future use) ===
         statusLabel = NSTextField(labelWithString: "")
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.font = DesignFonts.caption(size: 12)
         statusLabel.textColor = DesignColors.positive
         statusLabel.alignment = .left
         statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.isHidden = true  // Hidden - using toast notifications instead
         sidebarView.addSubview(statusLabel)
         
         // === Constraints ===
@@ -349,10 +359,9 @@ class GameWindowController: NSWindowController {
             vramTrack.trailingAnchor.constraint(equalTo: vramContainer.trailingAnchor),
             vramTrack.heightAnchor.constraint(equalToConstant: 6),
             
-            vramFill.topAnchor.constraint(equalTo: vramTrack.topAnchor),
-            vramFill.bottomAnchor.constraint(equalTo: vramTrack.bottomAnchor),
-            vramFill.leadingAnchor.constraint(equalTo: vramTrack.leadingAnchor),
-            vramFill.widthAnchor.constraint(equalTo: vramTrack.widthAnchor, multiplier: 0.75),
+            vramFillView.topAnchor.constraint(equalTo: vramTrack.topAnchor),
+            vramFillView.bottomAnchor.constraint(equalTo: vramTrack.bottomAnchor),
+            vramFillView.leadingAnchor.constraint(equalTo: vramTrack.leadingAnchor),
             
             vramLabelStack.topAnchor.constraint(equalTo: vramTrack.bottomAnchor, constant: 6),
             vramLabelStack.leadingAnchor.constraint(equalTo: vramContainer.leadingAnchor),
@@ -363,6 +372,13 @@ class GameWindowController: NSWindowController {
             statusLabel.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding),
             statusLabel.bottomAnchor.constraint(equalTo: bottomStack.topAnchor, constant: -12),
         ])
+        
+        // Dynamic VRAM fill width constraint (start at 0)
+        vramFillWidthConstraint = vramFillView.widthAnchor.constraint(equalToConstant: 0)
+        vramFillWidthConstraint.isActive = true
+        
+        // Start VRAM monitoring
+        updateVRAMUsage()
     }
     
     /// Create a new-style nav button matching the HTML design
@@ -576,10 +592,13 @@ class GameWindowController: NSWindowController {
         dashboardView.onFilesDropped = { [weak self] urls in
             self?.handleDroppedFiles(urls)
         }
-        dashboardView.onCharactersClicked = { [weak self] in
+        dashboardView.onRefreshStats = { [weak self] in
+            self?.updateDashboardStats()
+        }
+        dashboardView.onNavigateToCharacters = { [weak self] in
             self?.selectNavItem(.characters)
         }
-        dashboardView.onStagesClicked = { [weak self] in
+        dashboardView.onNavigateToStages = { [weak self] in
             self?.selectNavItem(.stages)
         }
         mainAreaView.addSubview(dashboardView)
@@ -625,13 +644,11 @@ class GameWindowController: NSWindowController {
         }
         mainAreaView.addSubview(characterBrowserView)
         
-        // Character Details Panel (hidden initially, slides in from right)
+        // Character Details Panel (always visible on right side when Characters tab is active)
         characterDetailsView = CharacterDetailsView(frame: .zero)
         characterDetailsView.translatesAutoresizingMaskIntoConstraints = false
-        characterDetailsView.isHidden = true
-        characterDetailsView.onClose = { [weak self] in
-            self?.hideCharacterDetails()
-        }
+        characterDetailsView.isHidden = true  // Hidden until Characters tab is shown
+        characterDetailsView.showPlaceholder()  // Show placeholder initially
         characterDetailsView.onNameChanged = { [weak self] character, newName in
             self?.updateCharacterName(character, newName: newName)
         }
@@ -680,8 +697,8 @@ class GameWindowController: NSWindowController {
         }
         mainAreaView.addSubview(screenpackBrowserView)
         
-        // Character details panel width constraint (for animation)
-        characterDetailsWidthConstraint = characterDetailsView.widthAnchor.constraint(equalToConstant: 280)
+        // Character details panel width constraint (420px per HTML design)
+        characterDetailsWidthConstraint = characterDetailsView.widthAnchor.constraint(equalToConstant: 420)
         
         NSLayoutConstraint.activate([
             // Content header at top of main area (hidden on dashboard)
@@ -709,13 +726,13 @@ class GameWindowController: NSWindowController {
             dropZoneView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             dropZoneView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
             
-            // Character browser fills main area (below toggle)
+            // Character browser - left side, stops at detail panel
             characterBrowserView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
             characterBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
-            characterBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
+            characterBrowserView.trailingAnchor.constraint(equalTo: characterDetailsView.leadingAnchor, constant: -16),
             characterBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
             
-            // Character details panel on the right side
+            // Character details panel - always visible on right side (420px width)
             characterDetailsView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
             characterDetailsView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             characterDetailsView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
@@ -751,9 +768,12 @@ class GameWindowController: NSWindowController {
             mainAreaView.subviews.filter { $0.identifier?.rawValue == "settingsView" }.forEach { $0.removeFromSuperview() }
         }
         
-        // Hide character details when switching away from characters
-        if selectedNavItem != .characters {
-            hideCharacterDetails(animated: false)
+        // Show/hide character details panel (only visible on Characters tab)
+        let showDetailsPanel = selectedNavItem == .characters
+        characterDetailsView?.isHidden = !showDetailsPanel
+        if showDetailsPanel {
+            // Show placeholder if no character selected
+            characterDetailsView?.showPlaceholder()
         }
         
         // Show/hide view mode toggle for content browsers
@@ -970,34 +990,12 @@ class GameWindowController: NSWindowController {
     // MARK: - Character Details Panel
     
     private func showCharacterDetails(_ character: CharacterInfo) {
+        // Just update the content - panel is always visible
         characterDetailsView.configure(with: character)
-        characterDetailsView.isHidden = false
-        
-        // Animate slide-in
-        characterDetailsView.alphaValue = 0
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.2
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            characterDetailsView.animator().alphaValue = 1
-        }
     }
     
-    private func hideCharacterDetails(animated: Bool = true) {
-        guard !characterDetailsView.isHidden else { return }
-        
-        if animated {
-            NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.15
-                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                characterDetailsView.animator().alphaValue = 0
-            }, completionHandler: { [weak self] in
-                self?.characterDetailsView.isHidden = true
-            })
-        } else {
-            characterDetailsView.isHidden = true
-            characterDetailsView.alphaValue = 1
-        }
-    }
+    // hideCharacterDetails is no longer needed - panel stays visible
+    // Keep method stub for compatibility if called elsewhere
     
     private func updateCharacterName(_ character: CharacterInfo, newName: String) {
         // Update the name in the .def file
@@ -1818,18 +1816,35 @@ class GameWindowController: NSWindowController {
         statusLabel.stringValue = "Installing..."
         statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
         
+        let fileName = url.deletingPathExtension().lastPathComponent
+        
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
                 let result = try self?.ikemenBridge.installContent(from: url)
                 DispatchQueue.main.async {
                     self?.statusLabel.stringValue = result ?? "Installed!"
                     self?.statusLabel.textColor = DesignColors.positive
+                    
+                    // Show success toast
+                    let contentName = result?.replacingOccurrences(of: "Installed ", with: "").replacingOccurrences(of: "!", with: "") ?? fileName
+                    ToastManager.shared.showSuccess(
+                        title: "Successfully installed!",
+                        subtitle: "\(contentName) has been added to your library."
+                    )
+                    
+                    // Refresh dashboard stats
+                    self?.dashboardView.refreshStats()
                 }
             } catch {
                 DispatchQueue.main.async {
                     self?.statusLabel.stringValue = "Failed"
                     self?.statusLabel.textColor = DesignColors.redAccent
-                    self?.showError("Install Failed", detail: error.localizedDescription)
+                    
+                    // Show error toast
+                    ToastManager.shared.showError(
+                        title: "Installation failed",
+                        subtitle: error.localizedDescription
+                    )
                 }
             }
         }
@@ -1839,20 +1854,84 @@ class GameWindowController: NSWindowController {
         statusLabel.stringValue = "Installing..."
         statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
         
+        let folderName = url.lastPathComponent
+        
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
                 let result = try self?.ikemenBridge.installContentFolder(from: url)
                 DispatchQueue.main.async {
                     self?.statusLabel.stringValue = result ?? "Installed!"
                     self?.statusLabel.textColor = DesignColors.positive
+                    
+                    // Show success toast
+                    let contentName = result?.replacingOccurrences(of: "Installed ", with: "").replacingOccurrences(of: "!", with: "") ?? folderName
+                    ToastManager.shared.showSuccess(
+                        title: "Successfully installed!",
+                        subtitle: "\(contentName) has been added to your library."
+                    )
+                    
+                    // Refresh dashboard stats
+                    self?.dashboardView.refreshStats()
                 }
             } catch {
                 DispatchQueue.main.async {
                     self?.statusLabel.stringValue = "Failed"
                     self?.statusLabel.textColor = DesignColors.redAccent
-                    self?.showError("Install Failed", detail: error.localizedDescription)
+                    
+                    // Show error toast
+                    ToastManager.shared.showError(
+                        title: "Installation failed",
+                        subtitle: error.localizedDescription
+                    )
                 }
             }
+        }
+    }
+    
+    // MARK: - VRAM Monitoring
+    
+    private func updateVRAMUsage() {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            vramPercentLabel.stringValue = "N/A"
+            return
+        }
+        
+        // Get recommended working set size (available VRAM for this process)
+        let recommendedWorkingSet = device.recommendedMaxWorkingSetSize
+        // Get current allocated memory
+        let currentAllocated = device.currentAllocatedSize
+        
+        // Calculate percentage
+        let percentage: Double
+        if recommendedWorkingSet > 0 {
+            percentage = Double(currentAllocated) / Double(recommendedWorkingSet) * 100.0
+        } else {
+            percentage = 0
+        }
+        
+        // Update UI
+        let percentText = String(format: "%.0f%%", min(percentage, 100))
+        vramPercentLabel.stringValue = percentText
+        
+        // Update fill bar width
+        if let superview = vramFillView.superview {
+            let trackWidth = superview.bounds.width
+            let fillWidth = trackWidth * CGFloat(min(percentage, 100)) / 100.0
+            vramFillWidthConstraint.constant = fillWidth
+        }
+        
+        // Color based on usage
+        if percentage > 90 {
+            vramFillView.layer?.backgroundColor = DesignColors.redAccent.cgColor
+        } else if percentage > 70 {
+            vramFillView.layer?.backgroundColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0).cgColor
+        } else {
+            vramFillView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        }
+        
+        // Schedule next update (every 2 seconds)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.updateVRAMUsage()
         }
     }
     

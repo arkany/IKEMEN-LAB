@@ -2,30 +2,54 @@ import Cocoa
 import Combine
 
 /// A detail panel showing character metadata
-/// Displays portrait, editable name, author, palettes, and move list
+/// Matches HTML design: hero header with gradient, quick stats, attributes, move list
+/// Always visible when Characters tab is active (no close button)
 class CharacterDetailsView: NSView {
     
     // MARK: - Properties
     
-    private var portraitImageView: NSImageView!
-    private var nameField: NSTextField!
-    private var editButton: NSButton!
-    private var authorLabel: NSTextField!
-    private var versionLabel: NSTextField!
-    private var paletteLabel: NSTextField!
+    // Hero header elements
+    private var heroContainerView: NSView!
+    private var heroImageView: NSImageView!
+    private var heroGradientLayer: CAGradientLayer!
+    private var heroNameLabel: NSTextField!
+    private var heroSeriesBadge: NSView!
+    private var heroSeriesLabel: NSTextField!
+    private var heroDateLabel: NSTextField!
+    private var playButton: NSButton!
+    
+    // Quick stats
+    private var statsGridView: NSStackView!
+    private var authorStatView: NSView!
+    private var versionStatView: NSView!
+    
+    // Attributes section
+    private var attributesHeader: NSTextField!
+    private var attributesSubtitle: NSTextField!
+    private var lifeBar: AttributeBarView!
+    private var atkBar: AttributeBarView!
+    private var defBar: AttributeBarView!
+    private var powBar: AttributeBarView!
+    
+    // Palettes section
+    private var palettesHeader: NSTextField!
+    private var paletteStackView: NSStackView!
+    
+    // Move list section
     private var moveListHeader: NSTextField!
     private var moveListStackView: NSStackView!
+    
+    // Scroll view
     private var scrollView: NSScrollView!
     private var contentView: NSView!
     
     private var currentCharacter: CharacterInfo?
-    private var isEditingName = false
-    
-    /// Callback when close is requested
-    var onClose: (() -> Void)?
     
     /// Callback when name is changed
     var onNameChanged: ((CharacterInfo, String) -> Void)?
+    
+    /// Callback when play is clicked
+    var onPlayCharacter: ((CharacterInfo) -> Void)?
     
     // MARK: - Initialization
     
@@ -41,8 +65,9 @@ class CharacterDetailsView: NSView {
     
     private func setup() {
         wantsLayer = true
-        layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        layer?.cornerRadius = 12
+        layer?.backgroundColor = DesignColors.zinc950.cgColor
+        layer?.borderWidth = 1
+        layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         
         setupScrollView()
         setupContent()
@@ -50,17 +75,10 @@ class CharacterDetailsView: NSView {
     
     // MARK: - Event Handling
     
-    // Capture all mouse events so they don't pass through to views underneath
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        // If point is within our bounds, return self or a subview (don't return nil)
-        if bounds.contains(point) {
-            return super.hitTest(point) ?? self
-        }
-        return nil
-    }
+    // Note: Removed custom hitTest override - was incorrectly checking bounds.contains(point)
+    // without converting point to local coordinates. The default NSView.hitTest behavior is correct.
     
     override func mouseDown(with event: NSEvent) {
-        // Consume the event - don't pass to superview
         super.mouseDown(with: event)
     }
     
@@ -95,66 +113,147 @@ class CharacterDetailsView: NSView {
     }
     
     private func setupContent() {
-        let padding: CGFloat = 20
+        let padding: CGFloat = 24
+        let spacing: CGFloat = 32
         
-        // Close button
-        let closeButton = NSButton(title: "✕", target: self, action: #selector(closeClicked))
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        closeButton.bezelStyle = .inline
-        closeButton.isBordered = false
-        closeButton.font = NSFont.systemFont(ofSize: 16, weight: .medium)
-        closeButton.contentTintColor = DesignColors.creamText.withAlphaComponent(0.6)
-        contentView.addSubview(closeButton)
+        // === Hero Header ===
+        heroContainerView = NSView()
+        heroContainerView.translatesAutoresizingMaskIntoConstraints = false
+        heroContainerView.wantsLayer = true
+        heroContainerView.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        contentView.addSubview(heroContainerView)
         
-        // Portrait image
-        portraitImageView = NSImageView()
-        portraitImageView.translatesAutoresizingMaskIntoConstraints = false
-        portraitImageView.imageScaling = .scaleProportionallyUpOrDown
-        portraitImageView.wantsLayer = true
-        portraitImageView.layer?.cornerRadius = 8
-        portraitImageView.layer?.masksToBounds = true
-        portraitImageView.layer?.backgroundColor = DesignColors.placeholderBackground.cgColor
-        contentView.addSubview(portraitImageView)
+        // Hero background image
+        heroImageView = NSImageView()
+        heroImageView.translatesAutoresizingMaskIntoConstraints = false
+        heroImageView.imageScaling = .scaleProportionallyUpOrDown
+        heroImageView.wantsLayer = true
+        heroImageView.alphaValue = 0.3
+        heroContainerView.addSubview(heroImageView)
         
-        // Name field (editable)
-        nameField = NSTextField()
-        nameField.translatesAutoresizingMaskIntoConstraints = false
-        nameField.font = NSFont.systemFont(ofSize: 20, weight: .bold)
-        nameField.textColor = DesignColors.creamText
-        nameField.backgroundColor = .clear
-        nameField.isBordered = false
-        nameField.isEditable = false
-        nameField.focusRingType = .none
-        nameField.lineBreakMode = .byTruncatingTail
-        nameField.delegate = self
-        contentView.addSubview(nameField)
+        // Gradient overlay from-zinc-950 via-zinc-950/80 to-transparent
+        heroGradientLayer = CAGradientLayer()
+        heroGradientLayer.colors = [
+            NSColor.clear.cgColor,
+            DesignColors.zinc950.withAlphaComponent(0.8).cgColor,
+            DesignColors.zinc950.cgColor
+        ]
+        heroGradientLayer.locations = [0.0, 0.5, 1.0]
+        heroGradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        heroGradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
+        heroContainerView.layer?.addSublayer(heroGradientLayer)
         
-        // Edit button
-        editButton = NSButton(title: "✎", target: self, action: #selector(editNameClicked))
-        editButton.translatesAutoresizingMaskIntoConstraints = false
-        editButton.bezelStyle = .inline
-        editButton.isBordered = false
-        editButton.font = NSFont.systemFont(ofSize: 14)
-        editButton.contentTintColor = DesignColors.creamText.withAlphaComponent(0.5)
-        editButton.toolTip = "Edit display name"
-        contentView.addSubview(editButton)
+        // Name label - large, bold, Montserrat-like
+        heroNameLabel = NSTextField(labelWithString: "")
+        heroNameLabel.translatesAutoresizingMaskIntoConstraints = false
+        heroNameLabel.font = NSFont.systemFont(ofSize: 28, weight: .bold)
+        heroNameLabel.textColor = .white
+        heroNameLabel.lineBreakMode = .byTruncatingTail
+        heroContainerView.addSubview(heroNameLabel)
         
-        // Author label
-        authorLabel = createLabel(fontSize: 13, weight: .regular, color: DesignColors.creamText.withAlphaComponent(0.7))
-        contentView.addSubview(authorLabel)
+        // Series badge + date row
+        let badgeRow = NSStackView()
+        badgeRow.translatesAutoresizingMaskIntoConstraints = false
+        badgeRow.orientation = .horizontal
+        badgeRow.alignment = .centerY
+        badgeRow.spacing = 8
+        heroContainerView.addSubview(badgeRow)
         
-        // Section: Details
-        let detailsHeader = createSectionHeader("DETAILS")
-        contentView.addSubview(detailsHeader)
+        heroSeriesBadge = NSView()
+        heroSeriesBadge.translatesAutoresizingMaskIntoConstraints = false
+        heroSeriesBadge.wantsLayer = true
+        heroSeriesBadge.layer?.cornerRadius = 4
+        heroSeriesBadge.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        badgeRow.addArrangedSubview(heroSeriesBadge)
         
-        versionLabel = createLabel(fontSize: 12, weight: .regular)
-        contentView.addSubview(versionLabel)
+        heroSeriesLabel = NSTextField(labelWithString: "MUGEN")
+        heroSeriesLabel.translatesAutoresizingMaskIntoConstraints = false
+        heroSeriesLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .medium)
+        heroSeriesLabel.textColor = .white
+        heroSeriesBadge.addSubview(heroSeriesLabel)
         
-        paletteLabel = createLabel(fontSize: 12, weight: .regular)
-        contentView.addSubview(paletteLabel)
+        heroDateLabel = NSTextField(labelWithString: "")
+        heroDateLabel.font = DesignFonts.caption(size: 12)
+        heroDateLabel.textColor = DesignColors.zinc500
+        badgeRow.addArrangedSubview(heroDateLabel)
         
-        // Section: Move List
-        moveListHeader = createSectionHeader("MOVE LIST")
+        // Play button (white circle with play icon)
+        playButton = NSButton(title: "▶", target: self, action: #selector(playClicked))
+        playButton.translatesAutoresizingMaskIntoConstraints = false
+        playButton.bezelStyle = .inline
+        playButton.isBordered = false
+        playButton.wantsLayer = true
+        playButton.layer?.cornerRadius = 16
+        playButton.layer?.backgroundColor = NSColor.white.cgColor
+        playButton.contentTintColor = DesignColors.zinc950
+        playButton.font = NSFont.systemFont(ofSize: 12, weight: .bold)
+        heroContainerView.addSubview(playButton)
+        
+        // === Quick Stats Grid ===
+        statsGridView = NSStackView()
+        statsGridView.translatesAutoresizingMaskIntoConstraints = false
+        statsGridView.orientation = .horizontal
+        statsGridView.distribution = .fillEqually
+        statsGridView.spacing = 16
+        contentView.addSubview(statsGridView)
+        
+        authorStatView = createStatCard(title: "Author", value: "—")
+        versionStatView = createStatCard(title: "Version", value: "—")
+        statsGridView.addArrangedSubview(authorStatView)
+        statsGridView.addArrangedSubview(versionStatView)
+        
+        // === Attributes Section ===
+        let attributesContainer = NSView()
+        attributesContainer.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(attributesContainer)
+        
+        attributesHeader = NSTextField(labelWithString: "Attributes")
+        attributesHeader.translatesAutoresizingMaskIntoConstraints = false
+        attributesHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        attributesHeader.textColor = DesignColors.zinc100
+        attributesContainer.addSubview(attributesHeader)
+        
+        attributesSubtitle = NSTextField(labelWithString: "Based on CNS data")
+        attributesSubtitle.translatesAutoresizingMaskIntoConstraints = false
+        attributesSubtitle.font = NSFont.systemFont(ofSize: 10, weight: .regular)
+        attributesSubtitle.textColor = DesignColors.zinc500
+        attributesContainer.addSubview(attributesSubtitle)
+        
+        let barsStack = NSStackView()
+        barsStack.translatesAutoresizingMaskIntoConstraints = false
+        barsStack.orientation = .vertical
+        barsStack.spacing = 12
+        attributesContainer.addSubview(barsStack)
+        
+        lifeBar = AttributeBarView(label: "Life", value: 1000, maxValue: 1000, color: .white)
+        atkBar = AttributeBarView(label: "Atk", value: 100, maxValue: 150, color: DesignColors.zinc400)
+        defBar = AttributeBarView(label: "Def", value: 105, maxValue: 150, color: DesignColors.zinc400)
+        powBar = AttributeBarView(label: "Pow", value: 3000, maxValue: 5000, color: NSColor.systemBlue.withAlphaComponent(0.7))
+        
+        barsStack.addArrangedSubview(lifeBar)
+        barsStack.addArrangedSubview(atkBar)
+        barsStack.addArrangedSubview(defBar)
+        barsStack.addArrangedSubview(powBar)
+        
+        // === Palettes Section ===
+        palettesHeader = NSTextField(labelWithString: "Palettes (1)")
+        palettesHeader.translatesAutoresizingMaskIntoConstraints = false
+        palettesHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        palettesHeader.textColor = DesignColors.zinc100
+        contentView.addSubview(palettesHeader)
+        
+        paletteStackView = NSStackView()
+        paletteStackView.translatesAutoresizingMaskIntoConstraints = false
+        paletteStackView.orientation = .horizontal
+        paletteStackView.spacing = 8
+        paletteStackView.alignment = .centerY
+        contentView.addSubview(paletteStackView)
+        
+        // === Move List Section ===
+        moveListHeader = NSTextField(labelWithString: "Move List")
+        moveListHeader.translatesAutoresizingMaskIntoConstraints = false
+        moveListHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        moveListHeader.textColor = DesignColors.zinc100
         contentView.addSubview(moveListHeader)
         
         moveListStackView = NSStackView()
@@ -164,43 +263,68 @@ class CharacterDetailsView: NSView {
         moveListStackView.spacing = 8
         contentView.addSubview(moveListStackView)
         
-        // Layout
+        // Layout constraints
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
-            closeButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
+            // Hero container
+            heroContainerView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            heroContainerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            heroContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            heroContainerView.heightAnchor.constraint(equalToConstant: 192),
             
-            portraitImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: padding),
-            portraitImageView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            portraitImageView.widthAnchor.constraint(equalToConstant: 160),
-            portraitImageView.heightAnchor.constraint(equalToConstant: 160),
+            heroImageView.topAnchor.constraint(equalTo: heroContainerView.topAnchor),
+            heroImageView.leadingAnchor.constraint(equalTo: heroContainerView.leadingAnchor),
+            heroImageView.trailingAnchor.constraint(equalTo: heroContainerView.trailingAnchor),
+            heroImageView.bottomAnchor.constraint(equalTo: heroContainerView.bottomAnchor),
             
-            nameField.topAnchor.constraint(equalTo: portraitImageView.bottomAnchor, constant: 16),
-            nameField.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
-            nameField.trailingAnchor.constraint(equalTo: editButton.leadingAnchor, constant: -4),
+            heroNameLabel.leadingAnchor.constraint(equalTo: heroContainerView.leadingAnchor, constant: padding),
+            heroNameLabel.bottomAnchor.constraint(equalTo: badgeRow.topAnchor, constant: -4),
+            heroNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: playButton.leadingAnchor, constant: -16),
             
-            editButton.centerYAnchor.constraint(equalTo: nameField.centerYAnchor),
-            editButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
-            editButton.widthAnchor.constraint(equalToConstant: 24),
+            badgeRow.leadingAnchor.constraint(equalTo: heroContainerView.leadingAnchor, constant: padding),
+            badgeRow.bottomAnchor.constraint(equalTo: heroContainerView.bottomAnchor, constant: -padding),
             
-            authorLabel.topAnchor.constraint(equalTo: nameField.bottomAnchor, constant: 4),
-            authorLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
-            authorLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            heroSeriesLabel.topAnchor.constraint(equalTo: heroSeriesBadge.topAnchor, constant: 2),
+            heroSeriesLabel.bottomAnchor.constraint(equalTo: heroSeriesBadge.bottomAnchor, constant: -2),
+            heroSeriesLabel.leadingAnchor.constraint(equalTo: heroSeriesBadge.leadingAnchor, constant: 8),
+            heroSeriesLabel.trailingAnchor.constraint(equalTo: heroSeriesBadge.trailingAnchor, constant: -8),
             
-            detailsHeader.topAnchor.constraint(equalTo: authorLabel.bottomAnchor, constant: 20),
-            detailsHeader.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
-            detailsHeader.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            playButton.trailingAnchor.constraint(equalTo: heroContainerView.trailingAnchor, constant: -padding),
+            playButton.bottomAnchor.constraint(equalTo: heroContainerView.bottomAnchor, constant: -padding),
+            playButton.widthAnchor.constraint(equalToConstant: 32),
+            playButton.heightAnchor.constraint(equalToConstant: 32),
             
-            versionLabel.topAnchor.constraint(equalTo: detailsHeader.bottomAnchor, constant: 8),
-            versionLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
-            versionLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            // Quick stats grid
+            statsGridView.topAnchor.constraint(equalTo: heroContainerView.bottomAnchor, constant: padding),
+            statsGridView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            statsGridView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
             
-            paletteLabel.topAnchor.constraint(equalTo: versionLabel.bottomAnchor, constant: 4),
-            paletteLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
-            paletteLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            // Attributes section
+            attributesContainer.topAnchor.constraint(equalTo: statsGridView.bottomAnchor, constant: spacing),
+            attributesContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            attributesContainer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
             
-            moveListHeader.topAnchor.constraint(equalTo: paletteLabel.bottomAnchor, constant: 20),
+            attributesHeader.topAnchor.constraint(equalTo: attributesContainer.topAnchor),
+            attributesHeader.leadingAnchor.constraint(equalTo: attributesContainer.leadingAnchor),
+            
+            attributesSubtitle.centerYAnchor.constraint(equalTo: attributesHeader.centerYAnchor),
+            attributesSubtitle.trailingAnchor.constraint(equalTo: attributesContainer.trailingAnchor),
+            
+            barsStack.topAnchor.constraint(equalTo: attributesHeader.bottomAnchor, constant: 16),
+            barsStack.leadingAnchor.constraint(equalTo: attributesContainer.leadingAnchor),
+            barsStack.trailingAnchor.constraint(equalTo: attributesContainer.trailingAnchor),
+            barsStack.bottomAnchor.constraint(equalTo: attributesContainer.bottomAnchor),
+            
+            // Palettes section
+            palettesHeader.topAnchor.constraint(equalTo: attributesContainer.bottomAnchor, constant: spacing),
+            palettesHeader.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            
+            paletteStackView.topAnchor.constraint(equalTo: palettesHeader.bottomAnchor, constant: 12),
+            paletteStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            paletteStackView.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -padding),
+            
+            // Move list section
+            moveListHeader.topAnchor.constraint(equalTo: paletteStackView.bottomAnchor, constant: spacing),
             moveListHeader.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
-            moveListHeader.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
             
             moveListStackView.topAnchor.constraint(equalTo: moveListHeader.bottomAnchor, constant: 8),
             moveListStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
@@ -209,59 +333,52 @@ class CharacterDetailsView: NSView {
         ])
     }
     
-    private func createLabel(fontSize: CGFloat, weight: NSFont.Weight, color: NSColor = DesignColors.creamText) -> NSTextField {
-        let label = NSTextField(labelWithString: "")
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = NSFont.systemFont(ofSize: fontSize, weight: weight)
-        label.textColor = color
-        label.lineBreakMode = .byWordWrapping
-        label.maximumNumberOfLines = 0
-        return label
+    override func layout() {
+        super.layout()
+        heroGradientLayer.frame = heroContainerView.bounds
     }
     
-    private func createSectionHeader(_ title: String) -> NSTextField {
-        let label = NSTextField(labelWithString: title)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = NSFont.systemFont(ofSize: 10, weight: .semibold)
-        label.textColor = DesignColors.creamText.withAlphaComponent(0.5)
-        return label
+    private func createStatCard(title: String, value: String) -> NSView {
+        let card = NSView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.wantsLayer = true
+        card.layer?.cornerRadius = 8
+        card.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+        card.layer?.borderWidth = 1
+        card.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        
+        let titleLabel = NSTextField(labelWithString: title.uppercased())
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        titleLabel.textColor = DesignColors.zinc500
+        card.addSubview(titleLabel)
+        
+        let valueLabel = NSTextField(labelWithString: value)
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        valueLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        valueLabel.textColor = DesignColors.zinc200
+        valueLabel.tag = 100 // For updating later
+        card.addSubview(valueLabel)
+        
+        NSLayoutConstraint.activate([
+            card.heightAnchor.constraint(equalToConstant: 64),
+            
+            titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            titleLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            
+            valueLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+            valueLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+            valueLabel.trailingAnchor.constraint(lessThanOrEqualTo: card.trailingAnchor, constant: -12),
+        ])
+        
+        return card
     }
     
     // MARK: - Actions
     
-    @objc private func closeClicked() {
-        onClose?()
-    }
-    
-    @objc private func editNameClicked() {
-        if isEditingName {
-            // Save the name
-            finishEditingName()
-        } else {
-            // Start editing
-            isEditingName = true
-            nameField.isEditable = true
-            nameField.backgroundColor = NSColor.black.withAlphaComponent(0.3)
-            nameField.isBordered = true
-            nameField.selectText(nil)
-            editButton.title = "✓"
-            editButton.contentTintColor = NSColor.systemGreen
-        }
-    }
-    
-    private func finishEditingName() {
-        isEditingName = false
-        nameField.isEditable = false
-        nameField.backgroundColor = .clear
-        nameField.isBordered = false
-        editButton.title = "✎"
-        editButton.contentTintColor = DesignColors.creamText.withAlphaComponent(0.5)
-        
+    @objc private func playClicked() {
         if let character = currentCharacter {
-            let newName = nameField.stringValue.trimmingCharacters(in: .whitespaces)
-            if !newName.isEmpty && newName != character.displayName {
-                onNameChanged?(character, newName)
-            }
+            onPlayCharacter?(character)
         }
     }
     
@@ -270,89 +387,121 @@ class CharacterDetailsView: NSView {
     func configure(with character: CharacterInfo) {
         currentCharacter = character
         
-        nameField.stringValue = character.displayName
-        authorLabel.stringValue = "by \(character.author)"
+        // Hero
+        heroNameLabel.stringValue = character.displayName
+        heroDateLabel.stringValue = character.versionDate.isEmpty ? "" : "Updated \(character.versionDate)"
         
         // Load extended info
         let extendedInfo = CharacterExtendedInfo(from: character)
         
-        // Version info
-        versionLabel.stringValue = extendedInfo.versionDate.isEmpty ? "Version: Unknown" : "Version: \(extendedInfo.versionDate)"
+        // Quick stats
+        if let authorValue = authorStatView.viewWithTag(100) as? NSTextField {
+            authorValue.stringValue = character.author
+        }
+        if let versionValue = versionStatView.viewWithTag(100) as? NSTextField {
+            versionValue.stringValue = extendedInfo.versionDate.isEmpty ? "1.0" : extendedInfo.versionDate
+        }
         
-        // Palette count
-        paletteLabel.stringValue = "Palettes: \(extendedInfo.paletteCount)"
+        // Palettes
+        updatePalettes(count: extendedInfo.paletteCount)
         
         // Load move list
         loadMoveList(for: character)
         
-        // Load portrait
+        // Load portrait for hero background
         loadPortrait(for: character)
     }
     
     private func loadPortrait(for character: CharacterInfo) {
-        // Check cache first
         let cacheKey = ImageCache.portraitKey(for: character.id)
         if let cached = ImageCache.shared.get(cacheKey) {
-            portraitImageView.image = cached
+            heroImageView.image = cached
             return
         }
         
-        // Load in background
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let portrait = character.getPortraitImage()
             
             DispatchQueue.main.async {
-                self?.portraitImageView.image = portrait ?? self?.createPlaceholderImage(for: character)
-                
-                if let realPortrait = portrait {
-                    ImageCache.shared.set(realPortrait, for: cacheKey)
+                if let portrait = portrait {
+                    self?.heroImageView.image = portrait
+                    ImageCache.shared.set(portrait, for: cacheKey)
                 }
             }
         }
     }
     
-    private func createPlaceholderImage(for character: CharacterInfo) -> NSImage {
-        let size = NSSize(width: 160, height: 160)
-        let image = NSImage(size: size)
+    private func updatePalettes(count: Int) {
+        palettesHeader.stringValue = "Palettes (\(count))"
         
-        image.lockFocus()
-        DesignColors.placeholderBackground.setFill()
-        NSRect(origin: .zero, size: size).fill()
+        // Clear existing
+        paletteStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
-        let initial = String(character.displayName.prefix(1)).uppercased()
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 60, weight: .medium),
-            .foregroundColor: NSColor(white: 0.5, alpha: 1.0)
-        ]
-        let attrString = NSAttributedString(string: initial, attributes: attrs)
-        let stringSize = attrString.size()
-        let point = NSPoint(
-            x: (size.width - stringSize.width) / 2,
-            y: (size.height - stringSize.height) / 2
-        )
-        attrString.draw(at: point)
+        // Add palette dots (up to 6, then +N)
+        let colors: [NSColor] = [.white, DesignColors.zinc700, .systemBlue, .systemRed, .systemPurple, .systemYellow]
+        let displayCount = min(count, 6)
         
-        image.unlockFocus()
-        return image
+        for i in 0..<displayCount {
+            let dot = NSView()
+            dot.translatesAutoresizingMaskIntoConstraints = false
+            dot.wantsLayer = true
+            dot.layer?.cornerRadius = 12
+            dot.layer?.backgroundColor = colors[i % colors.count].cgColor
+            dot.layer?.borderWidth = 1
+            dot.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+            
+            NSLayoutConstraint.activate([
+                dot.widthAnchor.constraint(equalToConstant: 24),
+                dot.heightAnchor.constraint(equalToConstant: 24),
+            ])
+            
+            paletteStackView.addArrangedSubview(dot)
+        }
+        
+        // Add +N if more palettes
+        if count > 6 {
+            let moreLabel = NSTextField(labelWithString: "+\(count - 6)")
+            moreLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+            moreLabel.textColor = DesignColors.zinc500
+            moreLabel.wantsLayer = true
+            moreLabel.layer?.cornerRadius = 12
+            moreLabel.layer?.backgroundColor = DesignColors.zinc900.cgColor
+            moreLabel.layer?.borderWidth = 1
+            moreLabel.layer?.borderColor = DesignColors.zinc700.cgColor
+            moreLabel.alignment = .center
+            
+            NSLayoutConstraint.activate([
+                moreLabel.widthAnchor.constraint(equalToConstant: 24),
+                moreLabel.heightAnchor.constraint(equalToConstant: 24),
+            ])
+            
+            paletteStackView.addArrangedSubview(moreLabel)
+        }
     }
     
     // MARK: - Move List
     
     private func loadMoveList(for character: CharacterInfo) {
-        // Clear existing moves
         moveListStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
-        // Parse CMD file for moves
         let moves = CMDParser.parseMoves(for: character)
         
         if moves.isEmpty {
-            let noMovesLabel = createLabel(fontSize: 12, weight: .regular, color: DesignColors.creamText.withAlphaComponent(0.5))
-            noMovesLabel.stringValue = "No special moves found"
+            let noMovesLabel = NSTextField(labelWithString: "No special moves found")
+            noMovesLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+            noMovesLabel.textColor = DesignColors.zinc500
             moveListStackView.addArrangedSubview(noMovesLabel)
         } else {
-            for move in moves {
+            for move in moves.prefix(10) { // Limit to 10 for UI
                 let moveView = createMoveRow(move)
                 moveListStackView.addArrangedSubview(moveView)
+            }
+            
+            if moves.count > 10 {
+                let moreLabel = NSTextField(labelWithString: "+\(moves.count - 10) more moves...")
+                moreLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
+                moreLabel.textColor = DesignColors.zinc600
+                moveListStackView.addArrangedSubview(moreLabel)
             }
         }
     }
@@ -363,39 +512,129 @@ class CharacterDetailsView: NSView {
         row.alignment = .leading
         row.spacing = 2
         
-        // Move name
         let nameLabel = NSTextField(labelWithString: move.displayName)
         nameLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        nameLabel.textColor = DesignColors.creamText
+        nameLabel.textColor = DesignColors.zinc300
         row.addArrangedSubview(nameLabel)
         
-        // Input notation
         let inputLabel = NSTextField(labelWithString: move.notation)
         inputLabel.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-        inputLabel.textColor = DesignColors.creamText.withAlphaComponent(0.8)
+        inputLabel.textColor = DesignColors.zinc500
         row.addArrangedSubview(inputLabel)
         
         return row
     }
+    
+    /// Show placeholder when no character is selected
+    func showPlaceholder() {
+        currentCharacter = nil
+        heroNameLabel.stringValue = "Select a Character"
+        heroDateLabel.stringValue = ""
+        heroImageView.image = nil
+        
+        if let authorValue = authorStatView.viewWithTag(100) as? NSTextField {
+            authorValue.stringValue = "—"
+        }
+        if let versionValue = versionStatView.viewWithTag(100) as? NSTextField {
+            versionValue.stringValue = "—"
+        }
+        
+        palettesHeader.stringValue = "Palettes"
+        paletteStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        moveListStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        let placeholderLabel = NSTextField(labelWithString: "Select a character to view details")
+        placeholderLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        placeholderLabel.textColor = DesignColors.zinc500
+        moveListStackView.addArrangedSubview(placeholderLabel)
+    }
 }
 
-// MARK: - NSTextFieldDelegate
+// MARK: - Attribute Bar View
 
-extension CharacterDetailsView: NSTextFieldDelegate {
-    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-        if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-            // Enter pressed - save
-            finishEditingName()
-            return true
-        } else if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
-            // Escape pressed - cancel
-            if let character = currentCharacter {
-                nameField.stringValue = character.displayName
-            }
-            finishEditingName()
-            return true
-        }
-        return false
+class AttributeBarView: NSView {
+    private let labelText: String
+    private let value: Int
+    private let maxValue: Int
+    private let barColor: NSColor
+    
+    private var barFillView: NSView!
+    private var barFillWidthConstraint: NSLayoutConstraint!
+    
+    init(label: String, value: Int, maxValue: Int, color: NSColor) {
+        self.labelText = label
+        self.value = value
+        self.maxValue = maxValue
+        self.barColor = color
+        super.init(frame: .zero)
+        setup()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    private func setup() {
+        translatesAutoresizingMaskIntoConstraints = false
+        
+        // Label (fixed width)
+        let label = NSTextField(labelWithString: labelText)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = DesignFonts.caption(size: 12)
+        label.textColor = DesignColors.zinc500
+        addSubview(label)
+        
+        // Bar track
+        let barTrack = NSView()
+        barTrack.translatesAutoresizingMaskIntoConstraints = false
+        barTrack.wantsLayer = true
+        barTrack.layer?.cornerRadius = 3
+        barTrack.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        addSubview(barTrack)
+        
+        // Bar fill
+        barFillView = NSView()
+        barFillView.translatesAutoresizingMaskIntoConstraints = false
+        barFillView.wantsLayer = true
+        barFillView.layer?.cornerRadius = 3
+        barFillView.layer?.backgroundColor = barColor.cgColor
+        barTrack.addSubview(barFillView)
+        
+        // Value label
+        let valueLabel = NSTextField(labelWithString: "\(value)")
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        valueLabel.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        valueLabel.textColor = DesignColors.zinc300
+        valueLabel.alignment = .right
+        addSubview(valueLabel)
+        
+        let percentage = CGFloat(value) / CGFloat(maxValue)
+        
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 20),
+            
+            label.leadingAnchor.constraint(equalTo: leadingAnchor),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            label.widthAnchor.constraint(equalToConstant: 48),
+            
+            barTrack.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 12),
+            barTrack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            barTrack.trailingAnchor.constraint(equalTo: valueLabel.leadingAnchor, constant: -12),
+            barTrack.heightAnchor.constraint(equalToConstant: 6),
+            
+            barFillView.leadingAnchor.constraint(equalTo: barTrack.leadingAnchor),
+            barFillView.topAnchor.constraint(equalTo: barTrack.topAnchor),
+            barFillView.bottomAnchor.constraint(equalTo: barTrack.bottomAnchor),
+            barFillView.widthAnchor.constraint(equalTo: barTrack.widthAnchor, multiplier: min(1.0, percentage)),
+            
+            valueLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
+            valueLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            valueLabel.widthAnchor.constraint(equalToConstant: 40),
+        ])
+    }
+    
+    func update(value: Int, maxValue: Int) {
+        // Could animate updates here
     }
 }
 
