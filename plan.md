@@ -36,9 +36,12 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 - [x] App renamed from "MUGEN MGR" to "IKEMEN Lab"
 - [x] Custom fonts installed (Montserrat-SemiBold, Manrope-Medium/Regular, Inter-Regular)
 - [x] Sidebar redesign with SF Symbols, count badges, VRAM indicator
+- [x] **Content Header** — Breadcrumb navigation (Home → Page) with search field
+- [x] **Search** — Filter characters/stages by name/author (SQLite + header search field)
 
 ### 🔄 In Progress
 - [ ] Apply design system to remaining views (Characters, Stages, Settings)
+- [ ] Drag-and-drop feedback UI — Show success/failure in drop zone
 
 ### ⚠️ Known Issues
 - [x] ~~Stage preview fails for stages using root-relative sprite paths~~ (fixed: now handles both `spr = stages/Bifrost.sff` and `spr = Bifrost.sff`)
