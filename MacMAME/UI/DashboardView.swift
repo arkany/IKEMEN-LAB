@@ -771,21 +771,28 @@ class HoverableStatCard: NSView {
     
     @objc private func buttonClicked() {
         print("[HoverableStatCard] buttonClicked! onClick callback: \(onClick != nil ? "SET" : "NIL")")
-        // Animate press
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.08
-            context.allowsImplicitAnimation = true
-            self.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
-        } completionHandler: {
-            // Animate release
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.1
-                context.allowsImplicitAnimation = true
-                self.layer?.setAffineTransform(.identity)
-            } completionHandler: {
-                print("[HoverableStatCard] Animation complete, calling onClick")
-                self.onClick?()
-            }
+        
+        // Call the callback FIRST, before animation
+        // This ensures navigation happens immediately
+        let callback = onClick
+        
+        // Animate press/release for visual feedback
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.08)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+        self.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
+        CATransaction.setCompletionBlock {
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.1)
+            self.layer?.setAffineTransform(.identity)
+            CATransaction.commit()
+        }
+        CATransaction.commit()
+        
+        // Call callback on main thread to ensure UI updates happen properly
+        DispatchQueue.main.async {
+            print("[HoverableStatCard] Calling onClick callback")
+            callback?()
         }
     }
     
@@ -960,21 +967,27 @@ class HoverableLaunchCard: NSView {
     
     @objc private func buttonClicked() {
         print("[HoverableLaunchCard] buttonClicked! onClick callback: \(onClick != nil ? "SET" : "NIL")")
-        // Animate press
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.08
-            context.allowsImplicitAnimation = true
-            self.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
-        } completionHandler: {
-            // Animate release
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.1
-                context.allowsImplicitAnimation = true
-                self.layer?.setAffineTransform(.identity)
-            } completionHandler: {
-                print("[HoverableLaunchCard] Animation complete, calling onClick")
-                self.onClick?()
-            }
+        
+        // Call the callback FIRST, before animation
+        let callback = onClick
+        
+        // Animate press/release for visual feedback
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.08)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+        self.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
+        CATransaction.setCompletionBlock {
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.1)
+            self.layer?.setAffineTransform(.identity)
+            CATransaction.commit()
+        }
+        CATransaction.commit()
+        
+        // Call callback on main thread to ensure UI updates happen properly
+        DispatchQueue.main.async {
+            print("[HoverableLaunchCard] Calling onClick callback")
+            callback?()
         }
     }
     

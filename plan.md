@@ -45,7 +45,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 ### ⚠️ Known Issues
 - [x] ~~Stage preview fails for stages using root-relative sprite paths~~ (fixed: now handles both `spr = stages/Bifrost.sff` and `spr = Bifrost.sff`)
-- [ ] Dashboard card navigation incomplete — Fighters/Stages card clicks fire callbacks but `selectNavItem()` not navigating
+- [x] ~~Dashboard card navigation incomplete~~ (fixed: NSAnimationContext completion handler issue → use CATransaction + DispatchQueue.main)
 
 ### 🛠️ Technical Debt / Refactoring
 **Critical:**
