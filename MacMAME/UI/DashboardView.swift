@@ -721,13 +721,13 @@ class HoverableStatCard: NSView {
     
     private var trackingArea: NSTrackingArea?
     private var gradientLayer: CAGradientLayer?
-    private var clickButton: NSButton?  // Transparent overlay for clicks
     var onClick: (() -> Void)?  // Click callback
     private var isHovered = false {
         didSet {
             updateAppearance(animated: true)
         }
     }
+    private var isPressed = false
     
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -739,61 +739,55 @@ class HoverableStatCard: NSView {
         setupAppearance()
     }
     
-    private func setupClickHandler() {
-        print("[HoverableStatCard] setupClickHandler called")
-        // Create transparent button overlay for click handling
-        let button = NSButton(frame: bounds)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.isBordered = false
-        button.title = ""
-        button.bezelStyle = .shadowlessSquare
-        button.setButtonType(.momentaryChange)
-        button.target = self
-        button.action = #selector(buttonClicked)
-        button.alphaValue = 0.001  // Nearly invisible but still clickable
-        addSubview(button, positioned: .above, relativeTo: nil)  // Add on top of all subviews
-        print("[HoverableStatCard] Button added ABOVE all subviews, target=\(String(describing: button.target)), action=\(String(describing: button.action))")
-        
-        NSLayoutConstraint.activate([
-            button.topAnchor.constraint(equalTo: topAnchor),
-            button.leadingAnchor.constraint(equalTo: leadingAnchor),
-            button.trailingAnchor.constraint(equalTo: trailingAnchor),
-            button.bottomAnchor.constraint(equalTo: bottomAnchor)
-        ])
-        clickButton = button
-    }
-    
-    // Call this after all subviews are added
+    // No longer needed - clicks handled via mouseDown
     func finalizeSetup() {
-        print("[HoverableStatCard] finalizeSetup - adding click handler on top")
-        setupClickHandler()
+        // Intentionally empty - kept for API compatibility
     }
     
-    @objc private func buttonClicked() {
-        print("[HoverableStatCard] buttonClicked! onClick callback: \(onClick != nil ? "SET" : "NIL")")
+    // MARK: - Mouse Click Handling
+    
+    override func mouseDown(with event: NSEvent) {
+        guard onClick != nil else {
+            super.mouseDown(with: event)
+            return
+        }
         
-        // Call the callback FIRST, before animation
-        // This ensures navigation happens immediately
-        let callback = onClick
+        isPressed = true
         
-        // Animate press/release for visual feedback
+        // Visual press feedback
         CATransaction.begin()
         CATransaction.setAnimationDuration(0.08)
-        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
-        self.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
-        CATransaction.setCompletionBlock {
-            CATransaction.begin()
-            CATransaction.setAnimationDuration(0.1)
-            self.layer?.setAffineTransform(.identity)
-            CATransaction.commit()
+        layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
+        CATransaction.commit()
+    }
+    
+    override func mouseUp(with event: NSEvent) {
+        guard isPressed else {
+            super.mouseUp(with: event)
+            return
         }
+        
+        isPressed = false
+        
+        // Visual release feedback
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.1)
+        layer?.setAffineTransform(.identity)
         CATransaction.commit()
         
-        // Call callback on main thread to ensure UI updates happen properly
-        DispatchQueue.main.async {
-            print("[HoverableStatCard] Calling onClick callback")
-            callback?()
+        // Check if mouse is still inside the card
+        let location = convert(event.locationInWindow, from: nil)
+        if bounds.contains(location) {
+            // Trigger click callback
+            onClick?()
         }
+    }
+    
+    override var acceptsFirstResponder: Bool { true }
+    
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        // Accept click without requiring window to be active first
+        return true
     }
     
     private func setupAppearance() {
@@ -817,6 +811,13 @@ class HoverableStatCard: NSView {
     override func layout() {
         super.layout()
         gradientLayer?.frame = bounds
+    }
+    
+    // Show pointer cursor when hoverable
+    override func resetCursorRects() {
+        if onClick != nil {
+            addCursorRect(bounds, cursor: .pointingHand)
+        }
     }
     
     private func updateAppearance(animated: Bool) {
@@ -917,13 +918,13 @@ class HoverableLaunchCard: NSView {
     private var trackingArea: NSTrackingArea?
     private var gradientLayer: CAGradientLayer?
     private var hoverGradientLayer: CAGradientLayer?
-    private var clickButton: NSButton?  // Transparent overlay for clicks
     var onClick: (() -> Void)?  // Click callback
     private var isHovered = false {
         didSet {
             updateAppearance(animated: true)
         }
     }
+    private var isPressed = false
     
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -935,59 +936,61 @@ class HoverableLaunchCard: NSView {
         setupAppearance()
     }
     
-    private func setupClickHandler() {
-        print("[HoverableLaunchCard] setupClickHandler called")
-        // Create transparent button overlay for click handling
-        let button = NSButton(frame: bounds)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.isBordered = false
-        button.title = ""
-        button.bezelStyle = .shadowlessSquare
-        button.setButtonType(.momentaryChange)
-        button.target = self
-        button.action = #selector(buttonClicked)
-        button.alphaValue = 0.001  // Nearly invisible but still clickable
-        addSubview(button, positioned: .above, relativeTo: nil)  // Add on top of all subviews
-        print("[HoverableLaunchCard] Button added ABOVE all subviews, target=\(String(describing: button.target)), action=\(String(describing: button.action))")
-        
-        NSLayoutConstraint.activate([
-            button.topAnchor.constraint(equalTo: topAnchor),
-            button.leadingAnchor.constraint(equalTo: leadingAnchor),
-            button.trailingAnchor.constraint(equalTo: trailingAnchor),
-            button.bottomAnchor.constraint(equalTo: bottomAnchor)
-        ])
-        clickButton = button
-    }
-    
-    // Call this after all subviews are added
+    // No longer needed - clicks handled via mouseDown
     func finalizeSetup() {
-        print("[HoverableLaunchCard] finalizeSetup - adding click handler on top")
-        setupClickHandler()
+        // Intentionally empty - kept for API compatibility
     }
     
-    @objc private func buttonClicked() {
-        print("[HoverableLaunchCard] buttonClicked! onClick callback: \(onClick != nil ? "SET" : "NIL")")
+    // MARK: - Mouse Click Handling
+    
+    override func mouseDown(with event: NSEvent) {
+        guard onClick != nil else {
+            super.mouseDown(with: event)
+            return
+        }
         
-        // Call the callback FIRST, before animation
-        let callback = onClick
+        isPressed = true
         
-        // Animate press/release for visual feedback
+        // Visual press feedback
         CATransaction.begin()
         CATransaction.setAnimationDuration(0.08)
-        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
-        self.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
-        CATransaction.setCompletionBlock {
-            CATransaction.begin()
-            CATransaction.setAnimationDuration(0.1)
-            self.layer?.setAffineTransform(.identity)
-            CATransaction.commit()
+        layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
+        CATransaction.commit()
+    }
+    
+    override func mouseUp(with event: NSEvent) {
+        guard isPressed else {
+            super.mouseUp(with: event)
+            return
         }
+        
+        isPressed = false
+        
+        // Visual release feedback
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.1)
+        layer?.setAffineTransform(.identity)
         CATransaction.commit()
         
-        // Call callback on main thread to ensure UI updates happen properly
-        DispatchQueue.main.async {
-            print("[HoverableLaunchCard] Calling onClick callback")
-            callback?()
+        // Check if mouse is still inside the card
+        let location = convert(event.locationInWindow, from: nil)
+        if bounds.contains(location) {
+            // Trigger click callback
+            onClick?()
+        }
+    }
+    
+    override var acceptsFirstResponder: Bool { true }
+    
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        // Accept click without requiring window to be active first
+        return true
+    }
+    
+    // Show pointer cursor when hoverable
+    override func resetCursorRects() {
+        if onClick != nil {
+            addCursorRect(bounds, cursor: .pointingHand)
         }
     }
     
