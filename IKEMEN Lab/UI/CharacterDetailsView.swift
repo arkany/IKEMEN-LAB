@@ -391,7 +391,7 @@ class CharacterDetailsView: NSView {
         heroNameLabel.stringValue = character.displayName
         heroDateLabel.stringValue = character.versionDate.isEmpty ? "" : "Updated \(character.versionDate)"
         
-        // Load extended info
+        // Load extended info (includes CNS stats)
         let extendedInfo = CharacterExtendedInfo(from: character)
         
         // Quick stats
@@ -401,6 +401,12 @@ class CharacterDetailsView: NSView {
         if let versionValue = versionStatView.viewWithTag(100) as? NSTextField {
             versionValue.stringValue = extendedInfo.versionDate.isEmpty ? "1.0" : extendedInfo.versionDate
         }
+        
+        // Update attribute bars with real CNS data
+        lifeBar.update(value: extendedInfo.life, maxValue: CNSParser.CharacterStats.maxLife)
+        atkBar.update(value: extendedInfo.attack, maxValue: CNSParser.CharacterStats.maxAttack)
+        defBar.update(value: extendedInfo.defence, maxValue: CNSParser.CharacterStats.maxDefence)
+        powBar.update(value: extendedInfo.power, maxValue: CNSParser.CharacterStats.maxPower)
         
         // Palettes
         updatePalettes(count: extendedInfo.paletteCount)
@@ -554,17 +560,19 @@ class CharacterDetailsView: NSView {
 
 class AttributeBarView: NSView {
     private let labelText: String
-    private let value: Int
-    private let maxValue: Int
+    private var currentValue: Int
+    private var currentMaxValue: Int
     private let barColor: NSColor
     
     private var barFillView: NSView!
-    private var barFillWidthConstraint: NSLayoutConstraint!
+    private var barTrack: NSView!
+    private var valueLabel: NSTextField!
+    private var barFillWidthConstraint: NSLayoutConstraint?
     
     init(label: String, value: Int, maxValue: Int, color: NSColor) {
         self.labelText = label
-        self.value = value
-        self.maxValue = maxValue
+        self.currentValue = value
+        self.currentMaxValue = maxValue
         self.barColor = color
         super.init(frame: .zero)
         setup()
@@ -585,7 +593,7 @@ class AttributeBarView: NSView {
         addSubview(label)
         
         // Bar track
-        let barTrack = NSView()
+        barTrack = NSView()
         barTrack.translatesAutoresizingMaskIntoConstraints = false
         barTrack.wantsLayer = true
         barTrack.layer?.cornerRadius = 3
@@ -601,14 +609,15 @@ class AttributeBarView: NSView {
         barTrack.addSubview(barFillView)
         
         // Value label
-        let valueLabel = NSTextField(labelWithString: "\(value)")
+        valueLabel = NSTextField(labelWithString: "\(currentValue)")
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
         valueLabel.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         valueLabel.textColor = DesignColors.zinc300
         valueLabel.alignment = .right
         addSubview(valueLabel)
         
-        let percentage = CGFloat(value) / CGFloat(maxValue)
+        let percentage = CGFloat(currentValue) / CGFloat(currentMaxValue)
+        barFillWidthConstraint = barFillView.widthAnchor.constraint(equalTo: barTrack.widthAnchor, multiplier: min(1.0, max(0.0, percentage)))
         
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 20),
@@ -625,16 +634,33 @@ class AttributeBarView: NSView {
             barFillView.leadingAnchor.constraint(equalTo: barTrack.leadingAnchor),
             barFillView.topAnchor.constraint(equalTo: barTrack.topAnchor),
             barFillView.bottomAnchor.constraint(equalTo: barTrack.bottomAnchor),
-            barFillView.widthAnchor.constraint(equalTo: barTrack.widthAnchor, multiplier: min(1.0, percentage)),
+            barFillWidthConstraint!,
             
             valueLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
             valueLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            valueLabel.widthAnchor.constraint(equalToConstant: 40),
+            valueLabel.widthAnchor.constraint(equalToConstant: 48),
         ])
     }
     
     func update(value: Int, maxValue: Int) {
-        // Could animate updates here
+        currentValue = value
+        currentMaxValue = maxValue
+        valueLabel.stringValue = "\(value)"
+        
+        // Remove old constraint and add new one with updated multiplier
+        if let oldConstraint = barFillWidthConstraint {
+            oldConstraint.isActive = false
+        }
+        
+        let percentage = CGFloat(value) / CGFloat(maxValue)
+        barFillWidthConstraint = barFillView.widthAnchor.constraint(equalTo: barTrack.widthAnchor, multiplier: min(1.0, max(0.01, percentage)))
+        barFillWidthConstraint?.isActive = true
+        
+        // Animate the change
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            self.layoutSubtreeIfNeeded()
+        }
     }
 }
 
@@ -645,12 +671,18 @@ struct CharacterExtendedInfo {
     let mugenVersion: String
     let versionDate: String
     
+    // Stats from CNS file
+    let life: Int
+    let attack: Int
+    let defence: Int
+    let power: Int
+    
     init(from character: CharacterInfo) {
         let defFile = character.defFile
         
         var palCount = 0
         var mugenVer = "Ikemen GO / MUGEN 1.0+"
-        var verDate = character.versionDate
+        let verDate = character.versionDate
         
         if let content = try? String(contentsOf: defFile, encoding: .utf8) {
             let lines = content.components(separatedBy: .newlines)
@@ -692,6 +724,13 @@ struct CharacterExtendedInfo {
         self.paletteCount = max(palCount, 1)
         self.mugenVersion = mugenVer
         self.versionDate = verDate
+        
+        // Load stats from CNS file
+        let stats = CNSParser.getStats(for: character.directory, defFile: defFile)
+        self.life = stats.life
+        self.attack = stats.attack
+        self.defence = stats.defence
+        self.power = stats.power
     }
 }
 
@@ -845,7 +884,7 @@ struct CMDParser {
     
     private static func formatMoveName(_ name: String) -> String {
         // Convert "SpecialX" to "Special X", "Hyper1" to "Hyper 1", etc.
-        var result = name
+        let result = name
         
         // Insert space before capital letters and numbers
         var formatted = ""
