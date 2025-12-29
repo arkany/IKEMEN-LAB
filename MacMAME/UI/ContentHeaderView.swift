@@ -255,7 +255,8 @@ class ContentHeaderView: NSView {
     
     private var breadcrumbStack: NSStackView!
     private var searchField: StyledSearchField!
-    private var homeLabel: NSTextField!
+    private var homeLabel: NSTextField!  // Legacy, kept for compatibility
+    private var homeButtonRef: NSButton!
     private var chevronImage: NSImageView!
     private var currentPageLabel: NSTextField!
     
@@ -302,31 +303,40 @@ class ContentHeaderView: NSView {
         breadcrumbStack.alignment = .centerY
         addSubview(breadcrumbStack)
         
-        // Home link - clickable
-        homeLabel = NSTextField(labelWithString: "Home")
-        homeLabel.font = DesignFonts.body(size: 13)
-        homeLabel.textColor = DesignColors.textSecondary
-        homeLabel.isSelectable = false
-        
-        // Make home clickable with hover effect
+        // Home link - clickable button styled as text
         let homeButton = NSButton(frame: .zero)
         homeButton.translatesAutoresizingMaskIntoConstraints = false
         homeButton.isBordered = false
-        homeButton.title = ""
+        homeButton.title = "Home"
+        homeButton.font = DesignFonts.body(size: 13)
+        homeButton.contentTintColor = DesignColors.textSecondary
         homeButton.target = self
         homeButton.action = #selector(homeClicked)
-        homeLabel.addSubview(homeButton)
+        homeButton.setButtonType(.momentaryChange)
         
-        // Track mouse for hover
+        // Style to look like a label
+        homeButton.attributedTitle = NSAttributedString(
+            string: "Home",
+            attributes: [
+                .font: DesignFonts.body(size: 13),
+                .foregroundColor: DesignColors.textSecondary
+            ]
+        )
+        
+        // Track mouse for hover - use the button itself
         let trackingArea = NSTrackingArea(
             rect: .zero,
             options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
             owner: self,
-            userInfo: ["view": "home"]
+            userInfo: ["view": "home", "button": homeButton]
         )
-        homeLabel.addTrackingArea(trackingArea)
+        homeButton.addTrackingArea(trackingArea)
         
-        breadcrumbStack.addArrangedSubview(homeLabel)
+        // Store reference to update on hover
+        homeLabel = NSTextField(labelWithString: "") // Dummy, we use button now
+        self.homeButtonRef = homeButton
+        
+        breadcrumbStack.addArrangedSubview(homeButton)
         
         // Chevron separator
         chevronImage = NSImageView()
@@ -408,17 +418,31 @@ class ContentHeaderView: NSView {
     // MARK: - Mouse Tracking
     
     override func mouseEntered(with event: NSEvent) {
-        if let userInfo = event.trackingArea?.userInfo as? [String: String],
-           userInfo["view"] == "home" {
-            homeLabel.textColor = DesignColors.textPrimary
+        if let userInfo = event.trackingArea?.userInfo as? [String: Any],
+           userInfo["view"] as? String == "home" {
+            // Update button title with hover color
+            homeButtonRef?.attributedTitle = NSAttributedString(
+                string: "Home",
+                attributes: [
+                    .font: DesignFonts.body(size: 13),
+                    .foregroundColor: DesignColors.textPrimary
+                ]
+            )
             NSCursor.pointingHand.set()
         }
     }
     
     override func mouseExited(with event: NSEvent) {
-        if let userInfo = event.trackingArea?.userInfo as? [String: String],
-           userInfo["view"] == "home" {
-            homeLabel.textColor = DesignColors.textSecondary
+        if let userInfo = event.trackingArea?.userInfo as? [String: Any],
+           userInfo["view"] as? String == "home" {
+            // Restore button title with normal color
+            homeButtonRef?.attributedTitle = NSAttributedString(
+                string: "Home",
+                attributes: [
+                    .font: DesignFonts.body(size: 13),
+                    .foregroundColor: DesignColors.textSecondary
+                ]
+            )
             NSCursor.arrow.set()
         }
     }
