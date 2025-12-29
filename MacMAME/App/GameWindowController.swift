@@ -642,6 +642,9 @@ class GameWindowController: NSWindowController {
         characterBrowserView.onCharacterRemove = { [weak self] character in
             self?.confirmRemoveCharacter(character)
         }
+        characterBrowserView.onCharacterDisableToggle = { [weak self] character in
+            self?.toggleCharacterDisabled(character)
+        }
         mainAreaView.addSubview(characterBrowserView)
         
         // Character Details Panel (always visible on right side when Characters tab is active)
@@ -1058,6 +1061,38 @@ class GameWindowController: NSWindowController {
             
             // Refresh the stage list
             IkemenBridge.shared.loadContent()
+            
+            // Refresh dashboard's recently installed table
+            dashboardView.refresh()
+        } catch {
+            statusLabel.stringValue = "Failed: \(error.localizedDescription)"
+        }
+    }
+    
+    // MARK: - Character Management
+    
+    private func toggleCharacterDisabled(_ character: CharacterInfo) {
+        guard let workingDir = IkemenBridge.shared.workingDirectory else {
+            statusLabel.stringValue = "No working directory set"
+            return
+        }
+        
+        do {
+            if character.isDisabled {
+                // Enable the character
+                try ContentManager.shared.enableCharacter(character, in: workingDir)
+                statusLabel.stringValue = "Enabled: \(character.displayName)"
+            } else {
+                // Disable the character
+                try ContentManager.shared.disableCharacter(character, in: workingDir)
+                statusLabel.stringValue = "Disabled: \(character.displayName)"
+            }
+            
+            // Refresh the character list
+            IkemenBridge.shared.loadContent()
+            
+            // Refresh dashboard's recently installed table
+            dashboardView.refresh()
         } catch {
             statusLabel.stringValue = "Failed: \(error.localizedDescription)"
         }

@@ -35,6 +35,10 @@ class DashboardView: NSView {
     private var volumeSlider: NSSlider!
     private var volumeLabel: NSTextField!
     
+    // Recently Installed
+    private var recentlyInstalledStack: NSStackView!
+    private var recentInstalls: [RecentInstall] = []
+    
     // MARK: - Initialization
     
     override init(frame frameRect: NSRect) {
@@ -80,6 +84,7 @@ class DashboardView: NSView {
         setupHeader()
         setupStatsCards()
         setupDropZone()
+        setupRecentlyInstalled()
         setupQuickSettings()
         
         // Layout
@@ -340,6 +345,180 @@ class DashboardView: NSView {
         dropZoneView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor).isActive = true
     }
     
+    // MARK: - Recently Installed
+    
+    private func setupRecentlyInstalled() {
+        let sectionLabel = NSTextField(labelWithString: "RECENTLY INSTALLED")
+        sectionLabel.font = DesignFonts.caption(size: 11)
+        sectionLabel.textColor = DesignColors.textTertiary
+        contentStack.addArrangedSubview(sectionLabel)
+        
+        // Container card - darker background (zinc-900)
+        let card = NSView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.wantsLayer = true
+        card.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        card.layer?.cornerRadius = 12
+        card.layer?.borderWidth = 1
+        card.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        
+        // Table header row
+        let headerRow = createRecentlyInstalledHeader()
+        card.addSubview(headerRow)
+        
+        // Stack for rows
+        recentlyInstalledStack = NSStackView()
+        recentlyInstalledStack.translatesAutoresizingMaskIntoConstraints = false
+        recentlyInstalledStack.orientation = .vertical
+        recentlyInstalledStack.spacing = 0
+        recentlyInstalledStack.alignment = .leading
+        card.addSubview(recentlyInstalledStack)
+        
+        // Empty state label (shown when no recent installs)
+        let emptyLabel = NSTextField(labelWithString: "No recent installations")
+        emptyLabel.font = DesignFonts.body(size: 13)
+        emptyLabel.textColor = DesignColors.textTertiary
+        emptyLabel.alignment = .center
+        emptyLabel.identifier = NSUserInterfaceItemIdentifier("emptyLabel")
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(emptyLabel)
+        
+        NSLayoutConstraint.activate([
+            headerRow.topAnchor.constraint(equalTo: card.topAnchor),
+            headerRow.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            headerRow.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            headerRow.heightAnchor.constraint(equalToConstant: 40),
+            
+            recentlyInstalledStack.topAnchor.constraint(equalTo: headerRow.bottomAnchor),
+            recentlyInstalledStack.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            recentlyInstalledStack.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            recentlyInstalledStack.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            
+            emptyLabel.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            emptyLabel.centerYAnchor.constraint(equalTo: card.centerYAnchor, constant: 20),
+        ])
+        
+        contentStack.addArrangedSubview(card)
+        
+        // Card fills width with min height
+        card.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor).isActive = true
+        card.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor).isActive = true
+        card.heightAnchor.constraint(greaterThanOrEqualToConstant: 160).isActive = true
+    }
+    
+    private func createRecentlyInstalledHeader() -> NSView {
+        let header = NSView()
+        header.translatesAutoresizingMaskIntoConstraints = false
+        header.wantsLayer = true
+        
+        // Bottom border
+        let border = NSView()
+        border.translatesAutoresizingMaskIntoConstraints = false
+        border.wantsLayer = true
+        border.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        header.addSubview(border)
+        
+        // Column headers - matching HTML: Name | Type | Date | Status
+        let nameHeader = createColumnHeader("Name")
+        let typeHeader = createColumnHeader("Type")
+        let dateHeader = createColumnHeader("Date")
+        let statusHeader = createColumnHeader("Status")
+        
+        header.addSubview(nameHeader)
+        header.addSubview(typeHeader)
+        header.addSubview(dateHeader)
+        header.addSubview(statusHeader)
+        
+        NSLayoutConstraint.activate([
+            border.leadingAnchor.constraint(equalTo: header.leadingAnchor),
+            border.trailingAnchor.constraint(equalTo: header.trailingAnchor),
+            border.bottomAnchor.constraint(equalTo: header.bottomAnchor),
+            border.heightAnchor.constraint(equalToConstant: 1),
+            
+            // Name column (left)
+            nameHeader.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
+            nameHeader.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            
+            // Type column (centered at ~45%)
+            typeHeader.centerXAnchor.constraint(equalTo: header.centerXAnchor, constant: -40),
+            typeHeader.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            
+            // Date column
+            dateHeader.trailingAnchor.constraint(equalTo: statusHeader.leadingAnchor, constant: -60),
+            dateHeader.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            
+            // Status column (right)
+            statusHeader.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -30),
+            statusHeader.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+        ])
+        
+        return header
+    }
+    
+    private func createColumnHeader(_ title: String) -> NSTextField {
+        let label = NSTextField(labelWithString: title)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        label.textColor = DesignColors.zinc500
+        return label
+    }
+    
+    private func createRecentInstallRow(_ install: RecentInstall, isLast: Bool) -> RecentInstallRow {
+        let row = RecentInstallRow(install: install, showBorder: !isLast)
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.onClick = { [weak self] in
+            // Navigate to the item
+            if install.type == "character" {
+                self?.onNavigateToCharacters?()
+            } else {
+                self?.onNavigateToStages?()
+            }
+        }
+        return row
+    }
+    
+    /// Refresh all dashboard data
+    func refresh() {
+        refreshRecentlyInstalled()
+        refreshStats()
+    }
+    
+    /// Refresh recently installed data from database
+    func refreshRecentlyInstalled() {
+        do {
+            recentInstalls = try MetadataStore.shared.recentlyInstalled(limit: 5)
+            updateRecentlyInstalledUI()
+        } catch {
+            print("Failed to load recent installs: \(error)")
+        }
+    }
+    
+    private func updateRecentlyInstalledUI() {
+        // Remove existing rows
+        recentlyInstalledStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // Find empty label in card
+        let card = recentlyInstalledStack.superview
+        let emptyLabel = card?.subviews.first { $0.identifier?.rawValue == "emptyLabel" }
+        
+        if recentInstalls.isEmpty {
+            emptyLabel?.isHidden = false
+        } else {
+            emptyLabel?.isHidden = true
+            
+            for (index, install) in recentInstalls.enumerated() {
+                let isLast = index == recentInstalls.count - 1
+                let row = createRecentInstallRow(install, isLast: isLast)
+                recentlyInstalledStack.addArrangedSubview(row)
+                
+                // Make row fill width
+                row.leadingAnchor.constraint(equalTo: recentlyInstalledStack.leadingAnchor).isActive = true
+                row.trailingAnchor.constraint(equalTo: recentlyInstalledStack.trailingAnchor).isActive = true
+                row.heightAnchor.constraint(equalToConstant: 72).isActive = true
+            }
+        }
+    }
+    
     // MARK: - Quick Settings
     
     private func setupQuickSettings() {
@@ -553,6 +732,9 @@ class DashboardView: NSView {
         } else {
             storageLabel?.stringValue = "—"
         }
+        
+        // Also refresh recently installed table
+        refreshRecentlyInstalled()
     }
     
     func refreshStats() {
@@ -1161,5 +1343,288 @@ class HoverableLaunchCard: NSView {
     
     override func mouseExited(with event: NSEvent) {
         isHovered = false
+    }
+}
+
+// MARK: - Recent Install Row
+
+/// A table row for recently installed content
+/// Matches HTML: hover:bg-white/5 transition-colors cursor-pointer
+class RecentInstallRow: NSView {
+    
+    var onClick: (() -> Void)?
+    var onStatusChanged: ((Bool) -> Void)?
+    
+    private let install: RecentInstall
+    private var trackingArea: NSTrackingArea?
+    private var isHovered = false {
+        didSet { updateAppearance(animated: true) }
+    }
+    
+    // UI Elements
+    private var iconView: NSView!
+    private var iconLabel: NSTextField!
+    private var nameLabel: NSTextField!
+    private var authorLabel: NSTextField!
+    private var typeBadge: NSView!
+    private var typeDot: NSView!
+    private var typeLabel: NSTextField!
+    private var dateLabel: NSTextField!
+    private var statusToggle: NSSwitch!
+    
+    // Colors for type badges
+    private let charBadgeColor = NSColor(red: 0.4, green: 0.5, blue: 0.9, alpha: 1.0)  // Blue/indigo
+    private let stageBadgeColor = NSColor(red: 0.7, green: 0.4, blue: 0.9, alpha: 1.0) // Purple/violet
+    
+    init(install: RecentInstall, showBorder: Bool) {
+        self.install = install
+        super.init(frame: .zero)
+        setupUI(showBorder: showBorder)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    private func setupUI(showBorder: Bool) {
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+        
+        // Bottom border (if not last row)
+        if showBorder {
+            let border = NSView()
+            border.translatesAutoresizingMaskIntoConstraints = false
+            border.wantsLayer = true
+            border.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            addSubview(border)
+            
+            NSLayoutConstraint.activate([
+                border.leadingAnchor.constraint(equalTo: leadingAnchor),
+                border.trailingAnchor.constraint(equalTo: trailingAnchor),
+                border.bottomAnchor.constraint(equalTo: bottomAnchor),
+                border.heightAnchor.constraint(equalToConstant: 1),
+            ])
+        }
+        
+        // Icon container (40x40, darker background)
+        iconView = NSView()
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.wantsLayer = true
+        iconView.layer?.cornerRadius = 6
+        iconView.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        iconView.layer?.borderWidth = 1
+        iconView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        addSubview(iconView)
+        
+        // Icon initial letter
+        let initial = String(install.name.prefix(1)).uppercased()
+        iconLabel = NSTextField(labelWithString: initial)
+        iconLabel.translatesAutoresizingMaskIntoConstraints = false
+        iconLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        iconLabel.textColor = DesignColors.zinc500
+        iconLabel.alignment = .center
+        iconView.addSubview(iconLabel)
+        
+        // Name + Author stack
+        let nameStack = NSStackView()
+        nameStack.translatesAutoresizingMaskIntoConstraints = false
+        nameStack.orientation = .vertical
+        nameStack.alignment = .leading
+        nameStack.spacing = 2
+        addSubview(nameStack)
+        
+        // Name label
+        nameLabel = NSTextField(labelWithString: install.name)
+        nameLabel.font = DesignFonts.body(size: 14)
+        nameLabel.textColor = DesignColors.textPrimary
+        nameLabel.lineBreakMode = .byTruncatingTail
+        nameStack.addArrangedSubview(nameLabel)
+        
+        // Author label (placeholder - we'd need to add author to RecentInstall)
+        authorLabel = NSTextField(labelWithString: "Unknown")  // TODO: Add author to RecentInstall
+        authorLabel.font = DesignFonts.body(size: 12)
+        authorLabel.textColor = DesignColors.zinc500
+        authorLabel.lineBreakMode = .byTruncatingTail
+        nameStack.addArrangedSubview(authorLabel)
+        
+        // Type badge with colored dot
+        let isCharacter = install.type == "character"
+        let badgeColor = isCharacter ? charBadgeColor : stageBadgeColor
+        
+        typeBadge = NSView()
+        typeBadge.translatesAutoresizingMaskIntoConstraints = false
+        typeBadge.wantsLayer = true
+        typeBadge.layer?.cornerRadius = 12
+        typeBadge.layer?.backgroundColor = badgeColor.withAlphaComponent(0.15).cgColor
+        typeBadge.layer?.borderWidth = 1
+        typeBadge.layer?.borderColor = badgeColor.withAlphaComponent(0.3).cgColor
+        addSubview(typeBadge)
+        
+        // Colored dot inside badge
+        typeDot = NSView()
+        typeDot.translatesAutoresizingMaskIntoConstraints = false
+        typeDot.wantsLayer = true
+        typeDot.layer?.cornerRadius = 3
+        typeDot.layer?.backgroundColor = badgeColor.cgColor
+        typeBadge.addSubview(typeDot)
+        
+        let typeText = isCharacter ? "Char" : "Stage"
+        typeLabel = NSTextField(labelWithString: typeText)
+        typeLabel.translatesAutoresizingMaskIntoConstraints = false
+        typeLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        typeLabel.textColor = badgeColor
+        typeBadge.addSubview(typeLabel)
+        
+        // Date label (formatted nicely)
+        let dateText = formatDate(install.installedAt)
+        dateLabel = NSTextField(labelWithString: dateText)
+        dateLabel.translatesAutoresizingMaskIntoConstraints = false
+        dateLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        dateLabel.textColor = DesignColors.zinc400
+        dateLabel.alignment = .left
+        addSubview(dateLabel)
+        
+        // Status toggle
+        statusToggle = NSSwitch()
+        statusToggle.translatesAutoresizingMaskIntoConstraints = false
+        statusToggle.state = .on  // Default to enabled
+        statusToggle.target = self
+        statusToggle.action = #selector(statusToggled(_:))
+        addSubview(statusToggle)
+        
+        NSLayoutConstraint.activate([
+            // Icon (40x40)
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 40),
+            iconView.heightAnchor.constraint(equalToConstant: 40),
+            
+            iconLabel.centerXAnchor.constraint(equalTo: iconView.centerXAnchor),
+            iconLabel.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),
+            
+            // Name stack
+            nameStack.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 16),
+            nameStack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            nameStack.trailingAnchor.constraint(lessThanOrEqualTo: typeBadge.leadingAnchor, constant: -20),
+            
+            // Type badge (centered area)
+            typeBadge.centerXAnchor.constraint(equalTo: centerXAnchor, constant: -40),
+            typeBadge.centerYAnchor.constraint(equalTo: centerYAnchor),
+            typeBadge.heightAnchor.constraint(equalToConstant: 24),
+            
+            typeDot.leadingAnchor.constraint(equalTo: typeBadge.leadingAnchor, constant: 10),
+            typeDot.centerYAnchor.constraint(equalTo: typeBadge.centerYAnchor),
+            typeDot.widthAnchor.constraint(equalToConstant: 6),
+            typeDot.heightAnchor.constraint(equalToConstant: 6),
+            
+            typeLabel.leadingAnchor.constraint(equalTo: typeDot.trailingAnchor, constant: 6),
+            typeLabel.trailingAnchor.constraint(equalTo: typeBadge.trailingAnchor, constant: -12),
+            typeLabel.centerYAnchor.constraint(equalTo: typeBadge.centerYAnchor),
+            
+            // Date
+            dateLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -40),
+            dateLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            dateLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 100),
+            
+            // Status toggle (right side)
+            statusToggle.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
+            statusToggle.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+    
+    @objc private func statusToggled(_ sender: NSSwitch) {
+        onStatusChanged?(sender.state == .on)
+    }
+    
+    override func layout() {
+        super.layout()
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        if calendar.isDateInToday(date) {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "h:mm a"
+            return "Today, \(formatter.string(from: date))"
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday"
+        } else {
+            let days = calendar.dateComponents([.day], from: date, to: now).day ?? 0
+            if days < 7 {
+                return "\(days) days ago"
+            } else {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "MMM d"
+                return formatter.string(from: date)
+            }
+        }
+    }
+    
+    private func updateAppearance(animated: Bool) {
+        let duration = animated ? 0.15 : 0.0
+        
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(duration)
+        
+        if isHovered {
+            layer?.backgroundColor = NSColor.white.withAlphaComponent(0.03).cgColor
+        } else {
+            layer?.backgroundColor = NSColor.clear.cgColor
+        }
+        
+        CATransaction.commit()
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect, .assumeInside],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+    }
+    
+    override func mouseDown(with event: NSEvent) {
+        // Don't dim if clicking on toggle
+        let localPoint = convert(event.locationInWindow, from: nil)
+        if !statusToggle.frame.contains(localPoint) {
+            alphaValue = 0.8
+        }
+    }
+    
+    override func mouseUp(with event: NSEvent) {
+        alphaValue = 1.0
+        
+        let localPoint = convert(event.locationInWindow, from: nil)
+        // Don't trigger onClick if clicking on toggle
+        if bounds.contains(localPoint) && !statusToggle.frame.contains(localPoint) {
+            onClick?()
+        }
+    }
+    
+    override var acceptsFirstResponder: Bool { true }
+    
+    override func resetCursorRects() {
+        // Add pointer cursor except over the toggle area
+        var cursorRect = bounds
+        cursorRect.size.width -= 80  // Exclude toggle area
+        addCursorRect(cursorRect, cursor: .pointingHand)
     }
 }

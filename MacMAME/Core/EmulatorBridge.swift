@@ -286,13 +286,19 @@ class IkemenBridge: ObservableObject {
             // Look for .def file with same name as directory
             let defFile = charDir.appendingPathComponent(charDir.lastPathComponent + ".def")
             if fileManager.fileExists(atPath: defFile.path) {
-                let charInfo = CharacterInfo(directory: charDir, defFile: defFile)
+                // Check if character is disabled in select.def
+                let tempChar = CharacterInfo(directory: charDir, defFile: defFile, isDisabled: false)
+                let isDisabled = ContentManager.shared.isCharacterDisabled(tempChar, in: workingDir)
+                let charInfo = CharacterInfo(directory: charDir, defFile: defFile, isDisabled: isDisabled)
                 foundCharacters.append(charInfo)
             } else {
                 // Try to find any .def file in the directory
                 if let contents = try? fileManager.contentsOfDirectory(at: charDir, includingPropertiesForKeys: nil) {
                     for file in contents where file.pathExtension.lowercased() == "def" {
-                        let charInfo = CharacterInfo(directory: charDir, defFile: file)
+                        // Check if character is disabled in select.def
+                        let tempChar = CharacterInfo(directory: charDir, defFile: file, isDisabled: false)
+                        let isDisabled = ContentManager.shared.isCharacterDisabled(tempChar, in: workingDir)
+                        let charInfo = CharacterInfo(directory: charDir, defFile: file, isDisabled: isDisabled)
                         foundCharacters.append(charInfo)
                         break
                     }

@@ -13,14 +13,16 @@ public struct CharacterInfo: Identifiable, Hashable {
     public let spriteFile: String?
     public let directory: URL
     public let defFile: URL
+    public var isDisabled: Bool  // Whether character is commented out in select.def
     
     /// Alias for directory - the character's root folder
     public var path: URL { directory }
     
-    public init(directory: URL, defFile: URL) {
+    public init(directory: URL, defFile: URL, isDisabled: Bool = false) {
         self.directory = directory
         self.defFile = defFile
         self.id = directory.lastPathComponent
+        self.isDisabled = isDisabled
         
         // Parse .def file using shared parser
         let parsed = DEFParser.parse(url: defFile)

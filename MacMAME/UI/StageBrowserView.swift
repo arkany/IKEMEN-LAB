@@ -238,6 +238,13 @@ extension StageBrowserView: NSCollectionViewDataSource {
         } else {
             let item = collectionView.makeItem(withIdentifier: StageListItem.identifier, for: indexPath) as! StageListItem
             item.configure(with: stage)
+            
+            // Wire up the toggle callback
+            item.onStatusToggled = { [weak self] isEnabled in
+                // Toggle means we're changing the state
+                self?.onStageDisableToggle?(stage)
+            }
+            
             return item
         }
     }
@@ -563,6 +570,11 @@ class StageListItem: NSCollectionViewItem {
     private var sizeLabel: NSTextField!
     private var widthLabel: NSTextField!
     private var disabledLabel: NSTextField!
+    private var statusToggle: NSSwitch!
+    
+    // Callback for toggle changes
+    var onStatusToggled: ((Bool) -> Void)?
+    private var currentStage: StageInfo?
     
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 60))
@@ -620,6 +632,14 @@ class StageListItem: NSCollectionViewItem {
         widthLabel.alignment = .right
         containerView.addSubview(widthLabel)
         
+        // Status toggle (enabled/disabled)
+        statusToggle = NSSwitch()
+        statusToggle.translatesAutoresizingMaskIntoConstraints = false
+        statusToggle.controlSize = .small
+        statusToggle.target = self
+        statusToggle.action = #selector(statusToggleChanged(_:))
+        containerView.addSubview(statusToggle)
+        
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -636,12 +656,19 @@ class StageListItem: NSCollectionViewItem {
             authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
             authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
             
-            sizeLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            sizeLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -16),
             sizeLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
             
-            widthLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            widthLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -16),
             widthLabel.topAnchor.constraint(equalTo: sizeLabel.bottomAnchor, constant: 2),
+            
+            statusToggle.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            statusToggle.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
         ])
+    }
+    
+    @objc private func statusToggleChanged(_ sender: NSSwitch) {
+        onStatusToggled?(sender.state == .on)
     }
     
     override var isSelected: Bool {
@@ -666,10 +693,14 @@ class StageListItem: NSCollectionViewItem {
     }
     
     func configure(with stage: StageInfo) {
+        currentStage = stage
         nameLabel.stringValue = stage.name
         authorLabel.stringValue = "by \(stage.author)"
         sizeLabel.stringValue = stage.sizeCategory
         widthLabel.stringValue = "Width: \(stage.totalWidth)px"
+        
+        // Toggle state - ON means enabled, OFF means disabled
+        statusToggle.state = stage.isDisabled ? .off : .on
         
         // Show disabled state
         if stage.isDisabled {
@@ -678,6 +709,7 @@ class StageListItem: NSCollectionViewItem {
             authorLabel.textColor = DesignColors.grayText.withAlphaComponent(0.5)
             sizeLabel.textColor = DesignColors.grayText.withAlphaComponent(0.5)
             widthLabel.textColor = DesignColors.grayText.withAlphaComponent(0.5)
+            containerView.layer?.opacity = 0.7
         } else {
             disabledLabel.isHidden = true
             nameLabel.textColor = DesignColors.creamText
@@ -689,6 +721,7 @@ class StageListItem: NSCollectionViewItem {
                 sizeLabel.textColor = DesignColors.grayText
             }
             widthLabel.textColor = DesignColors.grayText
+            containerView.layer?.opacity = 1.0
         }
     }
     
@@ -699,6 +732,10 @@ class StageListItem: NSCollectionViewItem {
         sizeLabel.stringValue = ""
         widthLabel.stringValue = ""
         disabledLabel.isHidden = true
+        statusToggle.state = .on
+        currentStage = nil
+        onStatusToggled = nil
+        containerView.layer?.opacity = 1.0
         nameLabel.textColor = DesignColors.creamText
         authorLabel.textColor = DesignColors.grayText
         isSelected = false

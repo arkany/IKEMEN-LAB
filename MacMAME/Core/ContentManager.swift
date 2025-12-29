@@ -1164,6 +1164,190 @@ public final class ContentManager {
     
     // MARK: - Character Management
     
+    /// Disable a character in select.def by commenting it out
+    /// - Parameters:
+    ///   - character: The character to disable
+    ///   - workingDir: The Ikemen GO working directory
+    /// - Returns: true if successfully disabled
+    @discardableResult
+    public func disableCharacter(_ character: CharacterInfo, in workingDir: URL) throws -> Bool {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard fileManager.fileExists(atPath: selectDefPath.path) else {
+            throw IkemenError.installFailed("select.def not found")
+        }
+        
+        var content = try String(contentsOf: selectDefPath, encoding: .utf8)
+        let possiblePaths = buildCharacterPaths(for: character, in: workingDir)
+        
+        var modified = false
+        let lines = content.components(separatedBy: "\n")
+        var newLines: [String] = []
+        var inCharactersSection = false
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // Track section
+            if trimmedLine.lowercased().hasPrefix("[characters]") {
+                inCharactersSection = true
+                newLines.append(line)
+                continue
+            } else if trimmedLine.hasPrefix("[") && !trimmedLine.lowercased().hasPrefix("[characters]") {
+                inCharactersSection = false
+            }
+            
+            // Only match in characters section
+            if !inCharactersSection {
+                newLines.append(line)
+                continue
+            }
+            
+            // Skip already commented lines
+            if trimmedLine.hasPrefix(";") {
+                newLines.append(line)
+                continue
+            }
+            
+            // Check if this line contains our character
+            var isOurCharacter = false
+            for path in possiblePaths {
+                if trimmedLine.lowercased().hasPrefix(path.lowercased()) {
+                    isOurCharacter = true
+                    break
+                }
+            }
+            
+            if isOurCharacter {
+                // Comment out the line
+                newLines.append(";\(line)")
+                modified = true
+                print("Disabled character: \(trimmedLine)")
+            } else {
+                newLines.append(line)
+            }
+        }
+        
+        if modified {
+            content = newLines.joined(separator: "\n")
+            try content.write(to: selectDefPath, atomically: true, encoding: .utf8)
+        }
+        
+        return modified
+    }
+    
+    /// Enable a previously disabled character in select.def by uncommenting it
+    /// - Parameters:
+    ///   - character: The character to enable
+    ///   - workingDir: The Ikemen GO working directory
+    /// - Returns: true if successfully enabled
+    @discardableResult
+    public func enableCharacter(_ character: CharacterInfo, in workingDir: URL) throws -> Bool {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard fileManager.fileExists(atPath: selectDefPath.path) else {
+            throw IkemenError.installFailed("select.def not found")
+        }
+        
+        var content = try String(contentsOf: selectDefPath, encoding: .utf8)
+        let possiblePaths = buildCharacterPaths(for: character, in: workingDir)
+        
+        var modified = false
+        let lines = content.components(separatedBy: "\n")
+        var newLines: [String] = []
+        var inCharactersSection = false
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // Track section
+            if trimmedLine.lowercased().hasPrefix("[characters]") {
+                inCharactersSection = true
+                newLines.append(line)
+                continue
+            } else if trimmedLine.hasPrefix("[") && !trimmedLine.lowercased().hasPrefix("[characters]") {
+                inCharactersSection = false
+            }
+            
+            // Only match in characters section
+            if !inCharactersSection {
+                newLines.append(line)
+                continue
+            }
+            
+            // Check if this is a commented character line
+            if trimmedLine.hasPrefix(";") {
+                let uncommented = String(trimmedLine.dropFirst()).trimmingCharacters(in: .whitespaces)
+                
+                var isOurCharacter = false
+                for path in possiblePaths {
+                    if uncommented.lowercased().hasPrefix(path.lowercased()) {
+                        isOurCharacter = true
+                        break
+                    }
+                }
+                
+                if isOurCharacter {
+                    // Uncomment the line
+                    newLines.append(uncommented)
+                    modified = true
+                    print("Enabled character: \(uncommented)")
+                } else {
+                    newLines.append(line)
+                }
+            } else {
+                newLines.append(line)
+            }
+        }
+        
+        if modified {
+            content = newLines.joined(separator: "\n")
+            try content.write(to: selectDefPath, atomically: true, encoding: .utf8)
+        }
+        
+        return modified
+    }
+    
+    /// Check if a character is disabled (commented out) in select.def
+    public func isCharacterDisabled(_ character: CharacterInfo, in workingDir: URL) -> Bool {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        
+        guard let content = try? String(contentsOf: selectDefPath, encoding: .utf8) else {
+            return false
+        }
+        
+        let possiblePaths = buildCharacterPaths(for: character, in: workingDir)
+        let lines = content.components(separatedBy: "\n")
+        var inCharactersSection = false
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            
+            // Track section
+            if trimmedLine.lowercased().hasPrefix("[characters]") {
+                inCharactersSection = true
+                continue
+            } else if trimmedLine.hasPrefix("[") && !trimmedLine.lowercased().hasPrefix("[characters]") {
+                inCharactersSection = false
+            }
+            
+            if !inCharactersSection { continue }
+            
+            // Check commented lines
+            if trimmedLine.hasPrefix(";") {
+                let uncommented = String(trimmedLine.dropFirst()).trimmingCharacters(in: .whitespaces)
+                
+                for path in possiblePaths {
+                    if uncommented.lowercased().hasPrefix(path.lowercased()) {
+                        return true
+                    }
+                }
+            }
+        }
+        
+        return false
+    }
+    
     /// Remove a character from select.def and move files to Trash
     /// - Parameters:
     ///   - character: The character to remove

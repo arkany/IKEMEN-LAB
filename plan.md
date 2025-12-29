@@ -137,6 +137,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 | Character move list viewer | ✅ Done | Parse .cmd → "↓↘→ + LP" notation |
 | Local Library Manager UI | ✅ Done | Visual browser with grid/list views |
 | Screenpack management | ✅ Done | Browse, activate, install, component detection |
+| First-run wizard | 📋 Todo | Guide new users through setup |
 | Collections system | 📋 Todo | Named groups of characters (e.g., "Marvel", "SNK Bosses") |
 | Random roster generation | 📋 Todo | Generate random select.def from pools |
 | Auto-tagging (basic rules) | 📋 Todo | Infer source game, style from filenames/metadata |
@@ -196,7 +197,6 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 |---------|--------|-------|
 | Bundle Ikemen GO inside .app | 📋 Todo | Self-contained distribution |
 | Custom app icon | 📋 Todo | Professional branding |
-| First-run wizard | 📋 Todo | Guide new users through setup |
 | "Get Characters" resource links | 📋 Todo | Curated links to community sites |
 | Code signing & notarization | 📋 Todo | Gatekeeper-friendly distribution |
 | App Store sandboxing | 📋 Todo | Comply with App Store requirements |

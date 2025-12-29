@@ -88,6 +88,7 @@ class CharacterBrowserView: NSView {
     var onCharacterDoubleClicked: ((CharacterInfo) -> Void)?
     var onCharacterRevealInFinder: ((CharacterInfo) -> Void)?
     var onCharacterRemove: ((CharacterInfo) -> Void)?
+    var onCharacterDisableToggle: ((CharacterInfo) -> Void)?
     
     // MARK: - Initialization
     
@@ -307,6 +308,22 @@ class CharacterBrowserView: NSView {
         
         let menu = NSMenu()
         
+        // Enable/Disable toggle
+        let disableItem = NSMenuItem()
+        if character.isDisabled {
+            disableItem.title = "Enable Character"
+            disableItem.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: nil)
+        } else {
+            disableItem.title = "Disable Character"
+            disableItem.image = NSImage(systemSymbolName: "xmark.circle", accessibilityDescription: nil)
+        }
+        disableItem.target = self
+        disableItem.action = #selector(toggleDisableCharacter(_:))
+        disableItem.representedObject = character
+        menu.addItem(disableItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
         // Reveal in Finder
         let revealItem = NSMenuItem(title: "Reveal in Finder", action: #selector(revealInFinderAction(_:)), keyEquivalent: "")
         revealItem.representedObject = character
@@ -322,6 +339,11 @@ class CharacterBrowserView: NSView {
         menu.addItem(removeItem)
         
         return menu
+    }
+    
+    @objc private func toggleDisableCharacter(_ sender: NSMenuItem) {
+        guard let character = sender.representedObject as? CharacterInfo else { return }
+        onCharacterDisableToggle?(character)
     }
     
     @objc private func revealInFinderAction(_ sender: NSMenuItem) {
@@ -362,6 +384,12 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
         } else {
             let item = collectionView.makeItem(withIdentifier: CharacterListItem.identifier, for: indexPath) as! CharacterListItem
             item.configure(with: character)
+            
+            // Wire up the toggle callback
+            item.onStatusToggled = { [weak self] isEnabled in
+                // Toggle means we're changing the state - if toggled ON, we want to enable
+                self?.onCharacterDisableToggle?(character)
+            }
             
             if let cachedPortrait = portraitCache[character.id] {
                 item.setPortrait(cachedPortrait)
@@ -748,6 +776,7 @@ class CharacterListItem: NSCollectionViewItem {
     private var seriesLabel: NSTextField!
     private var versionLabel: NSTextField!
     private var dateLabel: NSTextField!
+    private var statusToggle: NSSwitch!
     private var moreButton: NSButton!
     
     private var trackingArea: NSTrackingArea?
@@ -761,7 +790,12 @@ class CharacterListItem: NSCollectionViewItem {
     private let seriesColumnWidth: CGFloat = 80
     private let versionColumnWidth: CGFloat = 60
     private let dateColumnWidth: CGFloat = 80
+    private let toggleColumnWidth: CGFloat = 50
     private let moreColumnWidth: CGFloat = 40
+    
+    // Callback for toggle changes
+    var onStatusToggled: ((Bool) -> Void)?
+    private var currentCharacter: CharacterInfo?
     
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 52))
@@ -895,6 +929,14 @@ class CharacterListItem: NSCollectionViewItem {
         dateLabel.alignment = .right
         containerView.addSubview(dateLabel)
         
+        // Status toggle (enabled/disabled)
+        statusToggle = NSSwitch()
+        statusToggle.translatesAutoresizingMaskIntoConstraints = false
+        statusToggle.controlSize = .small
+        statusToggle.target = self
+        statusToggle.action = #selector(statusToggleChanged(_:))
+        containerView.addSubview(statusToggle)
+        
         // More button (ellipsis)
         moreButton = NSButton(title: "•••", target: nil, action: nil)
         moreButton.translatesAutoresizingMaskIntoConstraints = false
@@ -959,15 +1001,23 @@ class CharacterListItem: NSCollectionViewItem {
             versionLabel.widthAnchor.constraint(equalToConstant: versionColumnWidth),
             
             // Date
-            dateLabel.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor, constant: -8),
+            dateLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -12),
             dateLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             dateLabel.widthAnchor.constraint(equalToConstant: dateColumnWidth),
+            
+            // Status toggle
+            statusToggle.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor, constant: -8),
+            statusToggle.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             
             // More button
             moreButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             moreButton.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             moreButton.widthAnchor.constraint(equalToConstant: moreColumnWidth),
         ])
+    }
+    
+    @objc private func statusToggleChanged(_ sender: NSSwitch) {
+        onStatusToggled?(sender.state == .on)
     }
     
     override func viewDidLayout() {
@@ -1039,6 +1089,7 @@ class CharacterListItem: NSCollectionViewItem {
     }
     
     func configure(with character: CharacterInfo) {
+        currentCharacter = character
         nameLabel.stringValue = character.displayName
         
         // Path: directory relative to chars folder
@@ -1065,6 +1116,22 @@ class CharacterListItem: NSCollectionViewItem {
         
         // Status dot hidden by default
         statusDot.isHidden = true
+        
+        // Toggle state - ON means enabled, OFF means disabled
+        statusToggle.state = character.isDisabled ? .off : .on
+        
+        // Visual feedback for disabled state
+        if character.isDisabled {
+            nameLabel.textColor = DesignColors.zinc500
+            pathLabel.textColor = DesignColors.zinc700
+            authorLabel.textColor = DesignColors.zinc600
+            containerView.layer?.opacity = 0.7
+        } else {
+            nameLabel.textColor = DesignColors.zinc300
+            pathLabel.textColor = DesignColors.zinc600
+            authorLabel.textColor = DesignColors.zinc500
+            containerView.layer?.opacity = 1.0
+        }
     }
     
     func setPortrait(_ image: NSImage?) {
@@ -1097,6 +1164,10 @@ class CharacterListItem: NSCollectionViewItem {
         versionLabel.stringValue = ""
         dateLabel.stringValue = ""
         statusDot.isHidden = true
+        statusToggle.state = .on
+        currentCharacter = nil
+        onStatusToggled = nil
+        containerView.layer?.opacity = 1.0
         isSelected = false
         isHovered = false
         updateAppearance(animated: false)
