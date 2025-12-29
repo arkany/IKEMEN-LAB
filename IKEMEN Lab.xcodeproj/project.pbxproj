@@ -49,11 +49,11 @@
 		105 /* MainMenu.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MainMenu.xib; sourceTree = "<group>"; };
 		106 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		107 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		108 /* MacMAME.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MacMAME.entitlements; sourceTree = "<group>"; };
-		109 /* MacMAME.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMAME.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		108 /* IKEMEN Lab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "IKEMEN Lab.entitlements"; sourceTree = "<group>"; };
+		109 /* IKEMEN Lab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "IKEMEN Lab.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		10B1001B2F0114A400EC215A /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		10B1001E2F0114A500EC215A /* ToastNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastNotification.swift; sourceTree = "<group>"; };
-		112 /* MacMAME-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "MacMAME-Bridging-Header.h"; sourceTree = "<group>"; };
+		112 /* IKEMEN Lab-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "IKEMEN Lab-Bridging-Header.h"; sourceTree = "<group>"; };
 		113 /* CharacterBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterBrowserView.swift; sourceTree = "<group>"; };
 		114 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
 		115 /* Icons */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Icons; sourceTree = "<group>"; };
@@ -98,13 +98,13 @@
 		400 = {
 			isa = PBXGroup;
 			children = (
-				401 /* MacMAME */,
+				401 /* IKEMEN Lab */,
 				402 /* Frameworks */,
 				403 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		401 /* MacMAME */ = {
+		401 /* IKEMEN Lab */ = {
 			isa = PBXGroup;
 			children = (
 				410 /* App */,
@@ -114,9 +114,9 @@
 				416 /* Shared */,
 				414 /* UI */,
 				413 /* Resources */,
-				112 /* MacMAME-Bridging-Header.h */,
+				112 /* IKEMEN Lab-Bridging-Header.h */,
 			);
-			path = MacMAME;
+			path = "IKEMEN Lab";
 			sourceTree = "<group>";
 		};
 		402 /* Frameworks */ = {
@@ -133,7 +133,7 @@
 		403 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				109 /* MacMAME.app */,
+				109 /* IKEMEN Lab.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -177,7 +177,7 @@
 				105 /* MainMenu.xib */,
 				106 /* Assets.xcassets */,
 				107 /* Info.plist */,
-				108 /* MacMAME.entitlements */,
+				108 /* IKEMEN Lab.entitlements */,
 				114 /* Fonts */,
 				115 /* Icons */,
 			);
@@ -219,9 +219,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		500 /* MacMAME */ = {
+		500 /* IKEMEN Lab */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 600 /* Build configuration list for PBXNativeTarget "MacMAME" */;
+			buildConfigurationList = 600 /* Build configuration list for PBXNativeTarget "IKEMEN Lab" */;
 			buildPhases = (
 				501 /* Sources */,
 				300 /* Frameworks */,
@@ -231,12 +231,12 @@
 			);
 			dependencies = (
 			);
-			name = MacMAME;
+			name = "IKEMEN Lab";
 			packageProductDependencies = (
 				900 /* GRDB */,
 			);
-			productName = MacMAME;
-			productReference = 109 /* MacMAME.app */;
+			productName = "IKEMEN Lab";
+			productReference = 109 /* IKEMEN Lab.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -270,7 +270,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				500 /* MacMAME */,
+				500 /* IKEMEN Lab */,
 			);
 		};
 /* End PBXProject section */
@@ -446,13 +446,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = MacMAME/Resources/MacMAME.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "IKEMEN Lab/Resources/IKEMEN Lab.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = MacMAME/Resources/Info.plist;
+				INFOPLIST_FILE = "IKEMEN Lab/Resources/Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024. Licensed under GPL-2.0.";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -461,10 +461,10 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.macmame.MacMAME;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ikemenlab.IKEMENLab;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "MacMAME/MacMAME-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "IKEMEN Lab/IKEMEN Lab-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -474,13 +474,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = MacMAME/Resources/MacMAME.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "IKEMEN Lab/Resources/IKEMEN Lab.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = MacMAME/Resources/Info.plist;
+				INFOPLIST_FILE = "IKEMEN Lab/Resources/Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024. Licensed under GPL-2.0.";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -489,10 +489,10 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.macmame.MacMAME;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ikemenlab.IKEMENLab;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "MacMAME/MacMAME-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "IKEMEN Lab/IKEMEN Lab-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -500,7 +500,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		600 /* Build configuration list for PBXNativeTarget "MacMAME" */ = {
+		600 /* Build configuration list for PBXNativeTarget "IKEMEN Lab" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				802 /* Debug */,
