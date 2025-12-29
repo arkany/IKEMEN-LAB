@@ -141,6 +141,11 @@ class ScreenpackBrowserView: NSView {
             .store(in: &cancellables)
     }
     
+    /// Set screenpacks directly (used for search filtering)
+    func setScreenpacks(_ newScreenpacks: [ScreenpackInfo]) {
+        updateScreenpacks(newScreenpacks)
+    }
+    
     private func updateScreenpacks(_ newScreenpacks: [ScreenpackInfo]) {
         // Sort: active first, then alphabetical
         self.screenpacks = newScreenpacks.sorted { 

@@ -211,6 +211,11 @@ class CharacterBrowserView: NSView {
             .store(in: &cancellables)
     }
     
+    /// Set characters directly (used for search filtering)
+    func setCharacters(_ newCharacters: [CharacterInfo]) {
+        updateCharacters(newCharacters)
+    }
+    
     private func updateCharacters(_ newCharacters: [CharacterInfo]) {
         // Keep characters in the order received (which comes from select.def via EmulatorBridge)
         self.characters = newCharacters

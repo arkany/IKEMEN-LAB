@@ -85,7 +85,7 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 | Auto-generate portraits (basic) | ✅ Done | Portrait fix tool (160x160) |
 | Update select.def | ✅ Done | Auto-add with correct paths |
 | Local metadata index (SQLite) | ✅ Done | GRDB.swift for persistent database |
-| Basic search (name, author) | 📋 Todo | Filter library by text |
+| Basic search (name, author) | ✅ Done | Filter library by text (header search field) |
 | Drag-and-drop feedback UI | 🔄 In Progress | Show success/failure in drop zone |
 
 **Why this phase matters:** This gives you the compiler core. Everything else plugs into this.

@@ -68,6 +68,7 @@ class GameWindowController: NSWindowController {
     private var selectedNavItem: NavItem? = nil
     
     // UI Elements - Main Area
+    private var contentHeaderView: ContentHeaderView!
     private var dashboardView: DashboardView!
     private var dropZoneView: DropZoneView!
     private var characterBrowserView: CharacterBrowserView!
@@ -77,6 +78,9 @@ class GameWindowController: NSWindowController {
     private var screenpackBrowserView: ScreenpackBrowserView!
     private var viewModeToggle: NSSegmentedControl!
     private var createStageButton: NSButton!
+    
+    // Search state
+    private var currentSearchQuery: String = ""
     
     // View mode state
     private var currentViewMode: BrowserViewMode = .grid
@@ -550,6 +554,18 @@ class GameWindowController: NSWindowController {
         mainAreaView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.2).cgColor // bg-black/20 from HTML
         contentView.addSubview(mainAreaView)
         
+        // Content Header (shared across all views)
+        contentHeaderView = ContentHeaderView(frame: .zero)
+        contentHeaderView.translatesAutoresizingMaskIntoConstraints = false
+        contentHeaderView.isHidden = true // Hidden on dashboard
+        contentHeaderView.onSearch = { [weak self] query in
+            self?.performSearch(query)
+        }
+        contentHeaderView.onHomeClicked = { [weak self] in
+            self?.selectNavItem(.dashboard)
+        }
+        mainAreaView.addSubview(contentHeaderView)
+        
         // Dashboard View
         dashboardView = DashboardView(frame: .zero)
         dashboardView.translatesAutoresizingMaskIntoConstraints = false
@@ -668,18 +684,23 @@ class GameWindowController: NSWindowController {
         characterDetailsWidthConstraint = characterDetailsView.widthAnchor.constraint(equalToConstant: 280)
         
         NSLayoutConstraint.activate([
+            // Content header at top of main area (hidden on dashboard)
+            contentHeaderView.topAnchor.constraint(equalTo: mainAreaView.topAnchor),
+            contentHeaderView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor),
+            contentHeaderView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor),
+            
             // Dashboard fills main area
             dashboardView.topAnchor.constraint(equalTo: mainAreaView.topAnchor),
             dashboardView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor),
             dashboardView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor),
             dashboardView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor),
             
-            // View mode toggle in top-right
-            viewModeToggle.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
+            // View mode toggle in top-right of content area (below header)
+            viewModeToggle.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
             viewModeToggle.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             
             // Create stage button - to the left of view mode toggle
-            createStageButton.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
+            createStageButton.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
             createStageButton.trailingAnchor.constraint(equalTo: viewModeToggle.leadingAnchor, constant: -12),
             
             // Drop zone fills main area with padding
@@ -738,6 +759,30 @@ class GameWindowController: NSWindowController {
         // Show/hide view mode toggle for content browsers
         let showToggle = selectedNavItem == .characters || selectedNavItem == .stages || selectedNavItem == .screenpacks
         viewModeToggle?.isHidden = !showToggle
+        
+        // Show/hide content header (hidden on dashboard)
+        let showHeader = selectedNavItem != .dashboard && selectedNavItem != nil
+        contentHeaderView?.isHidden = !showHeader
+        
+        // Update breadcrumb based on current view
+        switch selectedNavItem {
+        case .characters:
+            contentHeaderView?.setCurrentPage("Characters")
+        case .stages:
+            contentHeaderView?.setCurrentPage("Stages")
+        case .screenpacks:
+            contentHeaderView?.setCurrentPage("Screenpacks")
+        case .addons:
+            contentHeaderView?.setCurrentPage("Add-ons")
+        case .settings:
+            contentHeaderView?.setCurrentPage("Settings")
+        default:
+            break
+        }
+        
+        // Clear search when switching views
+        contentHeaderView?.clearSearch()
+        currentSearchQuery = ""
         
         // Show/hide create stage button (only on stages tab and when feature is enabled)
         let showCreateStageButton = selectedNavItem == .stages && AppSettings.shared.enablePNGStageCreation
@@ -817,6 +862,94 @@ class GameWindowController: NSWindowController {
         }
         
         dashboardView?.updateStats(characters: characterCount, stages: stageCount, storageBytes: storageBytes)
+    }
+    
+    // MARK: - Search
+    
+    private func performSearch(_ query: String) {
+        currentSearchQuery = query
+        
+        // Filter current view based on search query
+        switch selectedNavItem {
+        case .characters:
+            if query.isEmpty {
+                // Show all characters
+                refreshCharacters()
+            } else {
+                // Filter using MetadataStore first, then fallback to simple search
+                let allCharacters = ikemenBridge.characters
+                do {
+                    let results = try MetadataStore.shared.searchCharacters(query: query)
+                    let matchingPaths = Set(results.map { $0.folderPath })
+                    
+                    // Filter to matching ones (use directory.path to match against MetadataStore's folderPath)
+                    let filtered = allCharacters.filter { char in
+                        matchingPaths.contains(char.directory.path) ||
+                        char.displayName.localizedCaseInsensitiveContains(query) ||
+                        char.author.localizedCaseInsensitiveContains(query)
+                    }
+                    characterBrowserView?.setCharacters(filtered)
+                } catch {
+                    // Fallback to simple filtering
+                    let filtered = allCharacters.filter {
+                        $0.displayName.localizedCaseInsensitiveContains(query) ||
+                        $0.author.localizedCaseInsensitiveContains(query)
+                    }
+                    characterBrowserView?.setCharacters(filtered)
+                }
+            }
+            
+        case .stages:
+            if query.isEmpty {
+                // Show all stages
+                refreshStages()
+            } else {
+                // Filter using MetadataStore first, then fallback to simple search
+                let allStages = ikemenBridge.stages
+                do {
+                    let results = try MetadataStore.shared.searchStages(query: query)
+                    let matchingPaths = Set(results.map { $0.filePath })
+                    
+                    // Filter to matching ones
+                    let filtered = allStages.filter { stage in
+                        matchingPaths.contains(stage.defFile.path) ||
+                        stage.name.localizedCaseInsensitiveContains(query) ||
+                        stage.author.localizedCaseInsensitiveContains(query)
+                    }
+                    stageBrowserView?.setStages(filtered)
+                } catch {
+                    // Fallback to simple filtering
+                    let filtered = allStages.filter {
+                        $0.name.localizedCaseInsensitiveContains(query) ||
+                        $0.author.localizedCaseInsensitiveContains(query)
+                    }
+                    stageBrowserView?.setStages(filtered)
+                }
+            }
+            
+        case .screenpacks:
+            // Screenpacks don't have MetadataStore yet, use simple filtering
+            let allScreenpacks = ikemenBridge.screenpacks
+            if query.isEmpty {
+                screenpackBrowserView?.setScreenpacks(allScreenpacks)
+            } else {
+                let filtered = allScreenpacks.filter {
+                    $0.name.localizedCaseInsensitiveContains(query)
+                }
+                screenpackBrowserView?.setScreenpacks(filtered)
+            }
+            
+        default:
+            break
+        }
+    }
+    
+    private func refreshCharacters() {
+        characterBrowserView?.setCharacters(ikemenBridge.characters)
+    }
+    
+    private func refreshStages() {
+        stageBrowserView?.setStages(ikemenBridge.stages)
     }
     
     private func folderSize(at path: String) -> Int64? {

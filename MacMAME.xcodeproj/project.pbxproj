@@ -36,6 +36,7 @@
 		027 /* StageGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129 /* StageGenerator.swift */; };
 		028 /* MetadataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130 /* MetadataStore.swift */; };
 		029 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 900 /* GRDB */; };
+		030 /* ContentHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 131 /* ContentHeaderView.swift */; };
 		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
 /* End PBXBuildFile section */
 
@@ -69,6 +70,7 @@
 		128 /* SFFWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFFWriter.swift; sourceTree = "<group>"; };
 		129 /* StageGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageGenerator.swift; sourceTree = "<group>"; };
 		130 /* MetadataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataStore.swift; sourceTree = "<group>"; };
+		131 /* ContentHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentHeaderView.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -185,6 +187,7 @@
 			children = (
 				113 /* CharacterBrowserView.swift */,
 				126 /* CharacterDetailsView.swift */,
+				131 /* ContentHeaderView.swift */,
 				116 /* StageBrowserView.swift */,
 				10B1001B2F0114A400EC215A /* DashboardView.swift */,
 				125 /* ScreenpackBrowserView.swift */,
@@ -309,6 +312,7 @@
 				026 /* SFFWriter.swift in Sources */,
 				027 /* StageGenerator.swift in Sources */,
 				028 /* MetadataStore.swift in Sources */,
+				030 /* ContentHeaderView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

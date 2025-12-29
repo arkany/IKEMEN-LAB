@@ -199,6 +199,11 @@ class StageBrowserView: NSView {
             .store(in: &cancellables)
     }
     
+    /// Set stages directly (used for search filtering)
+    func setStages(_ newStages: [StageInfo]) {
+        updateStages(newStages)
+    }
+    
     private func updateStages(_ newStages: [StageInfo]) {
         self.stages = newStages.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         collectionView.reloadData()
