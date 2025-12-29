@@ -790,6 +790,17 @@ class HoverableStatCard: NSView {
         return true
     }
     
+    // CRITICAL: Override hitTest to make the entire card clickable
+    // Without this, subviews (labels, icons, stack views) intercept mouse events
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // If we have an onClick handler and the point is inside our bounds,
+        // return self so we receive the mouseDown event
+        if onClick != nil && bounds.contains(point) {
+            return self
+        }
+        return super.hitTest(point)
+    }
+    
     private func setupAppearance() {
         wantsLayer = true
         layer?.cornerRadius = 8  // rounded-lg
@@ -985,6 +996,17 @@ class HoverableLaunchCard: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         // Accept click without requiring window to be active first
         return true
+    }
+    
+    // CRITICAL: Override hitTest to make the entire card clickable
+    // Without this, subviews (labels, icons, stack views) intercept mouse events
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // If we have an onClick handler and the point is inside our bounds,
+        // return self so we receive the mouseDown event
+        if onClick != nil && bounds.contains(point) {
+            return self
+        }
+        return super.hitTest(point)
     }
     
     // Show pointer cursor when hoverable
