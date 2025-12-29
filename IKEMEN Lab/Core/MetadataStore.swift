@@ -45,6 +45,8 @@ public struct RecentInstall: Codable, FetchableRecord {
     public var name: String
     public var type: String            // "character" or "stage"
     public var installedAt: Date
+    public var folderPath: String       // Path to character folder or stage def file
+    public var author: String           // Author for display
 }
 
 // MARK: - Metadata Store
@@ -263,9 +265,9 @@ public final class MetadataStore {
     public func recentlyInstalled(limit: Int = 10) throws -> [RecentInstall] {
         try dbQueue?.read { db in
             let sql = """
-                SELECT id, name, 'character' as type, installedAt FROM characters
+                SELECT id, name, 'character' as type, installedAt, folderPath, author FROM characters
                 UNION ALL
-                SELECT id, name, 'stage' as type, installedAt FROM stages
+                SELECT id, name, 'stage' as type, installedAt, filePath as folderPath, author FROM stages
                 ORDER BY installedAt DESC
                 LIMIT ?
             """

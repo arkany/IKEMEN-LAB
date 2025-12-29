@@ -1364,6 +1364,7 @@ class RecentInstallRow: NSView {
     // UI Elements
     private var iconView: NSView!
     private var iconLabel: NSTextField!
+    private var thumbnailImageView: NSImageView!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
     private var typeBadge: NSView!
@@ -1380,6 +1381,7 @@ class RecentInstallRow: NSView {
         self.install = install
         super.init(frame: .zero)
         setupUI(showBorder: showBorder)
+        loadThumbnail()
     }
     
     required init?(coder: NSCoder) {
@@ -1414,9 +1416,17 @@ class RecentInstallRow: NSView {
         iconView.layer?.backgroundColor = DesignColors.zinc900.cgColor
         iconView.layer?.borderWidth = 1
         iconView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        iconView.layer?.masksToBounds = true  // Clip thumbnail to rounded corners
         addSubview(iconView)
         
-        // Icon initial letter
+        // Thumbnail image view (hidden until image loads)
+        thumbnailImageView = NSImageView()
+        thumbnailImageView.translatesAutoresizingMaskIntoConstraints = false
+        thumbnailImageView.imageScaling = .scaleProportionallyUpOrDown
+        thumbnailImageView.isHidden = true
+        iconView.addSubview(thumbnailImageView)
+        
+        // Icon initial letter (fallback when no thumbnail)
         let initial = String(install.name.prefix(1)).uppercased()
         iconLabel = NSTextField(labelWithString: initial)
         iconLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -1440,8 +1450,8 @@ class RecentInstallRow: NSView {
         nameLabel.lineBreakMode = .byTruncatingTail
         nameStack.addArrangedSubview(nameLabel)
         
-        // Author label (placeholder - we'd need to add author to RecentInstall)
-        authorLabel = NSTextField(labelWithString: "Unknown")  // TODO: Add author to RecentInstall
+        // Author label (from metadata)
+        authorLabel = NSTextField(labelWithString: install.author)
         authorLabel.font = DesignFonts.body(size: 12)
         authorLabel.textColor = DesignColors.zinc500
         authorLabel.lineBreakMode = .byTruncatingTail
@@ -1499,6 +1509,12 @@ class RecentInstallRow: NSView {
             iconView.widthAnchor.constraint(equalToConstant: 40),
             iconView.heightAnchor.constraint(equalToConstant: 40),
             
+            // Thumbnail fills the icon container
+            thumbnailImageView.topAnchor.constraint(equalTo: iconView.topAnchor),
+            thumbnailImageView.leadingAnchor.constraint(equalTo: iconView.leadingAnchor),
+            thumbnailImageView.trailingAnchor.constraint(equalTo: iconView.trailingAnchor),
+            thumbnailImageView.bottomAnchor.constraint(equalTo: iconView.bottomAnchor),
+            
             iconLabel.centerXAnchor.constraint(equalTo: iconView.centerXAnchor),
             iconLabel.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),
             
@@ -1534,6 +1550,122 @@ class RecentInstallRow: NSView {
     
     @objc private func statusToggled(_ sender: NSSwitch) {
         onStatusChanged?(sender.state == .on)
+    }
+    
+    // MARK: - Thumbnail Loading
+    
+    private func loadThumbnail() {
+        let folderPath = install.folderPath
+        let itemType = install.type
+        let itemId = install.id
+        
+        // Check cache first
+        let cacheKey = "recent_\(itemType)_\(itemId)"
+        if let cached = ImageCache.shared.get(cacheKey) {
+            showThumbnail(cached)
+            return
+        }
+        
+        // Load asynchronously
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var thumbnail: NSImage? = nil
+            let folderURL = URL(fileURLWithPath: folderPath)
+            
+            if itemType == "character" {
+                // For characters, load portrait from folder
+                thumbnail = self?.loadCharacterPortrait(from: folderURL)
+            } else {
+                // For stages, load preview from SFF
+                thumbnail = self?.loadStagePreview(defFileURL: folderURL)
+            }
+            
+            DispatchQueue.main.async {
+                if let image = thumbnail {
+                    ImageCache.shared.set(image, for: cacheKey)
+                    self?.showThumbnail(image)
+                }
+            }
+        }
+    }
+    
+    private func showThumbnail(_ image: NSImage) {
+        thumbnailImageView.image = image
+        thumbnailImageView.isHidden = false
+        iconLabel.isHidden = true
+    }
+    
+    private func loadCharacterPortrait(from folderURL: URL) -> NSImage? {
+        let fileManager = FileManager.default
+        
+        // First check for portrait.png
+        let portraitPng = folderURL.appendingPathComponent("portrait.png")
+        if fileManager.fileExists(atPath: portraitPng.path),
+           let image = NSImage(contentsOf: portraitPng) {
+            return image
+        }
+        
+        // Check for any .png file that might be a portrait
+        if let contents = try? fileManager.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil) {
+            for file in contents where file.pathExtension.lowercased() == "png" {
+                let name = file.deletingPathExtension().lastPathComponent.lowercased()
+                if name.contains("portrait") || name.contains("select") {
+                    if let image = NSImage(contentsOf: file) {
+                        return image
+                    }
+                }
+            }
+        }
+        
+        // Find def file to get sprite reference
+        if let contents = try? fileManager.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil) {
+            let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
+            if let defFile = defFiles.first {
+                let parsed = DEFParser.parse(url: defFile)
+                if let spriteFileName = parsed?.spriteFile {
+                    let sffFile = folderURL.appendingPathComponent(spriteFileName)
+                    if fileManager.fileExists(atPath: sffFile.path) {
+                        return SFFParser.extractPortrait(from: sffFile)
+                    }
+                }
+            }
+            
+            // Fallback: try any SFF file
+            let sffFiles = contents.filter { $0.pathExtension.lowercased() == "sff" }
+            if let sffFile = sffFiles.first {
+                return SFFParser.extractPortrait(from: sffFile)
+            }
+        }
+        
+        return nil
+    }
+    
+    private func loadStagePreview(defFileURL: URL) -> NSImage? {
+        let fileManager = FileManager.default
+        
+        // Parse the def file to get SFF reference
+        if fileManager.fileExists(atPath: defFileURL.path) {
+            let parsed = DEFParser.parse(url: defFileURL)
+            if let sprName = parsed?.spriteFile {
+                // Normalize path separators
+                let normalizedPath = sprName.replacingOccurrences(of: "\\", with: "/")
+                
+                let sffURL: URL
+                if normalizedPath.contains("/") {
+                    // Root-relative path
+                    let rootDir = defFileURL.deletingLastPathComponent().deletingLastPathComponent()
+                    sffURL = rootDir.appendingPathComponent(normalizedPath)
+                } else {
+                    // File-relative path
+                    sffURL = defFileURL.deletingLastPathComponent().appendingPathComponent(normalizedPath)
+                }
+                
+                if fileManager.fileExists(atPath: sffURL.path) {
+                    return SFFParser.extractStagePreview(from: sffURL)
+                }
+            }
+        }
+        
+        return nil
     }
     
     override func layout() {
