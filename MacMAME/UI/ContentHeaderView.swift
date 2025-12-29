@@ -18,12 +18,12 @@ class StyledSearchField: NSView {
     private var isHovered = false
     private var isFocused = false
     
-    // Colors for different states
-    private let normalBorderColor = NSColor.white.withAlphaComponent(0.05)
-    private let hoverBorderColor = NSColor.white.withAlphaComponent(0.10)
-    private let focusBorderColor = NSColor.white.withAlphaComponent(0.20)
-    private let normalBgColor = NSColor(red: 0.094, green: 0.094, blue: 0.106, alpha: 0.5)
-    private let hoverBgColor = NSColor(red: 0.094, green: 0.094, blue: 0.106, alpha: 0.6)
+    // Colors for different states - matches HTML: border-white/5, focus:border-zinc-700, bg-zinc-900/50, focus:bg-zinc-900
+    private let normalBorderColor = NSColor.white.withAlphaComponent(0.05)  // border-white/5
+    private let hoverBorderColor = NSColor.white.withAlphaComponent(0.10)   // hover:border-white/10
+    private let focusBorderColor = NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0)  // focus:border-zinc-700 (#3f3f46)
+    private let normalBgColor = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 0.5)  // bg-zinc-900/50
+    private let focusBgColor = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0)   // focus:bg-zinc-900 (100% opacity)
     
     var stringValue: String {
         get { textField.stringValue }
@@ -84,8 +84,8 @@ class StyledSearchField: NSView {
         textField.placeholderAttributedString = NSAttributedString(
             string: "Search assets...",
             attributes: [
-                // Placeholder: text-zinc-500 (#71717a)
-                .foregroundColor: NSColor(red: 0x71/255.0, green: 0x71/255.0, blue: 0x7a/255.0, alpha: 1.0),
+                // Placeholder: text-zinc-700 (#3f3f46) per HTML spec
+                .foregroundColor: NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0),
                 .font: DesignFonts.caption(size: 12)
             ]
         )
@@ -173,37 +173,41 @@ class StyledSearchField: NSView {
     private func updateAppearance() {
         guard let layer = layer else { return }
         
-        // Animate the transition
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.15
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            
-            if !isEnabled {
-                // Disabled state: dimmed
-                layer.backgroundColor = normalBgColor.withAlphaComponent(0.3).cgColor
-                layer.borderColor = normalBorderColor.withAlphaComponent(0.5).cgColor
-                searchIcon.alphaValue = 0.5
-                textField.alphaValue = 0.5
-            } else if isFocused {
-                // Focus state: brighter border (white/20)
-                layer.backgroundColor = hoverBgColor.cgColor
-                layer.borderColor = focusBorderColor.cgColor
-                searchIcon.alphaValue = 1.0
-                textField.alphaValue = 1.0
-            } else if isHovered {
-                // Hover state: slightly brighter border (white/10)
-                layer.backgroundColor = hoverBgColor.cgColor
-                layer.borderColor = hoverBorderColor.cgColor
-                searchIcon.alphaValue = 1.0
-                textField.alphaValue = 1.0
-            } else {
-                // Normal state
-                layer.backgroundColor = normalBgColor.cgColor
-                layer.borderColor = normalBorderColor.cgColor
-                searchIcon.alphaValue = 1.0
-                textField.alphaValue = 1.0
-            }
+        // Tailwind transition-all: 150ms cubic-bezier(0.4, 0, 0.2, 1)
+        // Using CATransaction for smooth layer property animations
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.15)
+        CATransaction.setAnimationTimingFunction(
+            CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1)  // Tailwind's default ease
+        )
+        
+        if !isEnabled {
+            // Disabled state: dimmed
+            layer.backgroundColor = normalBgColor.withAlphaComponent(0.3).cgColor
+            layer.borderColor = normalBorderColor.withAlphaComponent(0.5).cgColor
+            searchIcon.animator().alphaValue = 0.5
+            textField.animator().alphaValue = 0.5
+        } else if isFocused {
+            // Focus state: focus:border-zinc-700, focus:bg-zinc-900 (100% opacity)
+            layer.backgroundColor = focusBgColor.cgColor
+            layer.borderColor = focusBorderColor.cgColor
+            searchIcon.animator().alphaValue = 1.0
+            textField.animator().alphaValue = 1.0
+        } else if isHovered {
+            // Hover state: border-white/10, slightly brighter bg
+            layer.backgroundColor = normalBgColor.withAlphaComponent(0.6).cgColor
+            layer.borderColor = hoverBorderColor.cgColor
+            searchIcon.animator().alphaValue = 1.0
+            textField.animator().alphaValue = 1.0
+        } else {
+            // Normal state: border-white/5, bg-zinc-900/50
+            layer.backgroundColor = normalBgColor.cgColor
+            layer.borderColor = normalBorderColor.cgColor
+            searchIcon.animator().alphaValue = 1.0
+            textField.animator().alphaValue = 1.0
         }
+        
+        CATransaction.commit()
     }
     
     @objc private func textFieldAction(_ sender: NSTextField) {
