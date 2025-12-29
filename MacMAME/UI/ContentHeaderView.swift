@@ -78,12 +78,14 @@ class StyledSearchField: NSView {
         textField.drawsBackground = false
         textField.focusRingType = .none
         textField.font = DesignFonts.caption(size: 12) // text-xs
-        textField.textColor = DesignColors.textSecondary // zinc-300
+        // Input text: text-zinc-300 (#d4d4d8) - brighter than secondary text
+        textField.textColor = NSColor(red: 0xd4/255.0, green: 0xd4/255.0, blue: 0xd8/255.0, alpha: 1.0)
         textField.placeholderString = "Search assets..."
         textField.placeholderAttributedString = NSAttributedString(
             string: "Search assets...",
             attributes: [
-                .foregroundColor: NSColor(white: 0.4, alpha: 1.0), // zinc-700
+                // Placeholder: text-zinc-500 (#71717a)
+                .foregroundColor: NSColor(red: 0x71/255.0, green: 0x71/255.0, blue: 0x7a/255.0, alpha: 1.0),
                 .font: DesignFonts.caption(size: 12)
             ]
         )
