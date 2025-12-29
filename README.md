@@ -1,100 +1,136 @@
-# MacMAME
+# IKEMEN Lab
 
-A native macOS arcade emulator built on [MAME](https://www.mamedev.org/), designed to feel like a first-class Mac application.
+A **Mac-native content manager** for [IKEMEN GO](https://github.com/ikemen-engine/Ikemen-GO) — the open-source fighting game engine compatible with MUGEN content.
 
-> ⚠️ **Early Development** — This project is in Phase 0 (Research & Constraints). Not yet functional.
+IKEMEN Lab makes it easy to install, organize, and manage your characters, stages, and screenpacks without touching config files.
 
-## Goals
+![macOS](https://img.shields.io/badge/macOS-12.0+-blue)
+![Swift](https://img.shields.io/badge/Swift-5.9-orange)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-- **Mac-native UX**: Drag-and-drop library management, native fullscreen, menu bar integration
-- **App Store viable**: Sandboxed, hardened, legally compliant
-- **Preservation-focused**: Built on MAME for accuracy and compatibility
+> ⚠️ **Alpha Release** — This project is in early development. Feedback welcome!
 
-## Project Status
+---
 
-| Phase | Status | Description |
-|-------|--------|-------------|
-| 0 | ✅ Complete | Research & Constraints |
-| 1 | ✅ Complete | Minimal macOS Shell |
-| 2 | 🔲 Not started | Mac-Native Windowing & Input |
-| 3 | 🔲 Not started | Drag-and-Drop Library |
-| 4 | 🔲 Not started | Polished UX + Save States |
-| 5 | 🔲 Not started | App Store Compliance |
-| 6 | 🔲 Not started | Community & Sustainability |
+## ✨ Features
+
+### Content Management
+- **Drag-and-drop installation** — Drop ZIP, RAR, 7z, or folders to install characters and stages
+- **Visual browser** — Grid and list views with thumbnails extracted from SFF sprite files
+- **Search & filter** — Find content by name or author
+- **Enable/disable toggle** — Temporarily disable characters or stages without removing them
+
+### Character Tools
+- **Details panel** — View author, version, palette count, and more
+- **Move list viewer** — Parsed command notation (↓↘→ + LP)
+- **Roster arrangement** — Drag to reorder characters in select.def
+- **Portrait extraction** — SFF v1 and v2 support
+
+### Stage Browser
+- **Preview thumbnails** — Extracted from stage sprite files
+- **Size indicators** — See stage width categories (Standard/Wide/Extra Wide)
+
+### Dashboard
+- **Quick stats** — Character count, stage count, storage used
+- **Drop zone** — Install content right from the dashboard
+- **Launch button** — Start IKEMEN GO with one click
+
+---
+
+## 📸 Screenshots
+
+<!-- TODO: Add screenshots -->
+*Coming soon*
+
+---
+
+## 📋 Requirements
+
+- **macOS 12.0** (Monterey) or later
+- **IKEMEN GO** installed separately — [Download from GitHub](https://github.com/ikemen-engine/Ikemen-GO/releases)
+
+---
+
+## 🚀 Installation
+
+1. Download the latest release from [Releases](../../releases)
+2. Unzip and drag **IKEMEN Lab.app** to your Applications folder
+3. **First launch:** Right-click → Open → "Open Anyway" (required for unsigned apps)
+4. Point to your IKEMEN GO installation when prompted
+
+---
+
+## 🎮 Usage
+
+### Installing Content
+1. Download characters/stages from sites like [MUGEN Archive](https://mugenarchive.com)
+2. Drag the ZIP/RAR file onto IKEMEN Lab
+3. Content is automatically extracted, validated, and added to select.def
+
+### Managing Content
+- **Grid/List toggle** — Switch views with the toolbar button
+- **Right-click menu** — Reveal in Finder, Enable/Disable, Remove
+- **Details panel** — Click a character to see metadata and move list
+
+### Launching the Game
+- Click **Launch Game** on the Dashboard or use ⌘L
+
+---
+
+## 🗺️ Roadmap
 
 See [plan.md](plan.md) for the full roadmap.
 
-## Architecture
+### Upcoming Features
+- 📁 **Collections** — Group characters (e.g., "Marvel", "SNK Bosses")
+- 🔍 **Duplicate detection** — Find and manage duplicates
+- 🎬 **Animated previews** — See idle stance animations
+- 🏷️ **Auto-tagging** — Detect source game, style, resolution
+- 🌐 **Browser extension** — One-click install from MUGEN Archive
 
-```
-┌─────────────────────────────────────┐
-│         macOS App Shell             │
-│   (AppKit, Swift, Metal rendering)  │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────┴──────────────────────┐
-│         MAMECore.framework          │
-│   (MAME wrapped as macOS framework) │
-└─────────────────────────────────────┘
-```
+**Vote on features!** Head to [Discussions](../../discussions) to upvote the features you want most.
 
-Key decisions:
-- **Modular framework approach** (inspired by Delta emulator)
-- **Metal-only rendering** (required for App Store)
-- **AppKit over SwiftUI** (better for game rendering)
+---
 
-See [docs/architecture.md](docs/architecture.md) for details.
-
-## Documentation
-
-- [plan.md](plan.md) — Project roadmap
-- [docs/constraints.md](docs/constraints.md) — Technical & legal constraints
-- [docs/legal-notes.md](docs/legal-notes.md) — Licensing and App Store policy
-- [docs/macos-native-guidelines.md](docs/macos-native-guidelines.md) — macOS development patterns
-- [docs/architecture.md](docs/architecture.md) — Technical architecture
-
-## Requirements
-
-- macOS 12.0+ (Monterey)
-- Xcode 15+
-- Apple Silicon or Intel Mac
-
-## Building
-
-> 🚧 Build instructions will be added in Phase 1
+## 🛠️ Building from Source
 
 ```bash
-# Clone with submodules
-git clone --recursive https://github.com/yourname/macmame.git
+# Clone the repo
+git clone https://github.com/yourname/ikemen-lab.git
+cd ikemen-lab
 
-# Build MAME core (coming soon)
-./scripts/build-mame-macos.sh
-
-# Open Xcode project (coming soon)
+# Open in Xcode
 open MacMAME.xcodeproj
+
+# Build and run (⌘R)
 ```
 
-## Legal
+Requires Xcode 15+ and macOS 12.0+.
 
-### Game Files
+---
 
-This application does **not** include any game files. You must provide your own legally-obtained game files.
+## 🤝 Contributing
 
-### MAME License
+This is an early alpha — feedback and contributions are welcome!
 
-MAME is licensed under [GPL-2.0](https://github.com/mamedev/mame/blob/master/COPYING). This project complies with GPL-2.0 requirements:
-- Full source code is available
-- License notices are preserved
-- Modifications are documented
+- **Bug reports** → [Open an Issue](../../issues)
+- **Feature requests** → [Start a Discussion](../../discussions)
+- **Pull requests** → Fork, branch, and submit
 
-### Trademarks
+---
 
-"MAME" is a trademark of the MAME team. This project is not affiliated with or endorsed by the MAME team.
+## 📄 License
 
-## Contributing
+MIT License — see [LICENSE](LICENSE) for details.
 
-Contributions welcome! Please read the project plan and documentation before submitting PRs.
+---
 
-## License
+## 🙏 Acknowledgments
 
-GPL-2.0 — See [LICENSE](LICENSE) for details.
+- [IKEMEN GO](https://github.com/ikemen-engine/Ikemen-GO) — The engine that makes this all possible
+- [MUGEN](https://elecbyte.com/) — The original fighting game engine
+- The MUGEN/IKEMEN community for decades of amazing content
+
+---
+
+**IKEMEN Lab is not affiliated with Elecbyte or the IKEMEN GO project.**

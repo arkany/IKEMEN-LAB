@@ -79,6 +79,27 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 ## Roadmap
 
+### 🧪 Alpha Release — "Community Preview"
+**Focus:** Get early feedback from IKEMEN GO community  
+**Goal:** Validate direction, discover missing features, build interest
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Create unsigned release build | 📋 Todo | Release config, zip the .app |
+| Publish to GitHub Releases | 📋 Todo | Tag v0.1.0-alpha |
+| Write README with screenshots | 📋 Todo | Installation, features, requirements |
+| Enable GitHub Discussions | 📋 Todo | Feature requests, Q&A, polls |
+| Create "Feature Voting" discussion | 📋 Todo | Pin a post with planned features for 👍 voting |
+| Post to IKEMEN GO Discord/forums | 📋 Todo | Announce and gather feedback |
+| Collect feedback → update roadmap | 📋 Todo | Prioritize based on community input |
+
+**Community Feedback Channels:**
+- **GitHub Discussions** → Feature requests, polls, Q&A
+- **GitHub Issues** → Bug reports, specific problems
+- **Issue reactions** → 👍/👎 voting on planned features
+
+---
+
 ### 🚀 MVP — "The Core Pipeline"
 **Focus:** Automated install + metadata foundation  
 **Goal:** Make installing characters effortless, normalize chaos into clean structured data
@@ -137,9 +158,11 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 | Character move list viewer | ✅ Done | Parse .cmd → "↓↘→ + LP" notation |
 | Local Library Manager UI | ✅ Done | Visual browser with grid/list views |
 | Screenpack management | ✅ Done | Browse, activate, install, component detection |
-| First-run wizard | 📋 Todo | Guide new users through setup |
+| **First-run wizard** | 📋 Todo | Guide new users through initial setup |
+| ├─ IKEMEN GO location | 📋 Todo | Ask where IKEMEN GO is installed, browse to select |
+| ├─ Download prompt | 📋 Todo | If not installed, show link to download from GitHub |
+| └─ Initial content scan | 📋 Todo | Scan and index existing chars/stages |
 | Collections system | 📋 Todo | Named groups of characters (e.g., "Marvel", "SNK Bosses") |
-| Random roster generation | 📋 Todo | Generate random select.def from pools |
 | Auto-tagging (basic rules) | 📋 Todo | Infer source game, style from filenames/metadata |
 | Detect duplicates + outdated versions | 📋 Todo | Hash-based or name-based duplicate detection |
 | Detect screenpack character limit | 📋 Todo | Parse `rows` × `columns` from system.def |
@@ -154,6 +177,16 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
+| **Add-ons Browser** | 📋 Todo | New sidebar section for misc content types |
+| ├─ Scenes/Endings | 📋 Todo | Cutscenes with `[SceneDef]` (e.g., character endings) |
+| ├─ Intro Movies | 📋 Todo | Game intros and attract modes |
+| ├─ Sound Packs | 📋 Todo | Custom announcer voices, menu sounds |
+| └─ Palettes | 📋 Todo | Additional .act palette files |
+| **Smart Content Type Detection** | 📋 Todo | Auto-detect .def type from contents, not location |
+| ├─ Character detection | 📋 Todo | Has `[Files]` with cmd/cns/anim/sprite/sound keys |
+| ├─ Stage detection | 📋 Todo | Has `[StageInfo]` or `[BGdef]` section |
+| ├─ Scene/Ending detection | 📋 Todo | Has `[SceneDef]` section |
+| └─ Multi-content archives | 📋 Todo | Handle archives with char + ending + helpers (e.g., MVC_IRONFIST) |
 | Animated idle stance preview | 📋 Todo | Parse .air Action 0, animate sprites with timing |
 | Content validator/fixer | 📋 Todo | Path issues, missing files, encoding, auto-fix on import |
 | Style Detection Engine | 📋 Todo | POTS / MVC2 / KOF / CVS / Anime / Chibi classification |
@@ -163,6 +196,8 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 | Similar character suggestions | 📋 Todo | "If you like X, try Y" based on style/source |
 | Browser extension | 📋 Todo | "Install to MacMugen" button on MUGEN Archive |
 | Scrape metadata from web | 📋 Todo | Pull author, version, tags from download pages |
+| Random roster generation | 📋 Todo | Generate random select.def from pools |
+
 
 **Why this phase matters:** This is where the system becomes smart and frictionless — your signature.
 
@@ -195,7 +230,6 @@ Create a **Mac-native launcher and content manager** for Ikemen GO that:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Bundle Ikemen GO inside .app | 📋 Todo | Self-contained distribution |
 | Custom app icon | 📋 Todo | Professional branding |
 | "Get Characters" resource links | 📋 Todo | Curated links to community sites |
 | Code signing & notarization | 📋 Todo | Gatekeeper-friendly distribution |

@@ -254,7 +254,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 701 /* Build configuration list for PBXProject "MacMAME" */;
+			buildConfigurationList = 701 /* Build configuration list for PBXProject "IKEMEN Lab" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -509,7 +509,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		701 /* Build configuration list for PBXProject "MacMAME" */ = {
+		701 /* Build configuration list for PBXProject "IKEMEN Lab" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				800 /* Debug */,
