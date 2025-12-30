@@ -15,6 +15,7 @@ class DashboardView: NSView {
     var onRefreshStats: (() -> Void)?
     var onNavigateToCharacters: (() -> Void)?
     var onNavigateToStages: (() -> Void)?
+    var onValidateContent: (() -> Void)?
     
     // MARK: - UI Elements
     private var scrollView: NSScrollView!
@@ -86,6 +87,7 @@ class DashboardView: NSView {
         setupDropZone()
         setupRecentlyInstalled()
         setupQuickSettings()
+        setupTools()
         
         // Layout
         NSLayoutConstraint.activate([
@@ -721,6 +723,120 @@ class DashboardView: NSView {
         try? content.write(toFile: path, atomically: true, encoding: .utf8)
     }
     
+    // MARK: - Tools Section
+    
+    private func setupTools() {
+        let sectionLabel = NSTextField(labelWithString: "TOOLS")
+        sectionLabel.font = DesignFonts.caption(size: 11)
+        sectionLabel.textColor = DesignColors.textTertiary
+        contentStack.addArrangedSubview(sectionLabel)
+        
+        let toolsCard = NSView()
+        toolsCard.translatesAutoresizingMaskIntoConstraints = false
+        toolsCard.wantsLayer = true
+        toolsCard.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        toolsCard.layer?.cornerRadius = 12
+        toolsCard.layer?.borderWidth = 1
+        toolsCard.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        
+        let toolsStack = NSStackView()
+        toolsStack.translatesAutoresizingMaskIntoConstraints = false
+        toolsStack.orientation = .horizontal
+        toolsStack.spacing = 16
+        toolsCard.addSubview(toolsStack)
+        
+        // Validate Content button
+        let validateButton = createToolButton(
+            title: "Validate Content",
+            subtitle: "Check for missing or mismatched files",
+            icon: "checkmark.shield.fill",
+            action: #selector(validateContentClicked)
+        )
+        toolsStack.addArrangedSubview(validateButton)
+        
+        NSLayoutConstraint.activate([
+            toolsStack.topAnchor.constraint(equalTo: toolsCard.topAnchor, constant: 16),
+            toolsStack.leadingAnchor.constraint(equalTo: toolsCard.leadingAnchor, constant: 16),
+            toolsStack.trailingAnchor.constraint(lessThanOrEqualTo: toolsCard.trailingAnchor, constant: -16),
+            toolsStack.bottomAnchor.constraint(equalTo: toolsCard.bottomAnchor, constant: -16),
+        ])
+        
+        contentStack.addArrangedSubview(toolsCard)
+        
+        // Make tools card fill width
+        toolsCard.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor).isActive = true
+        toolsCard.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor).isActive = true
+    }
+    
+    private func createToolButton(title: String, subtitle: String, icon: String, action: Selector) -> NSView {
+        let container = HoverableToolButton()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.target = self
+        container.action = action
+        
+        let stack = NSStackView()
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.orientation = .horizontal
+        stack.spacing = 12
+        stack.alignment = .centerY
+        container.addSubview(stack)
+        
+        // Icon container
+        let iconContainer = NSView()
+        iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.wantsLayer = true
+        iconContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        iconContainer.layer?.cornerRadius = 8
+        iconContainer.layer?.borderWidth = 1
+        iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        stack.addArrangedSubview(iconContainer)
+        
+        let iconView = NSImageView()
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.image = NSImage(systemSymbolName: icon, accessibilityDescription: nil)
+        iconView.contentTintColor = DesignColors.textSecondary
+        iconView.symbolConfiguration = .init(pointSize: 16, weight: .medium)
+        iconContainer.addSubview(iconView)
+        
+        NSLayoutConstraint.activate([
+            iconContainer.widthAnchor.constraint(equalToConstant: 40),
+            iconContainer.heightAnchor.constraint(equalToConstant: 40),
+            iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+        ])
+        
+        // Text stack
+        let textStack = NSStackView()
+        textStack.orientation = .vertical
+        textStack.spacing = 2
+        textStack.alignment = .leading
+        
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = DesignFonts.body(size: 14)
+        titleLabel.textColor = DesignColors.textPrimary
+        textStack.addArrangedSubview(titleLabel)
+        
+        let subtitleLabel = NSTextField(labelWithString: subtitle)
+        subtitleLabel.font = DesignFonts.caption(size: 12)
+        subtitleLabel.textColor = DesignColors.textTertiary
+        textStack.addArrangedSubview(subtitleLabel)
+        
+        stack.addArrangedSubview(textStack)
+        
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 12),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -12),
+        ])
+        
+        return container
+    }
+    
+    @objc private func validateContentClicked() {
+        onValidateContent?()
+    }
+    
     // MARK: - Public Methods
     
     func updateStats(characters: Int, stages: Int, storageBytes: Int64?) {
@@ -1165,6 +1281,104 @@ class HoverableStatCard: NSView {
         if onClick != nil {
             addCursorRect(bounds, cursor: .pointingHand)
         }
+    }
+}
+
+// MARK: - Hoverable Tool Button
+
+/// Tool button with hover effect for the Tools section
+class HoverableToolButton: NSView {
+    
+    var target: AnyObject?
+    var action: Selector?
+    
+    private var trackingArea: NSTrackingArea?
+    
+    private var isHovered = false {
+        didSet {
+            updateAppearance(animated: true)
+        }
+    }
+    
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupAppearance()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupAppearance()
+    }
+    
+    private func setupAppearance() {
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.backgroundColor = DesignColors.zinc900.cgColor
+        layer?.borderWidth = 1
+        layer?.borderColor = DesignColors.borderSubtle.cgColor
+    }
+    
+    private func updateAppearance(animated: Bool) {
+        let duration = animated ? 0.15 : 0.0
+        
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(duration)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1))
+        
+        if isHovered {
+            layer?.borderColor = NSColor.white.withAlphaComponent(0.15).cgColor
+            layer?.backgroundColor = DesignColors.zinc800.cgColor
+        } else {
+            layer?.borderColor = DesignColors.borderSubtle.cgColor
+            layer?.backgroundColor = DesignColors.zinc900.cgColor
+        }
+        
+        CATransaction.commit()
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+    }
+    
+    override func mouseDown(with event: NSEvent) {
+        alphaValue = 0.8
+    }
+    
+    override func mouseUp(with event: NSEvent) {
+        alphaValue = 1.0
+        
+        let localPoint = convert(event.locationInWindow, from: nil)
+        if bounds.contains(localPoint) {
+            if let target = target, let action = action {
+                _ = target.perform(action)
+            }
+        }
+    }
+    
+    override var acceptsFirstResponder: Bool { true }
+    
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .pointingHand)
     }
 }
 

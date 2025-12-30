@@ -695,6 +695,9 @@ class GameWindowController: NSWindowController {
         dashboardView.onNavigateToStages = { [weak self] in
             self?.selectNavItem(.stages)
         }
+        dashboardView.onValidateContent = { [weak self] in
+            self?.runContentValidation()
+        }
         mainAreaView.addSubview(dashboardView)
         
         // Drop Zone (visible in empty state - legacy, kept for other views)
@@ -1897,6 +1900,84 @@ class GameWindowController: NSWindowController {
             } catch {
                 showError("Launch Failed", detail: error.localizedDescription)
             }
+        }
+    }
+    
+    // MARK: - Content Validation
+    
+    private func runContentValidation() {
+        guard let workingDir = ikemenBridge.workingDirectory else {
+            showError("Validation Failed", detail: "IKEMEN GO directory not configured")
+            return
+        }
+        
+        // Run validation in background
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let validator = ContentValidator.shared
+            
+            let stageResults = validator.validateAllStages(in: workingDir)
+            let charResults = validator.validateAllCharacters(in: workingDir)
+            
+            DispatchQueue.main.async {
+                self?.showValidationResults(stages: stageResults, characters: charResults)
+            }
+        }
+    }
+    
+    private func showValidationResults(stages: [ContentValidator.ValidationResult], characters: [ContentValidator.ValidationResult]) {
+        let allResults = stages + characters
+        
+        let errorCount = allResults.reduce(0) { $0 + $1.errorCount }
+        let warningCount = allResults.reduce(0) { $0 + $1.warningCount }
+        
+        if allResults.isEmpty {
+            // Show success toast
+            ToastManager.shared.showSuccess(title: "All content validated successfully!")
+            return
+        }
+        
+        // Build alert message
+        var message = ""
+        
+        if errorCount > 0 {
+            message += "Found \(errorCount) error(s) that will cause crashes.\n\n"
+        }
+        if warningCount > 0 {
+            message += "Found \(warningCount) warning(s) that may cause issues.\n\n"
+        }
+        
+        // Show first few issues as examples
+        let issueLimit = 10
+        var issuesShown = 0
+        
+        for result in allResults where issuesShown < issueLimit {
+            for issue in result.issues where issuesShown < issueLimit {
+                let icon = issue.severity == .error ? "❌" : (issue.severity == .warning ? "⚠️" : "ℹ️")
+                message += "\(icon) \(result.contentName) (\(result.contentType))\n"
+                message += "   \(issue.message)\n"
+                if let suggestion = issue.suggestion {
+                    message += "   → \(suggestion)\n"
+                }
+                message += "\n"
+                issuesShown += 1
+            }
+        }
+        
+        let totalIssues = allResults.reduce(0) { $0 + $1.issues.count }
+        if totalIssues > issueLimit {
+            message += "... and \(totalIssues - issueLimit) more issue(s)"
+        }
+        
+        let alert = NSAlert()
+        alert.messageText = "Content Validation Results"
+        alert.informativeText = message
+        alert.alertStyle = errorCount > 0 ? .critical : .warning
+        alert.addButton(withTitle: "OK")
+        
+        if let window = window {
+            alert.beginSheetModal(for: window)
+        } else {
+            alert.runModal()
         }
     }
     
