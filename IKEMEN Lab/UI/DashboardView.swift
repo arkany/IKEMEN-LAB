@@ -40,6 +40,12 @@ class DashboardView: NSView {
     private var recentlyInstalledStack: NSStackView!
     private var recentInstalls: [RecentInstall] = []
     
+    // Content Health
+    private var healthStatusLabel: NSTextField!
+    private var healthBadge: NSView!
+    private var healthBadgeLabel: NSTextField!
+    private var fixAllButton: NSButton!
+    
     // MARK: - Initialization
     
     override init(frame frameRect: NSRect) {
@@ -726,62 +732,31 @@ class DashboardView: NSView {
     // MARK: - Tools Section
     
     private func setupTools() {
-        let sectionLabel = NSTextField(labelWithString: "TOOLS")
+        let sectionLabel = NSTextField(labelWithString: "CONTENT HEALTH")
         sectionLabel.font = DesignFonts.caption(size: 11)
         sectionLabel.textColor = DesignColors.textTertiary
         contentStack.addArrangedSubview(sectionLabel)
         
-        let toolsCard = NSView()
-        toolsCard.translatesAutoresizingMaskIntoConstraints = false
-        toolsCard.wantsLayer = true
-        toolsCard.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        toolsCard.layer?.cornerRadius = 12
-        toolsCard.layer?.borderWidth = 1
-        toolsCard.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        let healthCard = NSView()
+        healthCard.translatesAutoresizingMaskIntoConstraints = false
+        healthCard.wantsLayer = true
+        healthCard.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        healthCard.layer?.cornerRadius = 12
+        healthCard.layer?.borderWidth = 1
+        healthCard.layer?.borderColor = DesignColors.borderSubtle.cgColor
         
-        let toolsStack = NSStackView()
-        toolsStack.translatesAutoresizingMaskIntoConstraints = false
-        toolsStack.orientation = .horizontal
-        toolsStack.spacing = 16
-        toolsCard.addSubview(toolsStack)
+        // Main horizontal stack
+        let mainStack = NSStackView()
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+        mainStack.orientation = .horizontal
+        mainStack.spacing = 16
+        mainStack.alignment = .centerY
+        healthCard.addSubview(mainStack)
         
-        // Validate Content button
-        let validateButton = createToolButton(
-            title: "Validate Content",
-            subtitle: "Check for missing or mismatched files",
-            icon: "checkmark.shield.fill",
-            action: #selector(validateContentClicked)
-        )
-        toolsStack.addArrangedSubview(validateButton)
+        // Left side: Icon with badge
+        let iconWrapper = NSView()
+        iconWrapper.translatesAutoresizingMaskIntoConstraints = false
         
-        NSLayoutConstraint.activate([
-            toolsStack.topAnchor.constraint(equalTo: toolsCard.topAnchor, constant: 16),
-            toolsStack.leadingAnchor.constraint(equalTo: toolsCard.leadingAnchor, constant: 16),
-            toolsStack.trailingAnchor.constraint(lessThanOrEqualTo: toolsCard.trailingAnchor, constant: -16),
-            toolsStack.bottomAnchor.constraint(equalTo: toolsCard.bottomAnchor, constant: -16),
-        ])
-        
-        contentStack.addArrangedSubview(toolsCard)
-        
-        // Make tools card fill width
-        toolsCard.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor).isActive = true
-        toolsCard.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor).isActive = true
-    }
-    
-    private func createToolButton(title: String, subtitle: String, icon: String, action: Selector) -> NSView {
-        let container = HoverableToolButton()
-        container.translatesAutoresizingMaskIntoConstraints = false
-        container.target = self
-        container.action = action
-        
-        let stack = NSStackView()
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.orientation = .horizontal
-        stack.spacing = 12
-        stack.alignment = .centerY
-        container.addSubview(stack)
-        
-        // Icon container
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
@@ -789,48 +764,187 @@ class DashboardView: NSView {
         iconContainer.layer?.cornerRadius = 8
         iconContainer.layer?.borderWidth = 1
         iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
-        stack.addArrangedSubview(iconContainer)
+        iconWrapper.addSubview(iconContainer)
         
         let iconView = NSImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
-        iconView.image = NSImage(systemSymbolName: icon, accessibilityDescription: nil)
+        iconView.image = NSImage(systemSymbolName: "checkmark.shield.fill", accessibilityDescription: nil)
         iconView.contentTintColor = DesignColors.textSecondary
-        iconView.symbolConfiguration = .init(pointSize: 16, weight: .medium)
+        iconView.symbolConfiguration = .init(pointSize: 18, weight: .medium)
         iconContainer.addSubview(iconView)
         
+        // Error badge (hidden by default)
+        healthBadge = NSView()
+        healthBadge.translatesAutoresizingMaskIntoConstraints = false
+        healthBadge.wantsLayer = true
+        healthBadge.layer?.backgroundColor = NSColor.systemRed.cgColor
+        healthBadge.layer?.cornerRadius = 10
+        healthBadge.isHidden = true
+        iconWrapper.addSubview(healthBadge)
+        
+        healthBadgeLabel = NSTextField(labelWithString: "0")
+        healthBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        healthBadgeLabel.font = NSFont.systemFont(ofSize: 11, weight: .bold)
+        healthBadgeLabel.textColor = .white
+        healthBadgeLabel.alignment = .center
+        healthBadge.addSubview(healthBadgeLabel)
+        
         NSLayoutConstraint.activate([
-            iconContainer.widthAnchor.constraint(equalToConstant: 40),
-            iconContainer.heightAnchor.constraint(equalToConstant: 40),
+            iconContainer.widthAnchor.constraint(equalToConstant: 44),
+            iconContainer.heightAnchor.constraint(equalToConstant: 44),
             iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
             iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+            
+            iconContainer.leadingAnchor.constraint(equalTo: iconWrapper.leadingAnchor),
+            iconContainer.topAnchor.constraint(equalTo: iconWrapper.topAnchor),
+            iconContainer.bottomAnchor.constraint(equalTo: iconWrapper.bottomAnchor),
+            
+            healthBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
+            healthBadge.heightAnchor.constraint(equalToConstant: 20),
+            healthBadge.trailingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 6),
+            healthBadge.topAnchor.constraint(equalTo: iconContainer.topAnchor, constant: -6),
+            healthBadge.trailingAnchor.constraint(equalTo: iconWrapper.trailingAnchor),
+            
+            healthBadgeLabel.centerXAnchor.constraint(equalTo: healthBadge.centerXAnchor),
+            healthBadgeLabel.centerYAnchor.constraint(equalTo: healthBadge.centerYAnchor),
+            healthBadgeLabel.leadingAnchor.constraint(greaterThanOrEqualTo: healthBadge.leadingAnchor, constant: 4),
+            healthBadgeLabel.trailingAnchor.constraint(lessThanOrEqualTo: healthBadge.trailingAnchor, constant: -4),
         ])
         
-        // Text stack
+        mainStack.addArrangedSubview(iconWrapper)
+        
+        // Center: Status text
         let textStack = NSStackView()
         textStack.orientation = .vertical
         textStack.spacing = 2
         textStack.alignment = .leading
         
-        let titleLabel = NSTextField(labelWithString: title)
+        let titleLabel = NSTextField(labelWithString: "Content Validator")
         titleLabel.font = DesignFonts.body(size: 14)
         titleLabel.textColor = DesignColors.textPrimary
         textStack.addArrangedSubview(titleLabel)
         
-        let subtitleLabel = NSTextField(labelWithString: subtitle)
-        subtitleLabel.font = DesignFonts.caption(size: 12)
-        subtitleLabel.textColor = DesignColors.textTertiary
-        textStack.addArrangedSubview(subtitleLabel)
+        healthStatusLabel = NSTextField(labelWithString: "Click 'Scan' to check for issues")
+        healthStatusLabel.font = DesignFonts.caption(size: 12)
+        healthStatusLabel.textColor = DesignColors.textTertiary
+        textStack.addArrangedSubview(healthStatusLabel)
         
-        stack.addArrangedSubview(textStack)
+        mainStack.addArrangedSubview(textStack)
+        
+        // Spacer
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        mainStack.addArrangedSubview(spacer)
+        
+        // Right side: Buttons
+        let buttonStack = NSStackView()
+        buttonStack.orientation = .horizontal
+        buttonStack.spacing = 8
+        
+        // Fix All button (hidden by default)
+        fixAllButton = NSButton(title: "Fix All", target: self, action: #selector(fixAllClicked))
+        fixAllButton.bezelStyle = .rounded
+        fixAllButton.isHidden = true
+        buttonStack.addArrangedSubview(fixAllButton)
+        
+        // Scan button
+        let scanButton = NSButton(title: "Scan", target: self, action: #selector(validateContentClicked))
+        scanButton.bezelStyle = .rounded
+        scanButton.keyEquivalent = ""
+        buttonStack.addArrangedSubview(scanButton)
+        
+        mainStack.addArrangedSubview(buttonStack)
         
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 12),
-            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
-            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -12),
+            mainStack.topAnchor.constraint(equalTo: healthCard.topAnchor, constant: 16),
+            mainStack.leadingAnchor.constraint(equalTo: healthCard.leadingAnchor, constant: 16),
+            mainStack.trailingAnchor.constraint(equalTo: healthCard.trailingAnchor, constant: -16),
+            mainStack.bottomAnchor.constraint(equalTo: healthCard.bottomAnchor, constant: -16),
         ])
         
-        return container
+        contentStack.addArrangedSubview(healthCard)
+        
+        // Make card fill width
+        healthCard.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor).isActive = true
+        healthCard.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor).isActive = true
+    }
+    
+    // Store last validation results for Fix All
+    private var lastValidationResults: [ContentValidator.ValidationResult] = []
+    
+    @objc private func fixAllClicked() {
+        guard !lastValidationResults.isEmpty else { return }
+        
+        let fixableCount = lastValidationResults.reduce(0) { total, result in
+            total + result.issues.filter { $0.isFixable }.count
+        }
+        
+        guard fixableCount > 0 else {
+            ToastManager.shared.showError(title: "No fixable issues")
+            return
+        }
+        
+        // Confirm with user
+        let alert = NSAlert()
+        alert.messageText = "Fix \(fixableCount) Issues?"
+        alert.informativeText = "This will update .def files to reference the correct filenames. This cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Fix All")
+        alert.addButton(withTitle: "Cancel")
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            let (fixed, failed) = ContentValidator.shared.fixAllIssues(in: lastValidationResults)
+            
+            if fixed > 0 {
+                ToastManager.shared.showSuccess(title: "Fixed \(fixed) issue(s)")
+            }
+            if failed > 0 {
+                ToastManager.shared.showError(title: "Failed to fix \(failed) issue(s)")
+            }
+            
+            // Re-run validation
+            validateContentClicked()
+        }
+    }
+    
+    /// Update health card with validation results
+    func updateHealthStatus(results: [ContentValidator.ValidationResult]) {
+        lastValidationResults = results
+        
+        let errorCount = results.reduce(0) { $0 + $1.errorCount }
+        let warningCount = results.reduce(0) { $0 + $1.warningCount }
+        let fixableCount = results.reduce(0) { total, result in
+            total + result.issues.filter { $0.isFixable }.count
+        }
+        
+        if errorCount == 0 && warningCount == 0 {
+            healthStatusLabel.stringValue = "✓ All content validated successfully"
+            healthStatusLabel.textColor = NSColor.systemGreen
+            healthBadge.isHidden = true
+            fixAllButton.isHidden = true
+        } else {
+            var status = ""
+            if errorCount > 0 {
+                status += "\(errorCount) error(s)"
+            }
+            if warningCount > 0 {
+                if !status.isEmpty { status += ", " }
+                status += "\(warningCount) warning(s)"
+            }
+            healthStatusLabel.stringValue = status
+            healthStatusLabel.textColor = errorCount > 0 ? NSColor.systemRed : NSColor.systemOrange
+            
+            // Show badge with error count
+            healthBadge.isHidden = false
+            healthBadgeLabel.stringValue = "\(errorCount + warningCount)"
+            healthBadge.layer?.backgroundColor = errorCount > 0 ? NSColor.systemRed.cgColor : NSColor.systemOrange.cgColor
+            
+            // Show Fix All button if there are fixable issues
+            fixAllButton.isHidden = fixableCount == 0
+            if fixableCount > 0 {
+                fixAllButton.title = "Fix \(fixableCount)"
+            }
+        }
     }
     
     @objc private func validateContentClicked() {

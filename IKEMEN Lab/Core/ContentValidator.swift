@@ -19,18 +19,31 @@ public class ContentValidator {
         case info       // Informational only
     }
     
+    public enum FixType {
+        case renameFile(from: String, to: String, inDirectory: URL)
+        case updateDefReference(defFile: URL, oldRef: String, newRef: String)
+        case none
+    }
+    
     public struct ValidationIssue: Identifiable {
         public let id = UUID()
         public let severity: ValidationSeverity
         public let message: String
         public let file: String
         public let suggestion: String?
+        public let fixType: FixType
         
-        public init(severity: ValidationSeverity, message: String, file: String, suggestion: String? = nil) {
+        public var isFixable: Bool {
+            if case .none = fixType { return false }
+            return true
+        }
+        
+        public init(severity: ValidationSeverity, message: String, file: String, suggestion: String? = nil, fixType: FixType = .none) {
             self.severity = severity
             self.message = message
             self.file = file
             self.suggestion = suggestion
+            self.fixType = fixType
         }
     }
     
@@ -91,17 +104,24 @@ public class ContentValidator {
             
             let lowercased = trimmed.lowercased()
             
-            // Check for spr = or sprite =
-            if lowercased.hasPrefix("spr") || lowercased.hasPrefix("sprite") {
+            // Check for spr = (exact key, not spriteno/spriteinfo/etc)
+            // Must be "spr" or "sprite" followed by optional whitespace and "="
+            if lowercased.hasPrefix("spr") && !lowercased.hasPrefix("spriteno") && !lowercased.hasPrefix("spriteinfo") {
                 if let value = extractValue(from: trimmed) {
-                    spriteFile = value
+                    // Only accept if it looks like a filename (ends in .sff or contains path separator)
+                    if value.lowercased().hasSuffix(".sff") || value.contains("/") || value.contains("\\") {
+                        spriteFile = value
+                    }
                 }
             }
             
-            // Check for snd = or sound =
-            if lowercased.hasPrefix("snd") || lowercased.hasPrefix("sound") {
+            // Check for snd = or sound = (exact key)
+            if (lowercased.hasPrefix("snd") && !lowercased.hasPrefix("sndtime")) || lowercased.hasPrefix("sound") {
                 if let value = extractValue(from: trimmed) {
-                    soundFile = value
+                    // Only accept if it looks like a filename
+                    if value.lowercased().hasSuffix(".snd") || value.contains("/") || value.contains("\\") {
+                        soundFile = value
+                    }
                 }
             }
         }
@@ -350,6 +370,15 @@ public class ContentValidator {
         // Normalize path separators
         let normalizedRef = reference.replacingOccurrences(of: "\\", with: "/")
         
+        // Determine the search directory
+        let searchDir: URL
+        if normalizedRef.contains("/") {
+            let rootDir = defFile.deletingLastPathComponent().deletingLastPathComponent()
+            searchDir = rootDir.appendingPathComponent((normalizedRef as NSString).deletingLastPathComponent)
+        } else {
+            searchDir = defFile.deletingLastPathComponent()
+        }
+        
         // Determine the actual file path
         let resolvedPath: URL
         if normalizedRef.contains("/") {
@@ -380,11 +409,13 @@ public class ContentValidator {
                     mismatchType = "special character mismatch (e.g., apostrophe)"
                 }
                 
+                // Provide fixable issue - update .def to match actual file
                 issues.append(ValidationIssue(
                     severity: .error,
                     message: "\(resourceType) has \(mismatchType): '\(reference)' → actual: '\(actualFile)'",
                     file: defFile.lastPathComponent,
-                    suggestion: "Rename '\(actualFile)' to '\(reference)' OR update .def to reference '\(actualFile)'"
+                    suggestion: "Update .def to reference '\(actualFile)'",
+                    fixType: .updateDefReference(defFile: defFile, oldRef: reference, newRef: actualFile)
                 ))
             } else {
                 issues.append(ValidationIssue(
@@ -520,5 +551,70 @@ public class ContentValidator {
         }
         
         return nil
+    }
+    
+    // MARK: - Auto-Fix Methods
+    
+    /// Fix a single issue
+    public func fixIssue(_ issue: ValidationIssue) -> Bool {
+        switch issue.fixType {
+        case .renameFile(let from, let to, let directory):
+            let fromPath = directory.appendingPathComponent(from)
+            let toPath = directory.appendingPathComponent(to)
+            do {
+                try fileManager.moveItem(at: fromPath, to: toPath)
+                return true
+            } catch {
+                print("Failed to rename file: \(error)")
+                return false
+            }
+            
+        case .updateDefReference(let defFile, let oldRef, let newRef):
+            guard let content = readFileContent(at: defFile) else { return false }
+            
+            // Replace the old reference with the new one
+            let updatedContent = content.replacingOccurrences(of: oldRef, with: newRef)
+            
+            do {
+                try updatedContent.write(to: defFile, atomically: true, encoding: .utf8)
+                return true
+            } catch {
+                print("Failed to update .def file: \(error)")
+                return false
+            }
+            
+        case .none:
+            return false
+        }
+    }
+    
+    /// Fix all fixable issues in a validation result
+    public func fixAllIssues(in result: ValidationResult) -> (fixed: Int, failed: Int) {
+        var fixed = 0
+        var failed = 0
+        
+        for issue in result.issues where issue.isFixable {
+            if fixIssue(issue) {
+                fixed += 1
+            } else {
+                failed += 1
+            }
+        }
+        
+        return (fixed, failed)
+    }
+    
+    /// Fix all fixable issues across multiple validation results
+    public func fixAllIssues(in results: [ValidationResult]) -> (fixed: Int, failed: Int) {
+        var totalFixed = 0
+        var totalFailed = 0
+        
+        for result in results {
+            let (fixed, failed) = fixAllIssues(in: result)
+            totalFixed += fixed
+            totalFailed += failed
+        }
+        
+        return (totalFixed, totalFailed)
     }
 }
