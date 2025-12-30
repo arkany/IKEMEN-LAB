@@ -48,6 +48,9 @@ Carthage/Build/
 # Thumbnails
 Thumbs.db
 
+# Design mockups
+*.html
+
 # IDE
 .idea/
 *.swp
