@@ -22,7 +22,12 @@ class CharacterDetailsView: NSView {
     private var heroSeriesBadge: NSView!
     private var heroSeriesLabel: NSTextField!
     private var heroDateLabel: NSTextField!
-    private var playButton: NSButton!
+    
+    // Hero action buttons (shown on hover)
+    private var heroActionsContainer: NSStackView!
+    private var openFolderButton: NSButton!
+    private var deleteButton: NSButton!
+    private var heroTrackingArea: NSTrackingArea?
     
     // Quick stats
     private var statsGridView: NSStackView!
@@ -45,6 +50,12 @@ class CharacterDetailsView: NSView {
     private var moveListHeader: NSTextField!
     private var moveListStackView: NSStackView!
     
+    // Definition file section
+    private var defFileHeader: NSTextField!
+    private var defFileNameLabel: NSTextField!
+    private var defFileCodeView: NSTextView!
+    private var defFileScrollView: NSScrollView!
+    
     // Scroll view
     private var scrollView: NSScrollView!
     private var contentView: NSView!
@@ -56,6 +67,12 @@ class CharacterDetailsView: NSView {
     
     /// Callback when play is clicked
     var onPlayCharacter: ((CharacterInfo) -> Void)?
+    
+    /// Callback when open folder is clicked
+    var onOpenFolder: ((CharacterInfo) -> Void)?
+    
+    /// Callback when delete is clicked
+    var onDeleteCharacter: ((CharacterInfo) -> Void)?
     
     // MARK: - Initialization
     
@@ -184,17 +201,21 @@ class CharacterDetailsView: NSView {
         heroDateLabel.textColor = DesignColors.zinc500
         badgeRow.addArrangedSubview(heroDateLabel)
         
-        // Play button (white circle with play icon)
-        playButton = NSButton(title: "▶", target: self, action: #selector(playClicked))
-        playButton.translatesAutoresizingMaskIntoConstraints = false
-        playButton.bezelStyle = .inline
-        playButton.isBordered = false
-        playButton.wantsLayer = true
-        playButton.layer?.cornerRadius = 16
-        playButton.layer?.backgroundColor = NSColor.white.cgColor
-        playButton.contentTintColor = DesignColors.zinc950
-        playButton.font = NSFont.systemFont(ofSize: 12, weight: .bold)
-        heroContainerView.addSubview(playButton)
+        // Hero action buttons container (shown on hover)
+        heroActionsContainer = NSStackView()
+        heroActionsContainer.translatesAutoresizingMaskIntoConstraints = false
+        heroActionsContainer.orientation = .horizontal
+        heroActionsContainer.spacing = 8
+        heroActionsContainer.alphaValue = 0  // Hidden by default
+        heroContainerView.addSubview(heroActionsContainer)
+        
+        // Open folder button
+        openFolderButton = createHeroActionButton(icon: "folder", action: #selector(openFolderClicked))
+        heroActionsContainer.addArrangedSubview(openFolderButton)
+        
+        // Delete button
+        deleteButton = createHeroActionButton(icon: "trash", action: #selector(deleteClicked))
+        heroActionsContainer.addArrangedSubview(deleteButton)
         
         // === Quick Stats Grid ===
         statsGridView = NSStackView()
@@ -270,6 +291,57 @@ class CharacterDetailsView: NSView {
         moveListStackView.spacing = 8
         contentView.addSubview(moveListStackView)
         
+        // === Definition File Section ===
+        let defFileHeaderRow = NSStackView()
+        defFileHeaderRow.translatesAutoresizingMaskIntoConstraints = false
+        defFileHeaderRow.orientation = .horizontal
+        defFileHeaderRow.alignment = .centerY
+        contentView.addSubview(defFileHeaderRow)
+        
+        defFileHeader = NSTextField(labelWithString: "Definition File")
+        defFileHeader.translatesAutoresizingMaskIntoConstraints = false
+        defFileHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        defFileHeader.textColor = DesignColors.zinc100
+        defFileHeaderRow.addArrangedSubview(defFileHeader)
+        
+        let defFileSpacer = NSView()
+        defFileSpacer.translatesAutoresizingMaskIntoConstraints = false
+        defFileSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        defFileHeaderRow.addArrangedSubview(defFileSpacer)
+        
+        defFileNameLabel = NSTextField(labelWithString: "")
+        defFileNameLabel.translatesAutoresizingMaskIntoConstraints = false
+        defFileNameLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        defFileNameLabel.textColor = DesignColors.zinc600
+        defFileHeaderRow.addArrangedSubview(defFileNameLabel)
+        
+        // Code view container
+        let defFileContainer = NSView()
+        defFileContainer.translatesAutoresizingMaskIntoConstraints = false
+        defFileContainer.wantsLayer = true
+        defFileContainer.layer?.cornerRadius = 8
+        defFileContainer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.4).cgColor
+        defFileContainer.layer?.borderWidth = 1
+        defFileContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        contentView.addSubview(defFileContainer)
+        
+        defFileScrollView = NSScrollView()
+        defFileScrollView.translatesAutoresizingMaskIntoConstraints = false
+        defFileScrollView.hasVerticalScroller = false
+        defFileScrollView.hasHorizontalScroller = false
+        defFileScrollView.drawsBackground = false
+        defFileScrollView.backgroundColor = .clear
+        defFileContainer.addSubview(defFileScrollView)
+        
+        defFileCodeView = NSTextView()
+        defFileCodeView.isEditable = false
+        defFileCodeView.isSelectable = true
+        defFileCodeView.backgroundColor = .clear
+        defFileCodeView.drawsBackground = false
+        defFileCodeView.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        defFileCodeView.textColor = DesignColors.zinc400
+        defFileScrollView.documentView = defFileCodeView
+        
         // Layout constraints
         NSLayoutConstraint.activate([
             // Hero container
@@ -283,9 +355,13 @@ class CharacterDetailsView: NSView {
             heroImageView.trailingAnchor.constraint(equalTo: heroContainerView.trailingAnchor),
             heroImageView.bottomAnchor.constraint(equalTo: heroContainerView.bottomAnchor),
             
+            // Hero action buttons (top-right)
+            heroActionsContainer.topAnchor.constraint(equalTo: heroContainerView.topAnchor, constant: 16),
+            heroActionsContainer.trailingAnchor.constraint(equalTo: heroContainerView.trailingAnchor, constant: -16),
+            
             heroNameLabel.leadingAnchor.constraint(equalTo: heroContainerView.leadingAnchor, constant: padding),
             heroNameLabel.bottomAnchor.constraint(equalTo: badgeRow.topAnchor, constant: -4),
-            heroNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: playButton.leadingAnchor, constant: -16),
+            heroNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: heroContainerView.trailingAnchor, constant: -padding),
             
             badgeRow.leadingAnchor.constraint(equalTo: heroContainerView.leadingAnchor, constant: padding),
             badgeRow.bottomAnchor.constraint(equalTo: heroContainerView.bottomAnchor, constant: -padding),
@@ -294,11 +370,6 @@ class CharacterDetailsView: NSView {
             heroSeriesLabel.bottomAnchor.constraint(equalTo: heroSeriesBadge.bottomAnchor, constant: -2),
             heroSeriesLabel.leadingAnchor.constraint(equalTo: heroSeriesBadge.leadingAnchor, constant: 8),
             heroSeriesLabel.trailingAnchor.constraint(equalTo: heroSeriesBadge.trailingAnchor, constant: -8),
-            
-            playButton.trailingAnchor.constraint(equalTo: heroContainerView.trailingAnchor, constant: -padding),
-            playButton.bottomAnchor.constraint(equalTo: heroContainerView.bottomAnchor, constant: -padding),
-            playButton.widthAnchor.constraint(equalToConstant: 32),
-            playButton.heightAnchor.constraint(equalToConstant: 32),
             
             // Quick stats grid
             statsGridView.topAnchor.constraint(equalTo: heroContainerView.bottomAnchor, constant: padding),
@@ -336,13 +407,124 @@ class CharacterDetailsView: NSView {
             moveListStackView.topAnchor.constraint(equalTo: moveListHeader.bottomAnchor, constant: 8),
             moveListStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
             moveListStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
-            moveListStackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -padding),
+            
+            // Definition file section
+            defFileHeaderRow.topAnchor.constraint(equalTo: moveListStackView.bottomAnchor, constant: spacing),
+            defFileHeaderRow.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            defFileHeaderRow.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            
+            defFileHeader.leadingAnchor.constraint(equalTo: defFileHeaderRow.leadingAnchor),
+            defFileHeader.centerYAnchor.constraint(equalTo: defFileHeaderRow.centerYAnchor),
+            
+            defFileNameLabel.trailingAnchor.constraint(equalTo: defFileHeaderRow.trailingAnchor),
+            defFileNameLabel.centerYAnchor.constraint(equalTo: defFileHeaderRow.centerYAnchor),
+            defFileNameLabel.leadingAnchor.constraint(greaterThanOrEqualTo: defFileHeader.trailingAnchor, constant: 8),
+            defFileHeaderRow.heightAnchor.constraint(equalToConstant: 20),
+            
+            defFileContainer.topAnchor.constraint(equalTo: defFileHeaderRow.bottomAnchor, constant: 12),
+            defFileContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            defFileContainer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            defFileContainer.heightAnchor.constraint(equalToConstant: 200),
+            defFileContainer.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -padding),
+            
+            defFileScrollView.topAnchor.constraint(equalTo: defFileContainer.topAnchor),
+            defFileScrollView.leadingAnchor.constraint(equalTo: defFileContainer.leadingAnchor),
+            defFileScrollView.trailingAnchor.constraint(equalTo: defFileContainer.trailingAnchor),
+            defFileScrollView.bottomAnchor.constraint(equalTo: defFileContainer.bottomAnchor),
         ])
+        
+        // Set up tracking area for hero hover
+        setupHeroTracking()
     }
     
     override func layout() {
         super.layout()
         heroGradientLayer.frame = heroContainerView.bounds
+    }
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        // Update tracking area when bounds change
+        if let existingArea = heroTrackingArea {
+            heroContainerView.removeTrackingArea(existingArea)
+        }
+        
+        heroTrackingArea = NSTrackingArea(
+            rect: heroContainerView.bounds,
+            options: [.mouseEnteredAndExited, .activeInActiveApp],
+            owner: self,
+            userInfo: nil
+        )
+        
+        if let area = heroTrackingArea {
+            heroContainerView.addTrackingArea(area)
+        }
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            heroActionsContainer.animator().alphaValue = 1
+        }
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            heroActionsContainer.animator().alphaValue = 0
+        }
+    }
+    
+    private func setupHeroTracking() {
+        heroTrackingArea = NSTrackingArea(
+            rect: heroContainerView.bounds,
+            options: [.mouseEnteredAndExited, .activeInActiveApp],
+            owner: self,
+            userInfo: nil
+        )
+        
+        if let area = heroTrackingArea {
+            heroContainerView.addTrackingArea(area)
+        }
+    }
+    
+    private func createHeroActionButton(icon: String, action: Selector) -> NSButton {
+        let button = NSButton(frame: NSRect(x: 0, y: 0, width: 30, height: 30))
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setButtonType(.momentaryChange)
+        button.bezelStyle = .smallSquare
+        button.isBordered = false
+        button.title = ""
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 6
+        button.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.5).cgColor
+        button.layer?.borderWidth = 1
+        button.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        
+        if let image = NSImage(systemSymbolName: icon, accessibilityDescription: icon) {
+            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+            button.image = image.withSymbolConfiguration(config)
+        }
+        button.imagePosition = .imageOnly
+        button.imageScaling = .scaleNone
+        button.contentTintColor = DesignColors.zinc400
+        button.target = self
+        button.action = action
+        
+        // Force exact size - prevent intrinsic content size from overriding
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.setContentHuggingPriority(.required, for: .vertical)
+        button.setContentCompressionResistancePriority(.required, for: .horizontal)
+        button.setContentCompressionResistancePriority(.required, for: .vertical)
+        
+        let widthConstraint = button.widthAnchor.constraint(equalToConstant: 30)
+        let heightConstraint = button.heightAnchor.constraint(equalToConstant: 30)
+        widthConstraint.priority = .required
+        heightConstraint.priority = .required
+        NSLayoutConstraint.activate([widthConstraint, heightConstraint])
+        
+        return button
     }
     
     private func createStatCard(title: String, value: String) -> NSView {
@@ -383,9 +565,15 @@ class CharacterDetailsView: NSView {
     
     // MARK: - Actions
     
-    @objc private func playClicked() {
+    @objc private func openFolderClicked() {
         if let character = currentCharacter {
-            onPlayCharacter?(character)
+            onOpenFolder?(character)
+        }
+    }
+    
+    @objc private func deleteClicked() {
+        if let character = currentCharacter {
+            onDeleteCharacter?(character)
         }
     }
     
@@ -420,6 +608,9 @@ class CharacterDetailsView: NSView {
         
         // Load move list
         loadMoveList(for: character)
+        
+        // Load definition file content
+        loadDefinitionFile(for: character)
         
         // Load portrait for hero background
         loadPortrait(for: character)
@@ -519,6 +710,112 @@ class CharacterDetailsView: NSView {
         }
     }
     
+    // MARK: - Definition File
+    
+    private func loadDefinitionFile(for character: CharacterInfo) {
+        // Update the filename label
+        let defFileName = character.defFile.lastPathComponent
+        defFileNameLabel.stringValue = defFileName
+        
+        // Read and display the definition file content
+        do {
+            let content = try String(contentsOf: character.defFile, encoding: .utf8)
+            let attributedContent = syntaxHighlightDEF(content)
+            defFileCodeView.textStorage?.setAttributedString(attributedContent)
+        } catch {
+            let errorAttr = NSAttributedString(
+                string: "Unable to read definition file",
+                attributes: [
+                    .foregroundColor: DesignColors.zinc500,
+                    .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+                ]
+            )
+            defFileCodeView.textStorage?.setAttributedString(errorAttr)
+        }
+    }
+    
+    /// Apply syntax highlighting to DEF file content
+    private func syntaxHighlightDEF(_ content: String) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        
+        let defaultFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        let lines = content.components(separatedBy: .newlines)
+        
+        for (index, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            var lineAttr: NSAttributedString
+            
+            if trimmed.hasPrefix(";") {
+                // Comment - gray
+                lineAttr = NSAttributedString(
+                    string: line,
+                    attributes: [
+                        .foregroundColor: DesignColors.zinc600,
+                        .font: defaultFont
+                    ]
+                )
+            } else if trimmed.hasPrefix("[") && trimmed.contains("]") {
+                // Section header - blue
+                lineAttr = NSAttributedString(
+                    string: line,
+                    attributes: [
+                        .foregroundColor: NSColor(red: 0.4, green: 0.6, blue: 1.0, alpha: 1.0),
+                        .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .semibold)
+                    ]
+                )
+            } else if trimmed.contains("=") {
+                // Key-value pair
+                let parts = line.split(separator: "=", maxSplits: 1)
+                if parts.count == 2 {
+                    let keyPart = NSAttributedString(
+                        string: String(parts[0]) + "=",
+                        attributes: [
+                            .foregroundColor: NSColor(red: 0.8, green: 0.6, blue: 1.0, alpha: 1.0),
+                            .font: defaultFont
+                        ]
+                    )
+                    let valuePart = NSAttributedString(
+                        string: String(parts[1]),
+                        attributes: [
+                            .foregroundColor: DesignColors.zinc300,
+                            .font: defaultFont
+                        ]
+                    )
+                    let combined = NSMutableAttributedString()
+                    combined.append(keyPart)
+                    combined.append(valuePart)
+                    lineAttr = combined
+                } else {
+                    lineAttr = NSAttributedString(
+                        string: line,
+                        attributes: [
+                            .foregroundColor: DesignColors.zinc400,
+                            .font: defaultFont
+                        ]
+                    )
+                }
+            } else {
+                // Default - light gray
+                lineAttr = NSAttributedString(
+                    string: line,
+                    attributes: [
+                        .foregroundColor: DesignColors.zinc400,
+                        .font: defaultFont
+                    ]
+                )
+            }
+            
+            result.append(lineAttr)
+            
+            // Add newline except for last line
+            if index < lines.count - 1 {
+                result.append(NSAttributedString(string: "\n"))
+            }
+        }
+        
+        return result
+    }
+    
     private func createMoveRow(_ move: MoveCommand) -> NSView {
         let row = NSStackView()
         row.orientation = .vertical
@@ -560,6 +857,10 @@ class CharacterDetailsView: NSView {
         placeholderLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
         placeholderLabel.textColor = DesignColors.zinc500
         moveListStackView.addArrangedSubview(placeholderLabel)
+        
+        // Clear definition file
+        defFileNameLabel.stringValue = ""
+        defFileCodeView.string = ""
     }
 }
 

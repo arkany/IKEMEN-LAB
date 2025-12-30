@@ -655,6 +655,12 @@ class GameWindowController: NSWindowController {
         characterDetailsView.onNameChanged = { [weak self] character, newName in
             self?.updateCharacterName(character, newName: newName)
         }
+        characterDetailsView.onOpenFolder = { character in
+            NSWorkspace.shared.activateFileViewerSelecting([character.directory])
+        }
+        characterDetailsView.onDeleteCharacter = { [weak self] character in
+            self?.confirmRemoveCharacter(character)
+        }
         mainAreaView.addSubview(characterDetailsView)
         
         // Stage Browser (hidden initially)
