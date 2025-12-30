@@ -355,6 +355,18 @@ class CharacterBrowserView: NSView {
         guard let character = sender.representedObject as? CharacterInfo else { return }
         onCharacterRemove?(character)
     }
+    
+    /// Show context menu from the more button in list view
+    private func showContextMenuForListItem(_ character: CharacterInfo, sourceView: NSView) {
+        guard let index = characters.firstIndex(where: { $0.id == character.id }) else { return }
+        let indexPath = IndexPath(item: index, section: 0)
+        guard let menu = buildContextMenu(for: indexPath) else { return }
+        
+        // Position menu below the button
+        let buttonBounds = sourceView.bounds
+        let menuLocation = NSPoint(x: buttonBounds.midX, y: buttonBounds.minY)
+        menu.popUp(positioning: nil, at: menuLocation, in: sourceView)
+    }
 }
 
 // MARK: - NSCollectionViewDataSource
@@ -389,6 +401,11 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
             item.onStatusToggled = { [weak self] isEnabled in
                 // Toggle means we're changing the state - if toggled ON, we want to enable
                 self?.onCharacterDisableToggle?(character)
+            }
+            
+            // Wire up the more button callback
+            item.onMoreClicked = { [weak self] char, sourceView in
+                self?.showContextMenuForListItem(char, sourceView: sourceView)
             }
             
             if let cachedPortrait = portraitCache[character.id] {
@@ -702,7 +719,8 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     
     func configure(with character: CharacterInfo) {
         nameLabel.stringValue = character.displayName
-        authorLabel.stringValue = "\(character.author) • \(character.versionDate.isEmpty ? "v1.0" : character.versionDate)"
+        let formattedDate = VersionDateFormatter.formatToStandard(character.versionDate)
+        authorLabel.stringValue = "\(character.author) • \(formattedDate.isEmpty ? "v1.0" : formattedDate)"
         placeholderLabel.stringValue = String(character.displayName.prefix(1)).uppercased()
         portraitImageView.image = nil
         placeholderLabel.isHidden = false
@@ -786,15 +804,17 @@ class CharacterListItem: NSCollectionViewItem {
     
     // Column widths matching HTML percentages
     private let iconColumnWidth: CGFloat = 48  // Padding + 32px icon
-    private let authorColumnWidth: CGFloat = 100
-    private let seriesColumnWidth: CGFloat = 80
+    private let nameColumnWidth: CGFloat = 280  // Name + path column
+    private let authorColumnWidth: CGFloat = 150
+    private let seriesColumnWidth: CGFloat = 140
     private let versionColumnWidth: CGFloat = 60
-    private let dateColumnWidth: CGFloat = 80
+    private let dateColumnWidth: CGFloat = 100
     private let toggleColumnWidth: CGFloat = 50
     private let moreColumnWidth: CGFloat = 40
     
-    // Callback for toggle changes
+    // Callbacks
     var onStatusToggled: ((Bool) -> Void)?
+    var onMoreClicked: ((CharacterInfo, NSView) -> Void)?
     private var currentCharacter: CharacterInfo?
     
     override func loadView() {
@@ -895,6 +915,7 @@ class CharacterListItem: NSCollectionViewItem {
         authorLabel.font = DesignFonts.body(size: 13)
         authorLabel.textColor = DesignColors.zinc500
         authorLabel.lineBreakMode = .byTruncatingTail
+        authorLabel.alignment = .left
         containerView.addSubview(authorLabel)
         
         // Series badge
@@ -938,7 +959,7 @@ class CharacterListItem: NSCollectionViewItem {
         containerView.addSubview(statusToggle)
         
         // More button (ellipsis)
-        moreButton = NSButton(title: "•••", target: nil, action: nil)
+        moreButton = NSButton(title: "•••", target: self, action: #selector(moreButtonClicked(_:)))
         moreButton.translatesAutoresizingMaskIntoConstraints = false
         moreButton.bezelStyle = .inline
         moreButton.isBordered = false
@@ -979,23 +1000,24 @@ class CharacterListItem: NSCollectionViewItem {
             // Name stack
             nameStack.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
             nameStack.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            nameStack.trailingAnchor.constraint(lessThanOrEqualTo: authorLabel.leadingAnchor, constant: -16),
+            nameStack.widthAnchor.constraint(equalToConstant: nameColumnWidth),
             
-            // Author (fixed position from right side)
-            authorLabel.trailingAnchor.constraint(equalTo: seriesBadge.leadingAnchor, constant: -16),
+            // Author (fixed position)
+            authorLabel.leadingAnchor.constraint(equalTo: nameStack.trailingAnchor, constant: 16),
             authorLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             authorLabel.widthAnchor.constraint(equalToConstant: authorColumnWidth),
             
-            // Series badge
-            seriesBadge.trailingAnchor.constraint(equalTo: versionLabel.leadingAnchor, constant: -16),
+            // Series badge (after author)
+            seriesBadge.leadingAnchor.constraint(equalTo: authorLabel.trailingAnchor, constant: 16),
             seriesBadge.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            seriesBadge.widthAnchor.constraint(lessThanOrEqualToConstant: seriesColumnWidth),
             
             seriesLabel.topAnchor.constraint(equalTo: seriesBadge.topAnchor, constant: 2),
             seriesLabel.bottomAnchor.constraint(equalTo: seriesBadge.bottomAnchor, constant: -2),
             seriesLabel.leadingAnchor.constraint(equalTo: seriesBadge.leadingAnchor, constant: 8),
             seriesLabel.trailingAnchor.constraint(equalTo: seriesBadge.trailingAnchor, constant: -8),
             
-            // Version
+            // Version (positioned from right)
             versionLabel.trailingAnchor.constraint(equalTo: dateLabel.leadingAnchor, constant: -16),
             versionLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             versionLabel.widthAnchor.constraint(equalToConstant: versionColumnWidth),
@@ -1099,15 +1121,16 @@ class CharacterListItem: NSCollectionViewItem {
         // Author
         authorLabel.stringValue = character.author
         
-        // Series - could derive from character metadata, using "MUGEN" as default
-        seriesLabel.stringValue = "MUGEN"
+        // Feature tags based on character content
+        seriesLabel.stringValue = getFeatureTags(for: character)
+        seriesBadge.isHidden = seriesLabel.stringValue.isEmpty
         
         // Version
-        let version = character.versionDate.isEmpty ? "v1.0" : character.versionDate
-        versionLabel.stringValue = version
+        versionLabel.stringValue = "v1.0"
         
-        // Date - placeholder, could derive from file modification date
-        dateLabel.stringValue = "—"
+        // Date - formatted consistently
+        let formattedDate = VersionDateFormatter.formatToStandard(character.versionDate)
+        dateLabel.stringValue = formattedDate.isEmpty ? "—" : formattedDate
         
         // Placeholder initial
         iconInitialLabel.stringValue = String(character.displayName.prefix(1)).uppercased()
@@ -1167,9 +1190,47 @@ class CharacterListItem: NSCollectionViewItem {
         statusToggle.state = .on
         currentCharacter = nil
         onStatusToggled = nil
+        onMoreClicked = nil
         containerView.layer?.opacity = 1.0
         isSelected = false
         isHovered = false
         updateAppearance(animated: false)
+    }
+    
+    @objc private func moreButtonClicked(_ sender: NSButton) {
+        guard let character = currentCharacter else { return }
+        onMoreClicked?(character, sender)
+    }
+    
+    /// Detect character features and return appropriate tag
+    private func getFeatureTags(for character: CharacterInfo) -> String {
+        let directory = character.directory
+        let fm = FileManager.default
+        
+        var tags: [String] = []
+        
+        // Check for intro
+        if fm.fileExists(atPath: directory.appendingPathComponent("intro.def").path) {
+            tags.append("INTRO")
+        }
+        
+        // Check for sounds (.snd file)
+        if let contents = try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+            if contents.contains(where: { $0.pathExtension.lowercased() == "snd" }) {
+                tags.append("SFX")
+            }
+        }
+        
+        // Check for AI in CMD file
+        if let cmdFile = try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .first(where: { $0.pathExtension.lowercased() == "cmd" }),
+           let cmdContent = try? String(contentsOf: cmdFile, encoding: .utf8) {
+            if cmdContent.lowercased().contains("[state -1") || cmdContent.lowercased().contains("ai.") {
+                tags.append("AI")
+            }
+        }
+        
+        // Return all tags joined, or empty string
+        return tags.joined(separator: " • ")
     }
 }

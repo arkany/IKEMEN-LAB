@@ -361,3 +361,53 @@ public extension NSTextField {
         return label
     }
 }
+
+// MARK: - Date Formatting
+
+/// Utility for formatting version dates consistently across the app
+public struct VersionDateFormatter {
+    
+    /// Shared output formatter for consistent display (MM/dd/yyyy)
+    private static let outputFormatter: Foundation.DateFormatter = {
+        let formatter = Foundation.DateFormatter()
+        formatter.dateFormat = "MM/dd/yyyy"
+        return formatter
+    }()
+    
+    /// Input formatters for common date patterns in DEF files
+    private static let inputFormatters: [Foundation.DateFormatter] = {
+        let formats = [
+            "dd.MM.yyyy",    // European: 04.14.2001
+            "MM.dd.yyyy",    // US with dots: 04.14.2001
+            "dd/MM/yyyy",    // European with slashes
+            "MM/dd/yyyy",    // US format
+            "yyyy-MM-dd",    // ISO format
+            "MM/dd/yy",      // Short year US
+            "dd.MM.yy",      // Short year European
+            "MM,dd,yyyy",    // Comma separated
+            "dd,MM,yyyy",    // Comma separated European
+        ]
+        return formats.map { format in
+            let formatter = Foundation.DateFormatter()
+            formatter.dateFormat = format
+            return formatter
+        }
+    }()
+    
+    /// Format a date string to MM/DD/YYYY
+    /// Handles common formats: DD.MM.YYYY, MM/DD/YY, YYYY-MM-DD, etc.
+    public static func formatToStandard(_ dateString: String) -> String {
+        let trimmed = dateString.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return "" }
+        
+        // Try each input formatter
+        for formatter in inputFormatters {
+            if let date = formatter.date(from: trimmed) {
+                return outputFormatter.string(from: date)
+            }
+        }
+        
+        // If no pattern matched, return original
+        return trimmed
+    }
+}

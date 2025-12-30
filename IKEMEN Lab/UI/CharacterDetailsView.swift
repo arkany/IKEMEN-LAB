@@ -584,7 +584,8 @@ class CharacterDetailsView: NSView {
         
         // Hero
         heroNameLabel.stringValue = character.displayName
-        heroDateLabel.stringValue = character.versionDate.isEmpty ? "" : "Updated \(character.versionDate)"
+        let formattedDate = VersionDateFormatter.formatToStandard(character.versionDate)
+        heroDateLabel.stringValue = formattedDate.isEmpty ? "" : "Updated \(formattedDate)"
         
         // Load extended info (includes CNS stats)
         let extendedInfo = CharacterExtendedInfo(from: character)
@@ -594,7 +595,8 @@ class CharacterDetailsView: NSView {
             authorValue.stringValue = character.author
         }
         if let versionValue = versionStatView.viewWithTag(100) as? NSTextField {
-            versionValue.stringValue = extendedInfo.versionDate.isEmpty ? "1.0" : extendedInfo.versionDate
+            let versionDateFormatted = VersionDateFormatter.formatToStandard(extendedInfo.versionDate)
+            versionValue.stringValue = versionDateFormatted.isEmpty ? "1.0" : versionDateFormatted
         }
         
         // Update attribute bars with real CNS data
