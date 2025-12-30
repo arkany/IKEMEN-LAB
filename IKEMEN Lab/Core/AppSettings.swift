@@ -22,6 +22,7 @@ public final class AppSettings {
             Keys.defaultStageZoom: 1.0,
             Keys.defaultStageBoundLeft: -150,
             Keys.defaultStageBoundRight: 150,
+            Keys.hasCompletedFRE: false,
         ])
     }
     
@@ -32,6 +33,52 @@ public final class AppSettings {
         static let defaultStageZoom = "defaultStageZoom"
         static let defaultStageBoundLeft = "defaultStageBoundLeft"
         static let defaultStageBoundRight = "defaultStageBoundRight"
+        static let hasCompletedFRE = "hasCompletedFRE"
+        static let ikemenGOPath = "ikemenGOPath"
+    }
+    
+    // MARK: - First Run Experience
+    
+    /// Whether the user has completed the First Run Experience
+    public var hasCompletedFRE: Bool {
+        get { defaults.bool(forKey: Keys.hasCompletedFRE) }
+        set { defaults.set(newValue, forKey: Keys.hasCompletedFRE) }
+    }
+    
+    /// The user-configured IKEMEN GO installation path
+    public var ikemenGOPath: URL? {
+        get {
+            guard let path = defaults.string(forKey: Keys.ikemenGOPath) else { return nil }
+            return URL(fileURLWithPath: path)
+        }
+        set {
+            if let url = newValue {
+                defaults.set(url.path, forKey: Keys.ikemenGOPath)
+            } else {
+                defaults.removeObject(forKey: Keys.ikemenGOPath)
+            }
+        }
+    }
+    
+    /// Check if IKEMEN GO installation is configured and valid
+    public var hasValidIkemenGOInstallation: Bool {
+        guard let path = ikemenGOPath else { return false }
+        let fm = FileManager.default
+        let requiredItems = ["Ikemen_GO_MacOS", "data", "chars"]
+        for item in requiredItems {
+            if !fm.fileExists(atPath: path.appendingPathComponent(item).path) {
+                // Also check for the ARM binary
+                if item == "Ikemen_GO_MacOS" {
+                    if !fm.fileExists(atPath: path.appendingPathComponent("Ikemen_GO_MacOSARM").path) &&
+                       !fm.fileExists(atPath: path.appendingPathComponent("I.K.E.M.E.N-Go.app").path) {
+                        return false
+                    }
+                } else {
+                    return false
+                }
+            }
+        }
+        return true
     }
     
     // MARK: - Advanced Features

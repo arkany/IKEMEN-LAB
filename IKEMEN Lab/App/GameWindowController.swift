@@ -166,6 +166,100 @@ class GameWindowController: NSWindowController {
         
         // Select dashboard by default (after all views are initialized)
         selectNavItem(.dashboard)
+        
+        // Show FRE if needed (after short delay to let window appear)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.showFirstRunExperienceIfNeeded()
+        }
+    }
+    
+    // MARK: - First Run Experience
+    
+    private var firstRunView: FirstRunView?
+    
+    private func showFirstRunExperienceIfNeeded() {
+        let settings = AppSettings.shared
+        
+        // Skip if already completed FRE and has valid installation
+        if settings.hasCompletedFRE && settings.hasValidIkemenGOInstallation {
+            return
+        }
+        
+        // Also skip if development environment already has working directory
+        if ikemenBridge.workingDirectory != nil && settings.hasCompletedFRE {
+            return
+        }
+        
+        showFirstRunExperience()
+    }
+    
+    private func showFirstRunExperience() {
+        guard let window = window, let contentView = window.contentView else { return }
+        
+        // Apply blur to main content
+        sidebarView.alphaValue = 0.5
+        mainAreaView.alphaValue = 0.5
+        
+        // Create and show FRE overlay
+        let freView = FirstRunView(frame: contentView.bounds)
+        freView.translatesAutoresizingMaskIntoConstraints = false
+        firstRunView = freView
+        
+        freView.onComplete = { [weak self] selectedPath in
+            self?.handleFREComplete(with: selectedPath)
+        }
+        
+        freView.onSkip = { [weak self] in
+            self?.handleFRESkipped()
+        }
+        
+        contentView.addSubview(freView)
+        
+        NSLayoutConstraint.activate([
+            freView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            freView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            freView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            freView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+        ])
+        
+        // Animate in
+        freView.alphaValue = 0
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            freView.animator().alphaValue = 1
+        }
+    }
+    
+    private func handleFREComplete(with path: URL) {
+        let settings = AppSettings.shared
+        settings.ikemenGOPath = path
+        settings.hasCompletedFRE = true
+        
+        // Update the bridge to use the new path
+        ikemenBridge.setWorkingDirectory(path)
+        
+        // Refresh content
+        ikemenBridge.loadContent()
+        
+        // Restore main UI
+        restoreMainUIAfterFRE()
+        
+        // Show success toast
+        ToastManager.shared.showSuccess(title: "IKEMEN GO linked successfully!")
+    }
+    
+    private func handleFRESkipped() {
+        AppSettings.shared.hasCompletedFRE = true
+        restoreMainUIAfterFRE()
+    }
+    
+    private func restoreMainUIAfterFRE() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            sidebarView.animator().alphaValue = 1
+            mainAreaView.animator().alphaValue = 1
+        }
+        firstRunView = nil
     }
     
     // MARK: - Sidebar Setup

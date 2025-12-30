@@ -126,6 +126,28 @@ class IkemenBridge: ObservableObject {
         return engineWorkingDirectory
     }
     
+    /// Set the working directory (used by FRE when user selects IKEMEN GO location)
+    public func setWorkingDirectory(_ url: URL) {
+        engineWorkingDirectory = url
+        
+        // Try to find the engine binary in the new location
+        let fm = FileManager.default
+        let possibleBinaries = [
+            url.appendingPathComponent("Ikemen_GO_MacOSARM"),
+            url.appendingPathComponent("Ikemen_GO_MacOS"),
+            url.appendingPathComponent("I.K.E.M.E.N-Go.app/Contents/MacOS/Ikemen_GO_MacOSARM"),
+            url.appendingPathComponent("I.K.E.M.E.N-Go.app/Contents/MacOS/Ikemen_GO_MacOS"),
+        ]
+        
+        for binary in possibleBinaries {
+            if fm.fileExists(atPath: binary.path) {
+                enginePath = binary
+                print("Found engine at: \(binary.path)")
+                break
+            }
+        }
+    }
+    
     // For tracking the launched app
     private var launchedAppPID: pid_t?
     private var terminationObserver: NSObjectProtocol?
