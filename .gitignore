@@ -116,3 +116,8 @@ font/
 *.def
 *.st
 plan.md
+
+# Build artifacts
+dist/
+build/
+*.dmg
