@@ -63,16 +63,7 @@ class StageBrowserView: NSView {
     private var stages: [StageInfo] = []
     private var cancellables = Set<AnyCancellable>()
     
-    // View mode
-    var viewMode: BrowserViewMode = .grid {
-        didSet {
-            updateLayoutForViewMode()
-        }
-    }
-    
     // Layout constants from shared design system
-    private let gridItemWidth = BrowserLayout.stageGridItemWidth
-    private let gridItemHeight = BrowserLayout.stageGridItemHeight
     private let listItemHeight = BrowserLayout.stageListItemHeight
     private let cardSpacing = BrowserLayout.cardSpacing
     private let sectionInset = BrowserLayout.sectionInset
@@ -116,12 +107,12 @@ class StageBrowserView: NSView {
         scrollView.drawsBackground = false
         addSubview(scrollView)
         
-        // Create flow layout
+        // Create flow layout for list view
         flowLayout = NSCollectionViewFlowLayout()
-        flowLayout.itemSize = NSSize(width: gridItemWidth, height: gridItemHeight)
-        flowLayout.minimumInteritemSpacing = cardSpacing
-        flowLayout.minimumLineSpacing = cardSpacing
-        flowLayout.sectionInset = NSEdgeInsets(top: sectionInset, left: sectionInset, bottom: sectionInset, right: sectionInset)
+        flowLayout.itemSize = NSSize(width: bounds.width, height: listItemHeight)
+        flowLayout.minimumInteritemSpacing = 0
+        flowLayout.minimumLineSpacing = 0
+        flowLayout.sectionInset = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         
         // Create collection view (using custom subclass)
         collectionView = StageCollectionView(frame: bounds)
@@ -132,8 +123,7 @@ class StageBrowserView: NSView {
         collectionView.isSelectable = true
         collectionView.allowsMultipleSelection = false
         
-        // Register item classes
-        collectionView.register(StageGridItem.self, forItemWithIdentifier: StageGridItem.identifier)
+        // Register list item class only
         collectionView.register(StageListItem.self, forItemWithIdentifier: StageListItem.identifier)
         
         // Set up context menu provider
@@ -160,32 +150,8 @@ class StageBrowserView: NSView {
     }
     
     private func updateLayoutForWidth(_ width: CGFloat) {
-        let itemWidth = viewMode == .grid ? gridItemWidth : width
-        let itemHeight = viewMode == .grid ? gridItemHeight : listItemHeight
-        
-        if viewMode == .grid {
-            // Calculate how many items can fit
-            let availableWidth = width - (sectionInset * 2)
-            let itemsPerRow = max(1, floor((availableWidth + cardSpacing) / (itemWidth + cardSpacing)))
-            
-            // Calculate spacing to distribute items evenly
-            let totalItemWidth = itemsPerRow * itemWidth
-            let totalSpacing = availableWidth - totalItemWidth
-            let spacing = max(cardSpacing, totalSpacing / max(1, itemsPerRow - 1))
-            
-            flowLayout.minimumInteritemSpacing = spacing
-            flowLayout.itemSize = NSSize(width: itemWidth, height: itemHeight)
-        } else {
-            flowLayout.minimumInteritemSpacing = 8
-            flowLayout.itemSize = NSSize(width: width, height: itemHeight)
-        }
-        
+        flowLayout.itemSize = NSSize(width: width, height: listItemHeight)
         flowLayout.invalidateLayout()
-    }
-    
-    private func updateLayoutForViewMode() {
-        collectionView.reloadData()
-        updateLayoutForWidth(bounds.width)
     }
     
     // MARK: - Data Binding
@@ -231,22 +197,16 @@ extension StageBrowserView: NSCollectionViewDataSource {
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
         let stage = stages[indexPath.item]
         
-        if viewMode == .grid {
-            let item = collectionView.makeItem(withIdentifier: StageGridItem.identifier, for: indexPath) as! StageGridItem
-            item.configure(with: stage)
-            return item
-        } else {
-            let item = collectionView.makeItem(withIdentifier: StageListItem.identifier, for: indexPath) as! StageListItem
-            item.configure(with: stage)
-            
-            // Wire up the toggle callback
-            item.onStatusToggled = { [weak self] isEnabled in
-                // Toggle means we're changing the state
-                self?.onStageDisableToggle?(stage)
-            }
-            
-            return item
+        let item = collectionView.makeItem(withIdentifier: StageListItem.identifier, for: indexPath) as! StageListItem
+        item.configure(with: stage)
+        
+        // Wire up the toggle callback
+        item.onStatusToggled = { [weak self] isEnabled in
+            // Toggle means we're changing the state
+            self?.onStageDisableToggle?(stage)
         }
+        
+        return item
     }
 }
 
@@ -324,237 +284,6 @@ extension StageBrowserView {
     @objc private func removeStage(_ sender: NSMenuItem) {
         guard let stage = sender.representedObject as? StageInfo else { return }
         onStageRemove?(stage)
-    }
-}
-
-// MARK: - Stage Grid Item (Card View)
-
-class StageGridItem: NSCollectionViewItem {
-    
-    static let identifier = NSUserInterfaceItemIdentifier("StageGridItem")
-    
-    private var containerView: NSView!
-    private var previewImageView: NSImageView!
-    private var nameLabel: NSTextField!
-    private var authorLabel: NSTextField!
-    private var sizeBadge: NSView!
-    private var sizeBadgeLabel: NSTextField!
-    private var disabledBadge: NSView!
-    private var disabledBadgeLabel: NSTextField!
-    private var disabledOverlay: NSView!
-    
-    override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 160))
-        view.wantsLayer = true
-        
-        setupViews()
-    }
-    
-    private func setupViews() {
-        // Container
-        containerView = NSView(frame: view.bounds)
-        containerView.translatesAutoresizingMaskIntoConstraints = false
-        containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        containerView.layer?.borderWidth = 1
-        containerView.layer?.borderColor = NSColor.clear.cgColor
-        view.addSubview(containerView)
-        
-        // Preview image - wider aspect ratio for stages
-        previewImageView = NSImageView(frame: .zero)
-        previewImageView.translatesAutoresizingMaskIntoConstraints = false
-        previewImageView.imageScaling = .scaleProportionallyUpOrDown
-        previewImageView.wantsLayer = true
-        previewImageView.layer?.backgroundColor = DesignColors.placeholderBackground.cgColor
-        containerView.addSubview(previewImageView)
-        
-        // Disabled overlay (semi-transparent dark layer)
-        disabledOverlay = NSView()
-        disabledOverlay.translatesAutoresizingMaskIntoConstraints = false
-        disabledOverlay.wantsLayer = true
-        disabledOverlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.5).cgColor
-        disabledOverlay.isHidden = true
-        containerView.addSubview(disabledOverlay)
-        
-        // Size badge (for wide stages)
-        sizeBadge = NSView()
-        sizeBadge.translatesAutoresizingMaskIntoConstraints = false
-        sizeBadge.wantsLayer = true
-        sizeBadge.layer?.backgroundColor = DesignColors.greenAccent.withAlphaComponent(0.2).cgColor
-        sizeBadge.layer?.cornerRadius = 4
-        sizeBadge.layer?.borderWidth = 1
-        sizeBadge.layer?.borderColor = DesignColors.greenAccent.cgColor
-        sizeBadge.isHidden = true
-        containerView.addSubview(sizeBadge)
-        
-        sizeBadgeLabel = NSTextField(labelWithString: "Wide")
-        sizeBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
-        sizeBadgeLabel.font = DesignFonts.caption(size: 11)
-        sizeBadgeLabel.textColor = DesignColors.greenAccent
-        sizeBadge.addSubview(sizeBadgeLabel)
-        
-        // Disabled badge
-        disabledBadge = NSView()
-        disabledBadge.translatesAutoresizingMaskIntoConstraints = false
-        disabledBadge.wantsLayer = true
-        disabledBadge.layer?.backgroundColor = DesignColors.redAccent.withAlphaComponent(0.2).cgColor
-        disabledBadge.layer?.cornerRadius = 4
-        disabledBadge.layer?.borderWidth = 1
-        disabledBadge.layer?.borderColor = DesignColors.redAccent.cgColor
-        disabledBadge.isHidden = true
-        containerView.addSubview(disabledBadge)
-        
-        disabledBadgeLabel = NSTextField(labelWithString: "Disabled")
-        disabledBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
-        disabledBadgeLabel.font = DesignFonts.caption(size: 11)
-        disabledBadgeLabel.textColor = DesignColors.redAccent
-        disabledBadge.addSubview(disabledBadgeLabel)
-        
-        // Name label
-        nameLabel = NSTextField(labelWithString: "")
-        nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.header(size: 16)
-        nameLabel.textColor = DesignColors.grayText
-        nameLabel.alignment = .center
-        nameLabel.lineBreakMode = .byTruncatingTail
-        nameLabel.maximumNumberOfLines = 1
-        containerView.addSubview(nameLabel)
-        
-        // Author label
-        authorLabel = NSTextField(labelWithString: "")
-        authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.body(size: 12)
-        authorLabel.textColor = DesignColors.grayText
-        authorLabel.alignment = .center
-        authorLabel.lineBreakMode = .byTruncatingTail
-        authorLabel.maximumNumberOfLines = 1
-        containerView.addSubview(authorLabel)
-        
-        NSLayoutConstraint.activate([
-            containerView.topAnchor.constraint(equalTo: view.topAnchor),
-            containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
-            // Preview: 12px from top, 12px sides, 80px tall (16:9 aspect for 256px width)
-            previewImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
-            previewImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
-            previewImageView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
-            previewImageView.heightAnchor.constraint(equalToConstant: 80),
-            
-            // Disabled overlay covers the preview image
-            disabledOverlay.topAnchor.constraint(equalTo: previewImageView.topAnchor),
-            disabledOverlay.leadingAnchor.constraint(equalTo: previewImageView.leadingAnchor),
-            disabledOverlay.trailingAnchor.constraint(equalTo: previewImageView.trailingAnchor),
-            disabledOverlay.bottomAnchor.constraint(equalTo: previewImageView.bottomAnchor),
-            
-            // Size badge in top-right of preview
-            sizeBadge.topAnchor.constraint(equalTo: previewImageView.topAnchor, constant: 4),
-            sizeBadge.trailingAnchor.constraint(equalTo: previewImageView.trailingAnchor, constant: -4),
-            
-            sizeBadgeLabel.topAnchor.constraint(equalTo: sizeBadge.topAnchor, constant: 2),
-            sizeBadgeLabel.bottomAnchor.constraint(equalTo: sizeBadge.bottomAnchor, constant: -2),
-            sizeBadgeLabel.leadingAnchor.constraint(equalTo: sizeBadge.leadingAnchor, constant: 6),
-            sizeBadgeLabel.trailingAnchor.constraint(equalTo: sizeBadge.trailingAnchor, constant: -6),
-            
-            // Disabled badge in top-left of preview
-            disabledBadge.topAnchor.constraint(equalTo: previewImageView.topAnchor, constant: 4),
-            disabledBadge.leadingAnchor.constraint(equalTo: previewImageView.leadingAnchor, constant: 4),
-            
-            disabledBadgeLabel.topAnchor.constraint(equalTo: disabledBadge.topAnchor, constant: 2),
-            disabledBadgeLabel.bottomAnchor.constraint(equalTo: disabledBadge.bottomAnchor, constant: -2),
-            disabledBadgeLabel.leadingAnchor.constraint(equalTo: disabledBadge.leadingAnchor, constant: 6),
-            disabledBadgeLabel.trailingAnchor.constraint(equalTo: disabledBadge.trailingAnchor, constant: -6),
-            
-            // Name: 4px below preview
-            nameLabel.topAnchor.constraint(equalTo: previewImageView.bottomAnchor, constant: 4),
-            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
-            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
-            
-            // Author: 4px below name
-            authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
-            authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
-            authorLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
-        ])
-    }
-    
-    override var isSelected: Bool {
-        didSet {
-            updateSelectionAppearance()
-        }
-    }
-    
-    private func updateSelectionAppearance() {
-        if isSelected {
-            containerView.layer?.borderColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.shadowOffset = CGSize.zero
-            containerView.layer?.shadowRadius = 18
-            containerView.layer?.shadowOpacity = 0.4
-        } else {
-            containerView.layer?.borderColor = NSColor.clear.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowOpacity = 0
-        }
-    }
-    
-    func configure(with stage: StageInfo) {
-        nameLabel.stringValue = stage.name
-        authorLabel.stringValue = "by \(stage.author)"
-        
-        // Show size badge for wide stages
-        if stage.isWideStage {
-            sizeBadge.isHidden = false
-            sizeBadgeLabel.stringValue = stage.sizeCategory
-        } else {
-            sizeBadge.isHidden = true
-        }
-        
-        // Show disabled state
-        if stage.isDisabled {
-            disabledBadge.isHidden = false
-            disabledOverlay.isHidden = false
-            nameLabel.textColor = DesignColors.grayText.withAlphaComponent(0.5)
-            authorLabel.textColor = DesignColors.grayText.withAlphaComponent(0.5)
-        } else {
-            disabledBadge.isHidden = true
-            disabledOverlay.isHidden = true
-            nameLabel.textColor = DesignColors.grayText
-            authorLabel.textColor = DesignColors.grayText
-        }
-        
-        // Check cache first
-        let cacheKey = ImageCache.stagePreviewKey(for: stage.id)
-        if let cached = ImageCache.shared.get(cacheKey) {
-            previewImageView.image = cached
-            return
-        }
-        
-        // Load preview image asynchronously
-        previewImageView.image = nil
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            if let image = stage.loadPreviewImage() {
-                // Store in cache
-                ImageCache.shared.set(image, for: cacheKey)
-                DispatchQueue.main.async {
-                    self?.previewImageView.image = image
-                }
-            }
-        }
-    }
-    
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        previewImageView.image = nil
-        nameLabel.stringValue = ""
-        authorLabel.stringValue = ""
-        sizeBadge.isHidden = true
-        disabledBadge.isHidden = true
-        disabledOverlay.isHidden = true
-        nameLabel.textColor = DesignColors.grayText
-        authorLabel.textColor = DesignColors.grayText
-        isSelected = false
     }
 }
 

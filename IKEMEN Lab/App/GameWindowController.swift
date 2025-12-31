@@ -861,7 +861,6 @@ class GameWindowController: NSWindowController {
     @objc private func viewModeToggled(_ sender: NSSegmentedControl) {
         currentViewMode = sender.selectedSegment == 0 ? .grid : .list
         characterBrowserView.viewMode = currentViewMode
-        stageBrowserView.viewMode = currentViewMode
         screenpackBrowserView.viewMode = currentViewMode
     }
     
@@ -937,7 +936,6 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = false
             screenpackBrowserView?.isHidden = true
-            stageBrowserView?.viewMode = currentViewMode
         case .screenpacks:
             dashboardView?.isHidden = true
             dropZoneView?.isHidden = true
