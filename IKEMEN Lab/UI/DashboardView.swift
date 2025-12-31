@@ -45,6 +45,11 @@ class DashboardView: NSView {
     private var healthBadge: NSView!
     private var healthBadgeLabel: NSTextField!
     private var fixAllButton: NSButton!
+    private var healthDetailStack: NSStackView!
+    private var healthDetailContainer: NSView!
+    private var healthCardBottomConstraint: NSLayoutConstraint!
+    private var healthDetailHeightConstraint: NSLayoutConstraint!
+    private var isHealthDetailExpanded = false
     
     // MARK: - Initialization
     
@@ -90,10 +95,7 @@ class DashboardView: NSView {
         // Build sections
         setupHeader()
         setupStatsCards()
-        setupDropZone()
-        setupRecentlyInstalled()
-        setupQuickSettings()
-        setupTools()
+        setupTwoColumnLayout()
         
         // Layout
         NSLayoutConstraint.activate([
@@ -328,13 +330,65 @@ class DashboardView: NSView {
         return card
     }
     
+    // MARK: - Two Column Layout
+    
+    private var leftColumn: NSStackView!
+    private var rightColumn: NSStackView!
+    
+    private func setupTwoColumnLayout() {
+        // Create horizontal container for two columns
+        let columnsContainer = NSStackView()
+        columnsContainer.translatesAutoresizingMaskIntoConstraints = false
+        columnsContainer.orientation = .horizontal
+        columnsContainer.spacing = 24
+        columnsContainer.alignment = .top
+        columnsContainer.distribution = .fill
+        
+        // Left column (2/3 width) - Drop zone, Recently Installed
+        leftColumn = NSStackView()
+        leftColumn.translatesAutoresizingMaskIntoConstraints = false
+        leftColumn.orientation = .vertical
+        leftColumn.spacing = 24
+        leftColumn.alignment = .leading
+        columnsContainer.addArrangedSubview(leftColumn)
+        
+        // Right column (1/3 width) - Quick Settings, Content Health
+        rightColumn = NSStackView()
+        rightColumn.translatesAutoresizingMaskIntoConstraints = false
+        rightColumn.orientation = .vertical
+        rightColumn.spacing = 24
+        rightColumn.alignment = .leading
+        columnsContainer.addArrangedSubview(rightColumn)
+        
+        // Set width proportions
+        leftColumn.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        rightColumn.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        
+        // Right column fixed width ~300px
+        rightColumn.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        
+        contentStack.addArrangedSubview(columnsContainer)
+        
+        // Make columns container fill width
+        columnsContainer.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor).isActive = true
+        columnsContainer.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor).isActive = true
+        
+        // Build left column content
+        setupDropZone()
+        setupRecentlyInstalled()
+        
+        // Build right column content
+        setupQuickSettings()
+        setupTools()
+    }
+    
     // MARK: - Drop Zone
     
     private func setupDropZone() {
         let sectionLabel = NSTextField(labelWithString: "INSTALL CONTENT")
         sectionLabel.font = DesignFonts.caption(size: 11)
         sectionLabel.textColor = DesignColors.textTertiary
-        contentStack.addArrangedSubview(sectionLabel)
+        leftColumn.addArrangedSubview(sectionLabel)
         
         dropZoneView = DashboardDropZone(frame: .zero)
         dropZoneView.translatesAutoresizingMaskIntoConstraints = false
@@ -346,11 +400,11 @@ class DashboardView: NSView {
             dropZoneView.heightAnchor.constraint(equalToConstant: 140),
         ])
         
-        contentStack.addArrangedSubview(dropZoneView)
+        leftColumn.addArrangedSubview(dropZoneView)
         
-        // Make drop zone fill width
-        dropZoneView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor).isActive = true
-        dropZoneView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor).isActive = true
+        // Make drop zone fill width of left column
+        dropZoneView.leadingAnchor.constraint(equalTo: leftColumn.leadingAnchor).isActive = true
+        dropZoneView.trailingAnchor.constraint(equalTo: leftColumn.trailingAnchor).isActive = true
     }
     
     // MARK: - Recently Installed
@@ -359,7 +413,7 @@ class DashboardView: NSView {
         let sectionLabel = NSTextField(labelWithString: "RECENTLY INSTALLED")
         sectionLabel.font = DesignFonts.caption(size: 11)
         sectionLabel.textColor = DesignColors.textTertiary
-        contentStack.addArrangedSubview(sectionLabel)
+        leftColumn.addArrangedSubview(sectionLabel)
         
         // Container card - darker background (zinc-900)
         let card = NSView()
@@ -406,11 +460,11 @@ class DashboardView: NSView {
             emptyLabel.centerYAnchor.constraint(equalTo: card.centerYAnchor, constant: 20),
         ])
         
-        contentStack.addArrangedSubview(card)
+        leftColumn.addArrangedSubview(card)
         
-        // Card fills width with min height
-        card.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor).isActive = true
-        card.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor).isActive = true
+        // Card fills width of left column with min height
+        card.leadingAnchor.constraint(equalTo: leftColumn.leadingAnchor).isActive = true
+        card.trailingAnchor.constraint(equalTo: leftColumn.trailingAnchor).isActive = true
         card.heightAnchor.constraint(greaterThanOrEqualToConstant: 160).isActive = true
     }
     
@@ -533,7 +587,7 @@ class DashboardView: NSView {
         let sectionLabel = NSTextField(labelWithString: "QUICK SETTINGS")
         sectionLabel.font = DesignFonts.caption(size: 11)
         sectionLabel.textColor = DesignColors.textTertiary
-        contentStack.addArrangedSubview(sectionLabel)
+        rightColumn.addArrangedSubview(sectionLabel)
         
         let settingsCard = NSView()
         settingsCard.translatesAutoresizingMaskIntoConstraints = false
@@ -570,11 +624,11 @@ class DashboardView: NSView {
             settingsStack.bottomAnchor.constraint(equalTo: settingsCard.bottomAnchor, constant: -16),
         ])
         
-        contentStack.addArrangedSubview(settingsCard)
+        rightColumn.addArrangedSubview(settingsCard)
         
-        // Make settings card fill width
-        settingsCard.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor).isActive = true
-        settingsCard.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor).isActive = true
+        // Make settings card fill width of right column
+        settingsCard.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor).isActive = true
+        settingsCard.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor).isActive = true
         
         // Load current settings
         loadSettings()
@@ -735,7 +789,7 @@ class DashboardView: NSView {
         let sectionLabel = NSTextField(labelWithString: "CONTENT HEALTH")
         sectionLabel.font = DesignFonts.caption(size: 11)
         sectionLabel.textColor = DesignColors.textTertiary
-        contentStack.addArrangedSubview(sectionLabel)
+        rightColumn.addArrangedSubview(sectionLabel)
         
         let healthCard = NSView()
         healthCard.translatesAutoresizingMaskIntoConstraints = false
@@ -745,13 +799,24 @@ class DashboardView: NSView {
         healthCard.layer?.borderWidth = 1
         healthCard.layer?.borderColor = DesignColors.borderSubtle.cgColor
         
-        // Main horizontal stack
+        // Vertical container for header + details
+        let cardStack = NSStackView()
+        cardStack.translatesAutoresizingMaskIntoConstraints = false
+        cardStack.orientation = .vertical
+        cardStack.spacing = 0
+        healthCard.addSubview(cardStack)
+        
+        // Header row (icon, status, buttons)
+        let headerView = NSView()
+        headerView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Main horizontal stack for header
         let mainStack = NSStackView()
         mainStack.translatesAutoresizingMaskIntoConstraints = false
         mainStack.orientation = .horizontal
         mainStack.spacing = 16
         mainStack.alignment = .centerY
-        healthCard.addSubview(mainStack)
+        headerView.addSubview(mainStack)
         
         // Left side: Icon with badge
         let iconWrapper = NSView()
@@ -813,7 +878,7 @@ class DashboardView: NSView {
         
         mainStack.addArrangedSubview(iconWrapper)
         
-        // Center: Status text
+        // Center: Status text (clickable to expand)
         let textStack = NSStackView()
         textStack.orientation = .vertical
         textStack.spacing = 2
@@ -856,17 +921,83 @@ class DashboardView: NSView {
         mainStack.addArrangedSubview(buttonStack)
         
         NSLayoutConstraint.activate([
-            mainStack.topAnchor.constraint(equalTo: healthCard.topAnchor, constant: 16),
-            mainStack.leadingAnchor.constraint(equalTo: healthCard.leadingAnchor, constant: 16),
-            mainStack.trailingAnchor.constraint(equalTo: healthCard.trailingAnchor, constant: -16),
-            mainStack.bottomAnchor.constraint(equalTo: healthCard.bottomAnchor, constant: -16),
+            mainStack.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
+            mainStack.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            mainStack.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            mainStack.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -16),
         ])
         
-        contentStack.addArrangedSubview(healthCard)
+        cardStack.addArrangedSubview(headerView)
         
-        // Make card fill width
-        healthCard.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor).isActive = true
-        healthCard.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor).isActive = true
+        // Details section (expandable)
+        healthDetailContainer = NSView()
+        healthDetailContainer.translatesAutoresizingMaskIntoConstraints = false
+        healthDetailContainer.wantsLayer = true
+        healthDetailContainer.layer?.backgroundColor = DesignColors.zinc950.cgColor
+        healthDetailContainer.isHidden = true
+        
+        // Separator line
+        let separator = NSView()
+        separator.translatesAutoresizingMaskIntoConstraints = false
+        separator.wantsLayer = true
+        separator.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        healthDetailContainer.addSubview(separator)
+        
+        // Scrollable stack for issues
+        let detailScrollView = NSScrollView()
+        detailScrollView.translatesAutoresizingMaskIntoConstraints = false
+        detailScrollView.hasVerticalScroller = true
+        detailScrollView.hasHorizontalScroller = false
+        detailScrollView.autohidesScrollers = true
+        detailScrollView.drawsBackground = false
+        detailScrollView.backgroundColor = .clear
+        healthDetailContainer.addSubview(detailScrollView)
+        
+        let detailDocumentView = FlippedView()
+        detailDocumentView.translatesAutoresizingMaskIntoConstraints = false
+        detailScrollView.documentView = detailDocumentView
+        
+        healthDetailStack = NSStackView()
+        healthDetailStack.translatesAutoresizingMaskIntoConstraints = false
+        healthDetailStack.orientation = .vertical
+        healthDetailStack.spacing = 8
+        healthDetailStack.alignment = .leading
+        detailDocumentView.addSubview(healthDetailStack)
+        
+        NSLayoutConstraint.activate([
+            separator.topAnchor.constraint(equalTo: healthDetailContainer.topAnchor),
+            separator.leadingAnchor.constraint(equalTo: healthDetailContainer.leadingAnchor, constant: 16),
+            separator.trailingAnchor.constraint(equalTo: healthDetailContainer.trailingAnchor, constant: -16),
+            separator.heightAnchor.constraint(equalToConstant: 1),
+            
+            detailScrollView.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 12),
+            detailScrollView.leadingAnchor.constraint(equalTo: healthDetailContainer.leadingAnchor, constant: 16),
+            detailScrollView.trailingAnchor.constraint(equalTo: healthDetailContainer.trailingAnchor, constant: -16),
+            detailScrollView.bottomAnchor.constraint(equalTo: healthDetailContainer.bottomAnchor, constant: -12),
+            
+            healthDetailStack.topAnchor.constraint(equalTo: detailDocumentView.topAnchor),
+            healthDetailStack.leadingAnchor.constraint(equalTo: detailDocumentView.leadingAnchor),
+            healthDetailStack.trailingAnchor.constraint(equalTo: detailDocumentView.trailingAnchor),
+            healthDetailStack.widthAnchor.constraint(equalTo: detailScrollView.widthAnchor),
+        ])
+        
+        healthDetailHeightConstraint = healthDetailContainer.heightAnchor.constraint(equalToConstant: 0)
+        healthDetailHeightConstraint.isActive = true
+        
+        cardStack.addArrangedSubview(healthDetailContainer)
+        
+        NSLayoutConstraint.activate([
+            cardStack.topAnchor.constraint(equalTo: healthCard.topAnchor),
+            cardStack.leadingAnchor.constraint(equalTo: healthCard.leadingAnchor),
+            cardStack.trailingAnchor.constraint(equalTo: healthCard.trailingAnchor),
+            cardStack.bottomAnchor.constraint(equalTo: healthCard.bottomAnchor),
+        ])
+        
+        rightColumn.addArrangedSubview(healthCard)
+        
+        // Make card fill width of right column
+        healthCard.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor).isActive = true
+        healthCard.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor).isActive = true
     }
     
     // Store last validation results for Fix All
@@ -916,12 +1047,15 @@ class DashboardView: NSView {
         let fixableCount = results.reduce(0) { total, result in
             total + result.issues.filter { $0.isFixable }.count
         }
+        let totalIssues = errorCount + warningCount
         
+        // Update status text
         if errorCount == 0 && warningCount == 0 {
             healthStatusLabel.stringValue = "✓ All content validated successfully"
             healthStatusLabel.textColor = NSColor.systemGreen
             healthBadge.isHidden = true
             fixAllButton.isHidden = true
+            hideHealthDetails()
         } else {
             var status = ""
             if errorCount > 0 {
@@ -931,12 +1065,13 @@ class DashboardView: NSView {
                 if !status.isEmpty { status += ", " }
                 status += "\(warningCount) warning(s)"
             }
+            status += " — click to expand"
             healthStatusLabel.stringValue = status
             healthStatusLabel.textColor = errorCount > 0 ? NSColor.systemRed : NSColor.systemOrange
             
             // Show badge with error count
             healthBadge.isHidden = false
-            healthBadgeLabel.stringValue = "\(errorCount + warningCount)"
+            healthBadgeLabel.stringValue = "\(totalIssues)"
             healthBadge.layer?.backgroundColor = errorCount > 0 ? NSColor.systemRed.cgColor : NSColor.systemOrange.cgColor
             
             // Show Fix All button if there are fixable issues
@@ -944,6 +1079,165 @@ class DashboardView: NSView {
             if fixableCount > 0 {
                 fixAllButton.title = "Fix \(fixableCount)"
             }
+            
+            // Populate detail panel
+            populateHealthDetails(results: results)
+            
+            // Auto-expand if there are issues
+            showHealthDetails()
+        }
+    }
+    
+    private func populateHealthDetails(results: [ContentValidator.ValidationResult]) {
+        // Clear existing items
+        healthDetailStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        for result in results {
+            if result.issues.isEmpty { continue }
+            
+            // Content name header
+            let headerStack = NSStackView()
+            headerStack.orientation = .horizontal
+            headerStack.spacing = 8
+            headerStack.alignment = .centerY
+            
+            let typeIcon = NSImageView()
+            typeIcon.translatesAutoresizingMaskIntoConstraints = false
+            let iconName = result.contentType == "character" ? "person.fill" : "photo.fill"
+            typeIcon.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
+            typeIcon.contentTintColor = DesignColors.textSecondary
+            typeIcon.symbolConfiguration = .init(pointSize: 12, weight: .medium)
+            NSLayoutConstraint.activate([
+                typeIcon.widthAnchor.constraint(equalToConstant: 16),
+                typeIcon.heightAnchor.constraint(equalToConstant: 16),
+            ])
+            headerStack.addArrangedSubview(typeIcon)
+            
+            let nameLabel = NSTextField(labelWithString: result.contentName)
+            nameLabel.font = DesignFonts.body(size: 13)
+            nameLabel.textColor = DesignColors.textPrimary
+            headerStack.addArrangedSubview(nameLabel)
+            
+            let typeBadge = NSTextField(labelWithString: result.contentType.uppercased())
+            typeBadge.font = DesignFonts.caption(size: 9)
+            typeBadge.textColor = DesignColors.textTertiary
+            typeBadge.wantsLayer = true
+            typeBadge.layer?.backgroundColor = DesignColors.zinc800.cgColor
+            typeBadge.layer?.cornerRadius = 3
+            // Add padding via alignment rect insets
+            headerStack.addArrangedSubview(typeBadge)
+            
+            healthDetailStack.addArrangedSubview(headerStack)
+            
+            // Issues for this content
+            for issue in result.issues {
+                let issueRow = createIssueRow(issue: issue)
+                healthDetailStack.addArrangedSubview(issueRow)
+            }
+            
+            // Add spacer between content items
+            let spacer = NSView()
+            spacer.translatesAutoresizingMaskIntoConstraints = false
+            spacer.heightAnchor.constraint(equalToConstant: 8).isActive = true
+            healthDetailStack.addArrangedSubview(spacer)
+        }
+    }
+    
+    private func createIssueRow(issue: ContentValidator.ValidationIssue) -> NSView {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.spacing = 8
+        row.alignment = .top
+        
+        // Severity icon
+        let severityIcon = NSImageView()
+        severityIcon.translatesAutoresizingMaskIntoConstraints = false
+        let (iconName, iconColor): (String, NSColor) = {
+            switch issue.severity {
+            case .error: return ("xmark.circle.fill", NSColor.systemRed)
+            case .warning: return ("exclamationmark.triangle.fill", NSColor.systemOrange)
+            case .info: return ("info.circle.fill", NSColor.systemBlue)
+            }
+        }()
+        severityIcon.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
+        severityIcon.contentTintColor = iconColor
+        severityIcon.symbolConfiguration = .init(pointSize: 11, weight: .medium)
+        NSLayoutConstraint.activate([
+            severityIcon.widthAnchor.constraint(equalToConstant: 14),
+            severityIcon.heightAnchor.constraint(equalToConstant: 14),
+        ])
+        row.addArrangedSubview(severityIcon)
+        
+        // Message and suggestion
+        let textStack = NSStackView()
+        textStack.orientation = .vertical
+        textStack.spacing = 2
+        textStack.alignment = .leading
+        
+        let messageLabel = NSTextField(wrappingLabelWithString: issue.message)
+        messageLabel.font = DesignFonts.caption(size: 11)
+        messageLabel.textColor = DesignColors.textSecondary
+        messageLabel.preferredMaxLayoutWidth = 400
+        textStack.addArrangedSubview(messageLabel)
+        
+        if let suggestion = issue.suggestion {
+            let suggestionLabel = NSTextField(wrappingLabelWithString: "→ \(suggestion)")
+            suggestionLabel.font = DesignFonts.caption(size: 10)
+            suggestionLabel.textColor = DesignColors.textTertiary
+            suggestionLabel.preferredMaxLayoutWidth = 400
+            textStack.addArrangedSubview(suggestionLabel)
+        }
+        
+        row.addArrangedSubview(textStack)
+        
+        // Fixable badge
+        if issue.isFixable {
+            let fixBadge = NSTextField(labelWithString: "FIXABLE")
+            fixBadge.font = NSFont.systemFont(ofSize: 8, weight: .bold)
+            fixBadge.textColor = NSColor.systemGreen
+            fixBadge.wantsLayer = true
+            fixBadge.layer?.backgroundColor = NSColor.systemGreen.withAlphaComponent(0.15).cgColor
+            fixBadge.layer?.cornerRadius = 3
+            row.addArrangedSubview(fixBadge)
+        }
+        
+        return row
+    }
+    
+    private func showHealthDetails() {
+        guard !isHealthDetailExpanded else { return }
+        isHealthDetailExpanded = true
+        
+        healthDetailContainer.isHidden = false
+        
+        // Calculate height based on content (max 300px)
+        let contentHeight = min(healthDetailStack.fittingSize.height + 30, 300)
+        
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            healthDetailHeightConstraint.animator().constant = contentHeight
+        }
+    }
+    
+    private func hideHealthDetails() {
+        guard isHealthDetailExpanded else { return }
+        isHealthDetailExpanded = false
+        
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            healthDetailHeightConstraint.animator().constant = 0
+        }, completionHandler: {
+            self.healthDetailContainer.isHidden = true
+        })
+    }
+    
+    @objc private func toggleHealthDetails() {
+        if isHealthDetailExpanded {
+            hideHealthDetails()
+        } else {
+            showHealthDetails()
         }
     }
     
