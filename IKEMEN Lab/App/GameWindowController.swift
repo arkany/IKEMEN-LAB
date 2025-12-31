@@ -937,19 +937,20 @@ class GameWindowController: NSWindowController {
             stageBrowserView?.isHidden = false
             screenpackBrowserView?.isHidden = true
         case .screenpacks:
+            // TODO: Implement soundpacks browser
+            dashboardView?.isHidden = true
+            dropZoneView?.isHidden = false
+            characterBrowserView?.isHidden = true
+            stageBrowserView?.isHidden = true
+            screenpackBrowserView?.isHidden = true
+        case .addons:
+            // Screenpacks browser (add-ons tab)
             dashboardView?.isHidden = true
             dropZoneView?.isHidden = true
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = false
             screenpackBrowserView?.viewMode = currentViewMode
-        case .addons:
-            // TODO: Implement add-ons browser
-            dashboardView?.isHidden = true
-            dropZoneView?.isHidden = false
-            characterBrowserView?.isHidden = true
-            stageBrowserView?.isHidden = true
-            screenpackBrowserView?.isHidden = true
         case .settings:
             // Show settings panel
             dashboardView?.isHidden = true
