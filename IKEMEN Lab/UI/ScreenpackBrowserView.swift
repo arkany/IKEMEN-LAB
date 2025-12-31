@@ -65,7 +65,8 @@ class ScreenpackBrowserView: NSView {
         
         // Create flow layout
         flowLayout = NSCollectionViewFlowLayout()
-        flowLayout.itemSize = NSSize(width: gridItemWidth, height: gridItemHeight)
+        // Use max to ensure non-zero size (required by flow layout)
+        flowLayout.itemSize = NSSize(width: max(gridItemWidth, 100), height: max(gridItemHeight, 100))
         flowLayout.minimumInteritemSpacing = cardSpacing
         flowLayout.minimumLineSpacing = cardSpacing
         flowLayout.sectionInset = NSEdgeInsets(top: sectionInset, left: sectionInset, bottom: sectionInset, right: sectionInset)
@@ -116,10 +117,10 @@ class ScreenpackBrowserView: NSView {
             let spacing = max(cardSpacing, totalSpacing / max(1, itemsPerRow - 1))
             
             flowLayout.minimumInteritemSpacing = spacing
-            flowLayout.itemSize = NSSize(width: itemWidth, height: itemHeight)
+            flowLayout.itemSize = NSSize(width: max(itemWidth, 100), height: max(itemHeight, 50))
         } else {
             flowLayout.minimumInteritemSpacing = 8
-            flowLayout.itemSize = NSSize(width: width, height: itemHeight)
+            flowLayout.itemSize = NSSize(width: max(width, 100), height: max(itemHeight, 50))
         }
         
         flowLayout.invalidateLayout()

@@ -109,7 +109,9 @@ class StageBrowserView: NSView {
         
         // Create flow layout for list view
         flowLayout = NSCollectionViewFlowLayout()
-        flowLayout.itemSize = NSSize(width: bounds.width, height: listItemHeight)
+        // Use max to ensure non-zero size (required by flow layout)
+        let initialWidth = max(bounds.width, 100)
+        flowLayout.itemSize = NSSize(width: initialWidth, height: listItemHeight)
         flowLayout.minimumInteritemSpacing = 0
         flowLayout.minimumLineSpacing = 0
         flowLayout.sectionInset = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
@@ -150,7 +152,9 @@ class StageBrowserView: NSView {
     }
     
     private func updateLayoutForWidth(_ width: CGFloat) {
-        flowLayout.itemSize = NSSize(width: width, height: listItemHeight)
+        // Ensure non-zero size (required by flow layout)
+        let safeWidth = max(width, 100)
+        flowLayout.itemSize = NSSize(width: safeWidth, height: listItemHeight)
         flowLayout.invalidateLayout()
     }
     
