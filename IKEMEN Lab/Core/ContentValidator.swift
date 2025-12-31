@@ -22,6 +22,7 @@ public class ContentValidator {
     public enum FixType {
         case renameFile(from: String, to: String, inDirectory: URL)
         case updateDefReference(defFile: URL, oldRef: String, newRef: String)
+        case moveToFolder(files: [URL], destinationFolder: URL, folderName: String)
         case none
     }
     
@@ -79,7 +80,6 @@ public class ContentValidator {
     public func validateStage(defFile: URL) -> ValidationResult {
         var issues: [ValidationIssue] = []
         let stageName = defFile.deletingPathExtension().lastPathComponent
-        let stageDir = defFile.deletingLastPathComponent()
         
         // Parse the .def file (try multiple encodings)
         guard let content = readFileContent(at: defFile) else {
@@ -370,15 +370,6 @@ public class ContentValidator {
         // Normalize path separators
         let normalizedRef = reference.replacingOccurrences(of: "\\", with: "/")
         
-        // Determine the search directory
-        let searchDir: URL
-        if normalizedRef.contains("/") {
-            let rootDir = defFile.deletingLastPathComponent().deletingLastPathComponent()
-            searchDir = rootDir.appendingPathComponent((normalizedRef as NSString).deletingLastPathComponent)
-        } else {
-            searchDir = defFile.deletingLastPathComponent()
-        }
-        
         // Determine the actual file path
         let resolvedPath: URL
         if normalizedRef.contains("/") {
@@ -583,6 +574,28 @@ public class ContentValidator {
                 return false
             }
             
+        case .moveToFolder(let files, let destinationFolder, _):
+            do {
+                // Create destination folder if needed
+                try fileManager.createDirectory(at: destinationFolder, withIntermediateDirectories: true)
+                
+                // Move all files
+                var movedCount = 0
+                for file in files {
+                    let destPath = destinationFolder.appendingPathComponent(file.lastPathComponent)
+                    if fileManager.fileExists(atPath: file.path) && !fileManager.fileExists(atPath: destPath.path) {
+                        try fileManager.moveItem(at: file, to: destPath)
+                        movedCount += 1
+                    }
+                }
+                
+                print("Moved \(movedCount) files to \(destinationFolder.lastPathComponent)")
+                return true
+            } catch {
+                print("Failed to move files: \(error)")
+                return false
+            }
+            
         case .none:
             return false
         }
@@ -616,5 +629,330 @@ public class ContentValidator {
         }
         
         return (totalFixed, totalFailed)
+    }
+    
+    // MARK: - Misplaced Content Detection
+    
+    /// Content type detected from analyzing a .def file
+    public enum DetectedContentType {
+        case character
+        case stage
+        case storyboard  // intro/ending scenes
+        case screenpack
+        case unknown
+    }
+    
+    /// Analyze a .def file to determine its actual content type
+    public func detectContentType(defFile: URL) -> DetectedContentType {
+        guard let content = readFileContent(at: defFile) else {
+            return .unknown
+        }
+        let lowercased = content.lowercased()
+        
+        // Storyboard: has [SceneDef] section
+        if lowercased.contains("[scenedef]") {
+            return .storyboard
+        }
+        
+        // Screenpack: system.def with screenpack sections
+        if defFile.lastPathComponent.lowercased() == "system.def" ||
+           lowercased.contains("[title info]") ||
+           lowercased.contains("[select info]") ||
+           lowercased.contains("[vs screen]") {
+            return .screenpack
+        }
+        
+        // Character: has [Files] section with .cmd/.cns/.air references
+        if lowercased.contains("[files]") &&
+           (lowercased.contains(".cmd") || lowercased.contains(".cns") || lowercased.contains(".air")) {
+            return .character
+        }
+        
+        // Stage: has [StageInfo], [BGdef], or [BG ...] sections
+        let hasStageInfo = lowercased.contains("[stageinfo]")
+        let hasBGdef = lowercased.contains("[bgdef]")
+        let hasBGElements = lowercased.range(of: #"\[bg\s"#, options: .regularExpression) != nil
+        
+        if hasStageInfo || hasBGdef || hasBGElements {
+            return .stage
+        }
+        
+        return .unknown
+    }
+    
+    /// Find all files that belong to a character based on its .def file
+    public func findCharacterFiles(defFile: URL) -> [URL] {
+        guard let content = readFileContent(at: defFile) else {
+            return []
+        }
+        
+        let directory = defFile.deletingLastPathComponent()
+        var relatedFiles: Set<URL> = [defFile]
+        let lowercased = content.lowercased()
+        
+        // Patterns for character file references
+        let patterns = [
+            "sprite\\s*=\\s*(.+)",
+            "anim\\s*=\\s*(.+)",
+            "sound\\s*=\\s*(.+)",
+            "cmd\\s*=\\s*(.+)",
+            "cns\\s*=\\s*(.+)",
+            "st\\s*=\\s*(.+)",
+            "st\\d+\\s*=\\s*(.+)",
+            "stcommon\\s*=\\s*(.+)",
+            "intro\\.storyboard\\s*=\\s*(.+)",
+            "ending\\.storyboard\\s*=\\s*(.+)",
+            "pal\\d+\\s*=\\s*(.+)"
+        ]
+        
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                let range = NSRange(lowercased.startIndex..., in: lowercased)
+                let matches = regex.matches(in: lowercased, options: [], range: range)
+                
+                for match in matches {
+                    if match.numberOfRanges > 1,
+                       let valueRange = Range(match.range(at: 1), in: lowercased) {
+                        var filename = String(lowercased[valueRange])
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        // Remove inline comments
+                        if let commentIndex = filename.firstIndex(of: ";") {
+                            filename = String(filename[..<commentIndex]).trimmingCharacters(in: .whitespaces)
+                        }
+                        
+                        if !filename.isEmpty {
+                            // Find the actual file (case-insensitive)
+                            if let actualFile = findFileInDirectory(filename: filename, directory: directory) {
+                                relatedFiles.insert(actualFile)
+                                
+                                // If it's a storyboard def, also get its files
+                                if filename.hasSuffix(".def") {
+                                    let storyboardFiles = findStoryboardFiles(defFile: actualFile)
+                                    relatedFiles.formUnion(storyboardFiles)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Also find palette files by extension
+        if let directoryContents = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+            for file in directoryContents {
+                let ext = file.pathExtension.lowercased()
+                
+                // Include .act palette files
+                if ext == "act" {
+                    relatedFiles.insert(file)
+                }
+                // Include related .cns, .zss files (common*.cns, helpers.cns, etc.)
+                if ext == "cns" || ext == "zss" {
+                    relatedFiles.insert(file)
+                }
+            }
+        }
+        
+        return Array(relatedFiles)
+    }
+    
+    /// Find files referenced by a storyboard .def
+    private func findStoryboardFiles(defFile: URL) -> [URL] {
+        guard let content = readFileContent(at: defFile) else {
+            return []
+        }
+        
+        let directory = defFile.deletingLastPathComponent()
+        var files: [URL] = [defFile]
+        let lowercased = content.lowercased()
+        
+        // Find spr = reference
+        if let regex = try? NSRegularExpression(pattern: "spr\\s*=\\s*(.+)", options: .caseInsensitive) {
+            let range = NSRange(lowercased.startIndex..., in: lowercased)
+            if let match = regex.firstMatch(in: lowercased, options: [], range: range),
+               match.numberOfRanges > 1,
+               let valueRange = Range(match.range(at: 1), in: lowercased) {
+                var filename = String(lowercased[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                if let commentIndex = filename.firstIndex(of: ";") {
+                    filename = String(filename[..<commentIndex]).trimmingCharacters(in: .whitespaces)
+                }
+                if !filename.isEmpty, let actualFile = findFileInDirectory(filename: filename, directory: directory) {
+                    files.append(actualFile)
+                }
+            }
+        }
+        
+        // Find audio/music references
+        let audioPatterns = ["bgm\\s*=\\s*(.+)", "bgmusic\\s*=\\s*(.+)"]
+        for pattern in audioPatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                let range = NSRange(lowercased.startIndex..., in: lowercased)
+                if let match = regex.firstMatch(in: lowercased, options: [], range: range),
+                   match.numberOfRanges > 1,
+                   let valueRange = Range(match.range(at: 1), in: lowercased) {
+                    var filename = String(lowercased[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if let commentIndex = filename.firstIndex(of: ";") {
+                        filename = String(filename[..<commentIndex]).trimmingCharacters(in: .whitespaces)
+                    }
+                    if !filename.isEmpty, let actualFile = findFileInDirectory(filename: filename, directory: directory) {
+                        files.append(actualFile)
+                    }
+                }
+            }
+        }
+        
+        return files
+    }
+    
+    /// Find a file in a directory (case-insensitive)
+    private func findFileInDirectory(filename: String, directory: URL) -> URL? {
+        // First try exact match
+        let exactPath = directory.appendingPathComponent(filename)
+        if fileManager.fileExists(atPath: exactPath.path) {
+            return exactPath
+        }
+        
+        // Try case-insensitive
+        guard let contents = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else {
+            return nil
+        }
+        
+        let lowercasedFilename = filename.lowercased()
+        return contents.first { $0.lastPathComponent.lowercased() == lowercasedFilename }
+    }
+    
+    /// Validate content placement - check for characters in stages folder, etc.
+    public func validateContentPlacement(in workingDir: URL) -> [ValidationResult] {
+        var results: [ValidationResult] = []
+        
+        let stagesDir = workingDir.appendingPathComponent("stages")
+        let charsDir = workingDir.appendingPathComponent("chars")
+        
+        // Scan stages folder for misplaced content
+        if let stageFiles = try? fileManager.contentsOfDirectory(at: stagesDir, includingPropertiesForKeys: nil) {
+            for file in stageFiles where file.pathExtension.lowercased() == "def" {
+                let contentType = detectContentType(defFile: file)
+                
+                switch contentType {
+                case .character:
+                    // Character in stages folder - this is an error
+                    let charFiles = findCharacterFiles(defFile: file)
+                    let charName = extractCharacterName(from: file) ?? file.deletingPathExtension().lastPathComponent
+                    let sanitizedName = sanitizeFolderName(charName)
+                    let destFolder = charsDir.appendingPathComponent(sanitizedName)
+                    
+                    var issues: [ValidationIssue] = []
+                    issues.append(ValidationIssue(
+                        severity: .error,
+                        message: "Character '\(charName)' found in stages folder",
+                        file: file.lastPathComponent,
+                        suggestion: "Move to chars/\(sanitizedName)/",
+                        fixType: .moveToFolder(files: charFiles, destinationFolder: destFolder, folderName: sanitizedName)
+                    ))
+                    
+                    results.append(ValidationResult(
+                        contentName: charName,
+                        contentType: "misplaced character",
+                        issues: issues
+                    ))
+                    
+                case .storyboard:
+                    // Storyboards in stages might be okay if they belong to a character
+                    // Check if there's a referencing character def
+                    let hasCharacterRef = checkIfStoryboardIsReferenced(file, in: charsDir)
+                    if !hasCharacterRef {
+                        var issues: [ValidationIssue] = []
+                        issues.append(ValidationIssue(
+                            severity: .warning,
+                            message: "Storyboard file not referenced by any character",
+                            file: file.lastPathComponent,
+                            suggestion: "This may be an orphaned storyboard or part of a character that needs to be moved"
+                        ))
+                        results.append(ValidationResult(
+                            contentName: file.deletingPathExtension().lastPathComponent,
+                            contentType: "orphaned storyboard",
+                            issues: issues
+                        ))
+                    }
+                    
+                default:
+                    break
+                }
+            }
+        }
+        
+        return results
+    }
+    
+    /// Check if a storyboard is referenced by any character
+    private func checkIfStoryboardIsReferenced(_ storyboardFile: URL, in charsDir: URL) -> Bool {
+        let storyboardName = storyboardFile.lastPathComponent.lowercased()
+        
+        guard let charFolders = try? fileManager.contentsOfDirectory(at: charsDir, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return false
+        }
+        
+        for folder in charFolders {
+            var isDir: ObjCBool = false
+            if fileManager.fileExists(atPath: folder.path, isDirectory: &isDir), isDir.boolValue {
+                if let files = try? fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) {
+                    for file in files where file.pathExtension.lowercased() == "def" {
+                        if let content = readFileContent(at: file)?.lowercased(),
+                           content.contains(storyboardName) {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    /// Extract character name from a .def file
+    private func extractCharacterName(from defFile: URL) -> String? {
+        guard let content = readFileContent(at: defFile) else { return nil }
+        
+        // Look for name = "..." or displayname = "..."
+        let patterns = ["displayname\\s*=\\s*\"?([^\"\\n]+)\"?", "name\\s*=\\s*\"?([^\"\\n]+)\"?"]
+        
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+               let match = regex.firstMatch(in: content, options: [], range: NSRange(content.startIndex..., in: content)),
+               match.numberOfRanges > 1,
+               let valueRange = Range(match.range(at: 1), in: content) {
+                var name = String(content[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                name = name.replacingOccurrences(of: "\"", with: "")
+                if !name.isEmpty && name.count < 50 {  // Sanity check
+                    return name
+                }
+            }
+        }
+        
+        return nil
+    }
+    
+    /// Sanitize a string for use as a folder name
+    private func sanitizeFolderName(_ name: String) -> String {
+        // Remove or replace problematic characters
+        var sanitized = name
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: "\\", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .replacingOccurrences(of: "*", with: "")
+            .replacingOccurrences(of: "?", with: "")
+            .replacingOccurrences(of: "\"", with: "")
+            .replacingOccurrences(of: "<", with: "")
+            .replacingOccurrences(of: ">", with: "")
+            .replacingOccurrences(of: "|", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // If empty after sanitization, use a default
+        if sanitized.isEmpty {
+            sanitized = "unknown"
+        }
+        
+        return sanitized
     }
 }

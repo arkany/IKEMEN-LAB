@@ -1916,15 +1916,16 @@ class GameWindowController: NSWindowController {
             
             let stageResults = validator.validateAllStages(in: workingDir)
             let charResults = validator.validateAllCharacters(in: workingDir)
+            let placementResults = validator.validateContentPlacement(in: workingDir)
             
             DispatchQueue.main.async {
-                self?.showValidationResults(stages: stageResults, characters: charResults)
+                self?.showValidationResults(stages: stageResults, characters: charResults, placement: placementResults)
             }
         }
     }
     
-    private func showValidationResults(stages: [ContentValidator.ValidationResult], characters: [ContentValidator.ValidationResult]) {
-        let allResults = stages + characters
+    private func showValidationResults(stages: [ContentValidator.ValidationResult], characters: [ContentValidator.ValidationResult], placement: [ContentValidator.ValidationResult] = []) {
+        let allResults = stages + characters + placement
         
         // Update dashboard health status
         dashboardView?.updateHealthStatus(results: allResults)
