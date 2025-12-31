@@ -415,11 +415,11 @@ class DashboardView: NSView {
         sectionLabel.textColor = DesignColors.textTertiary
         leftColumn.addArrangedSubview(sectionLabel)
         
-        // Container card - darker background (zinc-900)
+        // Container card - transparent background (zinc-900/20)
         let card = NSView()
         card.translatesAutoresizingMaskIntoConstraints = false
         card.wantsLayer = true
-        card.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        card.layer?.backgroundColor = DesignColors.cardBackgroundTransparent.cgColor
         card.layer?.cornerRadius = 12
         card.layer?.borderWidth = 1
         card.layer?.borderColor = DesignColors.borderSubtle.cgColor
@@ -592,7 +592,7 @@ class DashboardView: NSView {
         let settingsCard = NSView()
         settingsCard.translatesAutoresizingMaskIntoConstraints = false
         settingsCard.wantsLayer = true
-        settingsCard.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        settingsCard.layer?.backgroundColor = DesignColors.cardBackgroundTransparent.cgColor
         settingsCard.layer?.cornerRadius = 12
         settingsCard.layer?.borderWidth = 1
         settingsCard.layer?.borderColor = DesignColors.borderSubtle.cgColor
@@ -794,7 +794,7 @@ class DashboardView: NSView {
         let healthCard = NSView()
         healthCard.translatesAutoresizingMaskIntoConstraints = false
         healthCard.wantsLayer = true
-        healthCard.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        healthCard.layer?.backgroundColor = DesignColors.cardBackgroundTransparent.cgColor
         healthCard.layer?.cornerRadius = 12
         healthCard.layer?.borderWidth = 1
         healthCard.layer?.borderColor = DesignColors.borderSubtle.cgColor

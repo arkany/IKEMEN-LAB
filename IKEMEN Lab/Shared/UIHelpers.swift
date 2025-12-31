@@ -57,6 +57,9 @@ public struct DesignColors {
     /// Card/panel backgrounds - zinc-900 (#18181b)
     public static let cardBackground = zinc900
     
+    /// Transparent card background - zinc-900/20 rgba(24, 24, 27, 0.2)
+    public static let cardBackgroundTransparent = zinc900.withAlphaComponent(0.2)
+    
     /// Slightly darker than card - zinc-900/50 with black overlay
     public static let panelBackground = NSColor(red: 0x0c/255.0, green: 0x0c/255.0, blue: 0x0e/255.0, alpha: 1.0)
     
