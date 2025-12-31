@@ -46,6 +46,14 @@ public struct DesignColors {
     /// zinc-100 (#f4f4f5)
     public static let zinc100 = NSColor(red: 0xf4/255.0, green: 0xf4/255.0, blue: 0xf5/255.0, alpha: 1.0)
     
+    // MARK: - Emerald Palette (Tailwind)
+    
+    /// emerald-500 (#10b981)
+    public static let emerald500 = NSColor(red: 0x10/255.0, green: 0xb9/255.0, blue: 0x81/255.0, alpha: 1.0)
+    
+    /// emerald-400 (#34d399)
+    public static let emerald400 = NSColor(red: 0x34/255.0, green: 0xd3/255.0, blue: 0x99/255.0, alpha: 1.0)
+    
     // MARK: - Core Backgrounds
     
     /// Main app background - zinc-950 (#09090b)
@@ -286,7 +294,8 @@ public struct BrowserLayout {
     public static let stageGridItemHeight: CGFloat = 160
     
     // List view
-    public static let listItemHeight: CGFloat = 60
+    public static let listItemHeight: CGFloat = 52  // Character list rows
+    public static let stageListItemHeight: CGFloat = 98  // Stage list rows (includes preview thumbnail)
     
     // Spacing
     public static let cardSpacing: CGFloat = 16  // gap-4

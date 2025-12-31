@@ -73,7 +73,7 @@ class StageBrowserView: NSView {
     // Layout constants from shared design system
     private let gridItemWidth = BrowserLayout.stageGridItemWidth
     private let gridItemHeight = BrowserLayout.stageGridItemHeight
-    private let listItemHeight = BrowserLayout.listItemHeight
+    private let listItemHeight = BrowserLayout.stageListItemHeight
     private let cardSpacing = BrowserLayout.cardSpacing
     private let sectionInset = BrowserLayout.sectionInset
     
@@ -565,72 +565,150 @@ class StageListItem: NSCollectionViewItem {
     static let identifier = NSUserInterfaceItemIdentifier("StageListItem")
     
     private var containerView: NSView!
+    private var previewContainer: NSView!
+    private var previewImageView: NSImageView!
+    private var disabledOverlay: NSView!
+    private var disabledIcon: NSImageView!
+    private var nameStack: NSStackView!
     private var nameLabel: NSTextField!
-    private var authorLabel: NSTextField!
-    private var sizeLabel: NSTextField!
-    private var widthLabel: NSTextField!
-    private var disabledLabel: NSTextField!
+    private var pathLabel: NSTextField!
+    private var audioBadge: NSView!
+    private var audioBadgeIcon: NSImageView!
+    private var audioBadgeLabel: NSTextField!
+    private var dateLabel: NSTextField!
     private var statusToggle: NSSwitch!
+    private var moreButton: NSButton!
     
-    // Callback for toggle changes
+    private var trackingArea: NSTrackingArea?
+    private var isHovered = false
+    
+    private let animationDuration: CGFloat = 0.2
+    
+    // Column widths (matching HTML design)
+    private let previewWidth: CGFloat = 180
+    private let previewHeight: CGFloat = 80
+    private let toggleColumnWidth: CGFloat = 52
+    private let moreColumnWidth: CGFloat = 44
+    private let rightPadding: CGFloat = 24
+    
+    // Minimum widths for flexible columns
+    private let nameMinWidth: CGFloat = 160
+    private let audioMinWidth: CGFloat = 70
+    private let dateMinWidth: CGFloat = 80
+    
+    // Column width constraints
+    private var nameWidthConstraint: NSLayoutConstraint?
+    private var dateWidthConstraint: NSLayoutConstraint?
+    
+    // Callbacks
     var onStatusToggled: ((Bool) -> Void)?
+    var onMoreClicked: ((StageInfo, NSView) -> Void)?
     private var currentStage: StageInfo?
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 60))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 98))
         view.wantsLayer = true
-        
         setupViews()
     }
     
     private func setupViews() {
+        // Container - row with bottom border
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        containerView.layer?.borderWidth = 1
-        containerView.layer?.borderColor = NSColor.clear.cgColor
+        containerView.layer?.backgroundColor = NSColor.clear.cgColor
         view.addSubview(containerView)
         
-        // Disabled label (shown before name)
-        disabledLabel = NSTextField(labelWithString: "[Disabled]")
-        disabledLabel.translatesAutoresizingMaskIntoConstraints = false
-        disabledLabel.font = DesignFonts.caption(size: 11)
-        disabledLabel.textColor = DesignColors.redAccent
-        disabledLabel.isHidden = true
-        containerView.addSubview(disabledLabel)
+        // Bottom border line
+        let borderLine = NSView()
+        borderLine.translatesAutoresizingMaskIntoConstraints = false
+        borderLine.wantsLayer = true
+        borderLine.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        containerView.addSubview(borderLine)
         
-        // Name
+        // Preview container with rounded corners and border
+        previewContainer = NSView()
+        previewContainer.translatesAutoresizingMaskIntoConstraints = false
+        previewContainer.wantsLayer = true
+        previewContainer.layer?.cornerRadius = 6
+        previewContainer.layer?.borderWidth = 1
+        previewContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        previewContainer.layer?.masksToBounds = true
+        previewContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        containerView.addSubview(previewContainer)
+        
+        // Preview image
+        previewImageView = NSImageView()
+        previewImageView.translatesAutoresizingMaskIntoConstraints = false
+        previewImageView.imageScaling = .scaleProportionallyUpOrDown
+        previewImageView.wantsLayer = true
+        previewImageView.alphaValue = 0.6  // Default dimmed
+        previewContainer.addSubview(previewImageView)
+        
+        // Disabled overlay
+        disabledOverlay = NSView()
+        disabledOverlay.translatesAutoresizingMaskIntoConstraints = false
+        disabledOverlay.wantsLayer = true
+        disabledOverlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.2).cgColor
+        disabledOverlay.isHidden = true
+        previewContainer.addSubview(disabledOverlay)
+        
+        // Disabled icon (eye-off)
+        disabledIcon = NSImageView()
+        disabledIcon.translatesAutoresizingMaskIntoConstraints = false
+        disabledIcon.image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: nil)
+        disabledIcon.contentTintColor = NSColor.white.withAlphaComponent(0.5)
+        disabledIcon.isHidden = true
+        previewContainer.addSubview(disabledIcon)
+        
+        // Name + path stack
+        nameStack = NSStackView()
+        nameStack.translatesAutoresizingMaskIntoConstraints = false
+        nameStack.orientation = .vertical
+        nameStack.alignment = .leading
+        nameStack.spacing = 2
+        containerView.addSubview(nameStack)
+        
+        // Name label
         nameLabel = NSTextField(labelWithString: "")
-        nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.header(size: 16)
-        nameLabel.textColor = DesignColors.creamText
+        nameLabel.font = DesignFonts.body(size: 14)
+        nameLabel.textColor = DesignColors.zinc300
         nameLabel.lineBreakMode = .byTruncatingTail
-        containerView.addSubview(nameLabel)
+        nameStack.addArrangedSubview(nameLabel)
         
-        // Author
-        authorLabel = NSTextField(labelWithString: "")
-        authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.body(size: 12)
-        authorLabel.textColor = DesignColors.grayText
-        authorLabel.lineBreakMode = .byTruncatingTail
-        containerView.addSubview(authorLabel)
+        // Path label (mono font)
+        pathLabel = NSTextField(labelWithString: "")
+        pathLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        pathLabel.textColor = DesignColors.zinc600
+        pathLabel.lineBreakMode = .byTruncatingTail
+        nameStack.addArrangedSubview(pathLabel)
         
-        // Size category
-        sizeLabel = NSTextField(labelWithString: "")
-        sizeLabel.translatesAutoresizingMaskIntoConstraints = false
-        sizeLabel.font = DesignFonts.body(size: 14)
-        sizeLabel.textColor = DesignColors.greenAccent
-        sizeLabel.alignment = .right
-        containerView.addSubview(sizeLabel)
+        // Audio badge
+        audioBadge = NSView()
+        audioBadge.translatesAutoresizingMaskIntoConstraints = false
+        audioBadge.wantsLayer = true
+        audioBadge.layer?.cornerRadius = 4
+        containerView.addSubview(audioBadge)
         
-        // Width value
-        widthLabel = NSTextField(labelWithString: "")
-        widthLabel.translatesAutoresizingMaskIntoConstraints = false
-        widthLabel.font = DesignFonts.caption(size: 12)
-        widthLabel.textColor = DesignColors.grayText
-        widthLabel.alignment = .right
-        containerView.addSubview(widthLabel)
+        // Audio badge icon
+        audioBadgeIcon = NSImageView()
+        audioBadgeIcon.translatesAutoresizingMaskIntoConstraints = false
+        audioBadgeIcon.imageScaling = .scaleProportionallyDown
+        audioBadge.addSubview(audioBadgeIcon)
+        
+        // Audio badge label
+        audioBadgeLabel = NSTextField(labelWithString: "")
+        audioBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        audioBadgeLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        audioBadge.addSubview(audioBadgeLabel)
+        
+        // Date label
+        dateLabel = NSTextField(labelWithString: "")
+        dateLabel.translatesAutoresizingMaskIntoConstraints = false
+        dateLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        dateLabel.textColor = DesignColors.zinc600
+        dateLabel.alignment = .right
+        containerView.addSubview(dateLabel)
         
         // Status toggle (enabled/disabled)
         statusToggle = NSSwitch()
@@ -640,104 +718,319 @@ class StageListItem: NSCollectionViewItem {
         statusToggle.action = #selector(statusToggleChanged(_:))
         containerView.addSubview(statusToggle)
         
+        // More button (ellipsis)
+        moreButton = NSButton(title: "•••", target: self, action: #selector(moreButtonClicked(_:)))
+        moreButton.translatesAutoresizingMaskIntoConstraints = false
+        moreButton.bezelStyle = .inline
+        moreButton.isBordered = false
+        moreButton.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        moreButton.contentTintColor = DesignColors.zinc400
+        moreButton.alphaValue = 0 // Hidden by default, shown on hover
+        containerView.addSubview(moreButton)
+        
+        // Layout constraints
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            disabledLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
-            disabledLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            borderLine.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            borderLine.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            borderLine.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            borderLine.heightAnchor.constraint(equalToConstant: 1),
             
-            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
-            nameLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 10),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: sizeLabel.leadingAnchor, constant: -16),
+            // Preview container: 16px from left, centered vertically
+            previewContainer.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            previewContainer.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            previewContainer.widthAnchor.constraint(equalToConstant: previewWidth),
+            previewContainer.heightAnchor.constraint(equalToConstant: previewHeight),
             
-            authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
-            authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
+            // Preview image fills container
+            previewImageView.topAnchor.constraint(equalTo: previewContainer.topAnchor),
+            previewImageView.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor),
+            previewImageView.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor),
+            previewImageView.bottomAnchor.constraint(equalTo: previewContainer.bottomAnchor),
             
-            sizeLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -16),
-            sizeLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
+            // Disabled overlay fills preview
+            disabledOverlay.topAnchor.constraint(equalTo: previewContainer.topAnchor),
+            disabledOverlay.leadingAnchor.constraint(equalTo: previewContainer.leadingAnchor),
+            disabledOverlay.trailingAnchor.constraint(equalTo: previewContainer.trailingAnchor),
+            disabledOverlay.bottomAnchor.constraint(equalTo: previewContainer.bottomAnchor),
             
-            widthLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -16),
-            widthLabel.topAnchor.constraint(equalTo: sizeLabel.bottomAnchor, constant: 2),
+            // Disabled icon centered in preview
+            disabledIcon.centerXAnchor.constraint(equalTo: previewContainer.centerXAnchor),
+            disabledIcon.centerYAnchor.constraint(equalTo: previewContainer.centerYAnchor),
+            disabledIcon.widthAnchor.constraint(equalToConstant: 16),
+            disabledIcon.heightAnchor.constraint(equalToConstant: 16),
             
-            statusToggle.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            // More button (fixed right)
+            moreButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -rightPadding),
+            moreButton.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            moreButton.widthAnchor.constraint(equalToConstant: moreColumnWidth),
+            
+            // Status toggle (fixed right, with gap from more button)
+            statusToggle.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor, constant: -12),
             statusToggle.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            
+            // Audio badge constraints (internal)
+            audioBadgeIcon.leadingAnchor.constraint(equalTo: audioBadge.leadingAnchor, constant: 8),
+            audioBadgeIcon.centerYAnchor.constraint(equalTo: audioBadge.centerYAnchor),
+            audioBadgeIcon.widthAnchor.constraint(equalToConstant: 12),
+            audioBadgeIcon.heightAnchor.constraint(equalToConstant: 12),
+            
+            audioBadgeLabel.leadingAnchor.constraint(equalTo: audioBadgeIcon.trailingAnchor, constant: 4),
+            audioBadgeLabel.trailingAnchor.constraint(equalTo: audioBadge.trailingAnchor, constant: -8),
+            audioBadgeLabel.centerYAnchor.constraint(equalTo: audioBadge.centerYAnchor),
+            
+            audioBadge.heightAnchor.constraint(equalToConstant: 24),
         ])
+        
+        // Name stack (flexible width)
+        nameStack.leadingAnchor.constraint(equalTo: previewContainer.trailingAnchor, constant: 16).isActive = true
+        nameStack.centerYAnchor.constraint(equalTo: containerView.centerYAnchor).isActive = true
+        nameWidthConstraint = nameStack.widthAnchor.constraint(equalToConstant: nameMinWidth)
+        nameWidthConstraint?.isActive = true
+        
+        // Audio badge follows name
+        audioBadge.leadingAnchor.constraint(equalTo: nameStack.trailingAnchor, constant: 16).isActive = true
+        audioBadge.centerYAnchor.constraint(equalTo: containerView.centerYAnchor).isActive = true
+        
+        // Date (flexible width, anchored to right side)
+        dateLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor).isActive = true
+        dateLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -24).isActive = true
+        dateWidthConstraint = dateLabel.widthAnchor.constraint(equalToConstant: dateMinWidth)
+        dateWidthConstraint?.isActive = true
+    }
+    
+    /// Update column widths based on available space
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        
+        // Calculate available width for flexible columns
+        let totalWidth = view.bounds.width
+        
+        // Fixed widths: leftPad(16) + preview(180) + gap(16) + ... + gap(24) + toggle(52) + gap(12) + more(44) + rightPad(24)
+        let leftFixedWidth: CGFloat = 16 + previewWidth + 16  // left padding + preview + gap to name
+        let rightFixedWidth: CGFloat = 24 + toggleColumnWidth + 12 + moreColumnWidth + rightPadding
+        let fixedWidth = leftFixedWidth + rightFixedWidth
+        
+        // Audio badge hugs content - estimate width
+        let audioWidth: CGFloat = audioMinWidth
+        
+        // Gaps between columns: name-audio(16), audio-date(16)
+        let gapsWidth: CGFloat = 16 + 16
+        
+        let flexWidth = totalWidth - fixedWidth - audioWidth - gapsWidth
+        
+        // Distribute space proportionally
+        let nameWidth = max(nameMinWidth, flexWidth * 0.65)
+        let dateWidth = max(dateMinWidth, flexWidth * 0.35)
+        
+        nameWidthConstraint?.constant = nameWidth
+        dateWidthConstraint?.constant = dateWidth
+        
+        setupTrackingArea()
+    }
+    
+    // MARK: - Tracking Area & Hover
+    
+    private func setupTrackingArea() {
+        if let existingArea = trackingArea {
+            view.removeTrackingArea(existingArea)
+        }
+        
+        trackingArea = NSTrackingArea(
+            rect: view.bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        view.addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+        updateHoverState()
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+        updateHoverState()
+    }
+    
+    private func updateHoverState() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = animationDuration
+            
+            if isHovered {
+                // Show hover state
+                containerView.animator().layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+                moreButton.animator().alphaValue = 1.0
+                
+                // If not disabled, brighten image and text
+                if currentStage?.isDisabled != true {
+                    previewImageView.animator().alphaValue = 1.0
+                    nameLabel.animator().textColor = .white
+                }
+            } else {
+                // Return to normal
+                containerView.animator().layer?.backgroundColor = NSColor.clear.cgColor
+                moreButton.animator().alphaValue = 0
+                
+                // Return to dimmed state
+                if currentStage?.isDisabled != true {
+                    previewImageView.animator().alphaValue = 0.6
+                    nameLabel.animator().textColor = DesignColors.zinc300
+                }
+            }
+        }
     }
     
     @objc private func statusToggleChanged(_ sender: NSSwitch) {
         onStatusToggled?(sender.state == .on)
     }
     
-    override var isSelected: Bool {
-        didSet {
-            updateSelectionAppearance()
-        }
-    }
-    
-    private func updateSelectionAppearance() {
-        if isSelected {
-            containerView.layer?.borderColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.shadowOffset = CGSize.zero
-            containerView.layer?.shadowRadius = 10
-            containerView.layer?.shadowOpacity = 0.3
-        } else {
-            containerView.layer?.borderColor = NSColor.clear.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowOpacity = 0
-        }
+    @objc private func moreButtonClicked(_ sender: NSButton) {
+        guard let stage = currentStage else { return }
+        onMoreClicked?(stage, sender)
     }
     
     func configure(with stage: StageInfo) {
         currentStage = stage
         nameLabel.stringValue = stage.name
-        authorLabel.stringValue = "by \(stage.author)"
-        sizeLabel.stringValue = stage.sizeCategory
-        widthLabel.stringValue = "Width: \(stage.totalWidth)px"
+        
+        // Show path relative to stages folder
+        pathLabel.stringValue = "stages/\(stage.defFileName)"
+        
+        // Configure audio badge based on whether stage has music
+        configureAudioBadge(hasMusic: stage.hasBGM)
+        
+        // Format date
+        if let modDate = stage.modificationDate {
+            dateLabel.stringValue = formatRelativeDate(modDate)
+        } else {
+            dateLabel.stringValue = "—"
+        }
         
         // Toggle state - ON means enabled, OFF means disabled
         statusToggle.state = stage.isDisabled ? .off : .on
         
         // Show disabled state
         if stage.isDisabled {
-            disabledLabel.isHidden = false
-            nameLabel.textColor = DesignColors.creamText.withAlphaComponent(0.5)
-            authorLabel.textColor = DesignColors.grayText.withAlphaComponent(0.5)
-            sizeLabel.textColor = DesignColors.grayText.withAlphaComponent(0.5)
-            widthLabel.textColor = DesignColors.grayText.withAlphaComponent(0.5)
-            containerView.layer?.opacity = 0.7
+            previewImageView.alphaValue = 0.4
+            disabledOverlay.isHidden = false
+            disabledIcon.isHidden = false
+            nameLabel.textColor = DesignColors.zinc500
+            // Strikethrough effect using attributed string
+            let attributes: [NSAttributedString.Key: Any] = [
+                .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                .strikethroughColor: DesignColors.zinc600
+            ]
+            nameLabel.attributedStringValue = NSAttributedString(string: stage.name, attributes: attributes)
+            pathLabel.textColor = DesignColors.zinc700
         } else {
-            disabledLabel.isHidden = true
-            nameLabel.textColor = DesignColors.creamText
-            authorLabel.textColor = DesignColors.grayText
-            // Color code the size
-            if stage.isWideStage {
-                sizeLabel.textColor = DesignColors.greenAccent
-            } else {
-                sizeLabel.textColor = DesignColors.grayText
+            previewImageView.alphaValue = 0.6
+            disabledOverlay.isHidden = true
+            disabledIcon.isHidden = true
+            nameLabel.textColor = DesignColors.zinc300
+            nameLabel.stringValue = stage.name  // Remove strikethrough
+            pathLabel.textColor = DesignColors.zinc600
+        }
+        
+        // Load preview image
+        loadPreviewImage(for: stage)
+    }
+    
+    private func configureAudioBadge(hasMusic: Bool) {
+        if hasMusic {
+            // BGM badge - emerald/green style
+            audioBadge.layer?.backgroundColor = DesignColors.emerald500.withAlphaComponent(0.1).cgColor
+            audioBadge.layer?.borderWidth = 1
+            audioBadge.layer?.borderColor = DesignColors.emerald500.withAlphaComponent(0.2).cgColor
+            audioBadgeIcon.image = NSImage(systemSymbolName: "music.note", accessibilityDescription: nil)
+            audioBadgeIcon.contentTintColor = DesignColors.emerald400
+            audioBadgeLabel.stringValue = "BGM"
+            audioBadgeLabel.textColor = DesignColors.emerald400
+        } else {
+            // No audio badge - gray style
+            audioBadge.layer?.backgroundColor = DesignColors.zinc800.withAlphaComponent(0.5).cgColor
+            audioBadge.layer?.borderWidth = 1
+            audioBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            audioBadgeIcon.image = NSImage(systemSymbolName: "speaker.slash", accessibilityDescription: nil)
+            audioBadgeIcon.contentTintColor = DesignColors.zinc500
+            audioBadgeLabel.stringValue = "None"
+            audioBadgeLabel.textColor = DesignColors.zinc500
+        }
+    }
+    
+    private func formatRelativeDate(_ date: Date) -> String {
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+        
+        let minute: TimeInterval = 60
+        let hour: TimeInterval = 60 * minute
+        let day: TimeInterval = 24 * hour
+        let week: TimeInterval = 7 * day
+        let month: TimeInterval = 30 * day
+        
+        if interval < hour {
+            return "Just now"
+        } else if interval < day {
+            let hours = Int(interval / hour)
+            return "\(hours)h ago"
+        } else if interval < 2 * day {
+            return "Yesterday"
+        } else if interval < week {
+            let days = Int(interval / day)
+            return "\(days)d ago"
+        } else if interval < month {
+            let weeks = Int(interval / week)
+            return "\(weeks)w ago"
+        } else {
+            let months = Int(interval / month)
+            return "\(months)mo ago"
+        }
+    }
+    
+    private func loadPreviewImage(for stage: StageInfo) {
+        // Check cache first
+        let cacheKey = ImageCache.stagePreviewKey(for: stage.id)
+        if let cached = ImageCache.shared.get(cacheKey) {
+            previewImageView.image = cached
+            return
+        }
+        
+        // Load preview image asynchronously
+        previewImageView.image = nil
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            if let image = stage.loadPreviewImage() {
+                // Store in cache
+                ImageCache.shared.set(image, for: cacheKey)
+                DispatchQueue.main.async {
+                    self?.previewImageView.image = image
+                }
             }
-            widthLabel.textColor = DesignColors.grayText
-            containerView.layer?.opacity = 1.0
         }
     }
     
     override func prepareForReuse() {
         super.prepareForReuse()
+        previewImageView.image = nil
+        previewImageView.alphaValue = 0.6
         nameLabel.stringValue = ""
-        authorLabel.stringValue = ""
-        sizeLabel.stringValue = ""
-        widthLabel.stringValue = ""
-        disabledLabel.isHidden = true
+        pathLabel.stringValue = ""
+        dateLabel.stringValue = ""
+        disabledOverlay.isHidden = true
+        disabledIcon.isHidden = true
         statusToggle.state = .on
+        moreButton.alphaValue = 0
         currentStage = nil
         onStatusToggled = nil
-        containerView.layer?.opacity = 1.0
-        nameLabel.textColor = DesignColors.creamText
-        authorLabel.textColor = DesignColors.grayText
-        isSelected = false
+        onMoreClicked = nil
+        isHovered = false
+        containerView.layer?.backgroundColor = NSColor.clear.cgColor
+        nameLabel.textColor = DesignColors.zinc300
+        pathLabel.textColor = DesignColors.zinc600
     }
 }

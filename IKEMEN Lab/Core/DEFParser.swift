@@ -132,6 +132,22 @@ extension DEFParser.ParseResult {
         return name ?? displayName
     }
     
+    /// Check if stage has background music defined (for stages)
+    public var hasBGM: Bool {
+        // Check for bgmusic key in [Music] section or root
+        // Stages can define music in various ways
+        if let bgm = value(for: "bgmusic", inSection: "music") ?? value(for: "bgmusic") {
+            return !bgm.isEmpty
+        }
+        // Also check for mp3/ogg/wav in any musicX or bgmusicX keys
+        for key in values.keys where key.hasPrefix("bgmusic") || key.hasPrefix("music") {
+            if let val = values[key], !val.isEmpty {
+                return true
+            }
+        }
+        return false
+    }
+    
     /// Get the CNS file reference (for characters)
     public var cnsFile: String? {
         return value(for: "cns")

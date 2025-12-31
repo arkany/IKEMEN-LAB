@@ -13,6 +13,13 @@ public struct StageInfo: Identifiable, Hashable {
     public let boundLeft: Int      // Camera left bound (negative = wider stage)
     public let boundRight: Int     // Camera right bound (positive = wider stage)
     public var isDisabled: Bool    // Whether stage is commented out in select.def
+    public let hasBGM: Bool        // Whether stage has background music defined
+    public let modificationDate: Date?  // File modification date
+    
+    /// The .def filename for display
+    public var defFileName: String {
+        return defFile.lastPathComponent
+    }
     
     /// Total horizontal camera range (larger = wider stage)
     public var totalWidth: Int {
@@ -46,6 +53,14 @@ public struct StageInfo: Identifiable, Hashable {
         self.id = defFile.deletingPathExtension().lastPathComponent
         self.isDisabled = isDisabled
         
+        // Get file modification date
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: defFile.path),
+           let modDate = attrs[.modificationDate] as? Date {
+            self.modificationDate = modDate
+        } else {
+            self.modificationDate = nil
+        }
+        
         // Parse .def file using shared parser
         let parsed = DEFParser.parse(url: defFile)
         
@@ -59,6 +74,9 @@ public struct StageInfo: Identifiable, Hashable {
         let bounds = parsed?.cameraBounds ?? (left: -150, right: 150)
         self.boundLeft = bounds.left
         self.boundRight = bounds.right
+        
+        // Check if stage has background music defined
+        self.hasBGM = parsed?.hasBGM ?? false
         
         // Get sprite file reference
         if let sprName = parsed?.spriteFile {
