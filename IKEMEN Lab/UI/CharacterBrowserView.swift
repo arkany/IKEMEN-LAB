@@ -786,6 +786,7 @@ class CharacterListItem: NSCollectionViewItem {
     private var iconView: NSView!
     private var iconImageView: NSImageView!
     private var iconInitialLabel: NSTextField!
+    private var nameStack: NSStackView!
     private var nameLabel: NSTextField!
     private var pathLabel: NSTextField!
     private var statusDot: NSView!
@@ -802,15 +803,24 @@ class CharacterListItem: NSCollectionViewItem {
     
     private let animationDuration: CGFloat = 0.2
     
-    // Column widths matching HTML percentages
+    // Fixed column widths (these don't resize)
     private let iconColumnWidth: CGFloat = 48  // Padding + 32px icon
-    private let nameColumnWidth: CGFloat = 280  // Name + path column
-    private let authorColumnWidth: CGFloat = 150
-    private let seriesColumnWidth: CGFloat = 140
-    private let versionColumnWidth: CGFloat = 60
-    private let dateColumnWidth: CGFloat = 100
-    private let toggleColumnWidth: CGFloat = 50
-    private let moreColumnWidth: CGFloat = 40
+    private let toggleColumnWidth: CGFloat = 52  // Toggle switch needs ~50px
+    private let moreColumnWidth: CGFloat = 44   // More button with extra padding
+    private let rightPadding: CGFloat = 24      // Extra right margin
+    
+    // Minimum widths for flexible columns
+    private let nameMinWidth: CGFloat = 160
+    private let authorMinWidth: CGFloat = 80
+    private let seriesMinWidth: CGFloat = 60
+    private let versionMinWidth: CGFloat = 50
+    private let dateMinWidth: CGFloat = 70
+    
+    // Column width constraints (for responsive resizing)
+    private var nameWidthConstraint: NSLayoutConstraint?
+    private var authorWidthConstraint: NSLayoutConstraint?
+    private var versionWidthConstraint: NSLayoutConstraint?
+    private var dateWidthConstraint: NSLayoutConstraint?
     
     // Callbacks
     var onStatusToggled: ((Bool) -> Void)?
@@ -874,7 +884,7 @@ class CharacterListItem: NSCollectionViewItem {
         iconView.addSubview(iconInitialLabel)
         
         // Name + path stack
-        let nameStack = NSStackView()
+        nameStack = NSStackView()
         nameStack.translatesAutoresizingMaskIntoConstraints = false
         nameStack.orientation = .vertical
         nameStack.alignment = .leading
@@ -968,7 +978,11 @@ class CharacterListItem: NSCollectionViewItem {
         moreButton.alphaValue = 0 // Hidden by default, shown on hover
         containerView.addSubview(moreButton)
         
-        // Layout constraints
+        // Layout constraints - using continuous left-to-right flow
+        // Fixed elements: icon (left), toggle + more (right)
+        // Flexible columns: name, author, series, version, date (fill remaining space proportionally)
+        
+        // First, set up fixed constraints
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -980,7 +994,7 @@ class CharacterListItem: NSCollectionViewItem {
             borderLine.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             borderLine.heightAnchor.constraint(equalToConstant: 1),
             
-            // Icon: 32x32 with padding
+            // Icon: 32x32 with padding (fixed)
             iconView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
             iconView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             iconView.widthAnchor.constraint(equalToConstant: 32),
@@ -997,58 +1011,125 @@ class CharacterListItem: NSCollectionViewItem {
             statusDot.widthAnchor.constraint(equalToConstant: 6),
             statusDot.heightAnchor.constraint(equalToConstant: 6),
             
-            // Name stack
-            nameStack.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
-            nameStack.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            nameStack.widthAnchor.constraint(equalToConstant: nameColumnWidth),
+            // More button (fixed right)
+            moreButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -rightPadding),
+            moreButton.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            moreButton.widthAnchor.constraint(equalToConstant: moreColumnWidth),
             
-            // Author (fixed position)
-            authorLabel.leadingAnchor.constraint(equalTo: nameStack.trailingAnchor, constant: 16),
-            authorLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            authorLabel.widthAnchor.constraint(equalToConstant: authorColumnWidth),
+            // Status toggle (fixed right, with gap from more button)
+            statusToggle.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor, constant: -12),
+            statusToggle.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             
-            // Series badge (after author)
-            seriesBadge.leadingAnchor.constraint(equalTo: authorLabel.trailingAnchor, constant: 16),
-            seriesBadge.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            seriesBadge.widthAnchor.constraint(lessThanOrEqualToConstant: seriesColumnWidth),
-            
+            // Series badge label internal constraints
             seriesLabel.topAnchor.constraint(equalTo: seriesBadge.topAnchor, constant: 2),
             seriesLabel.bottomAnchor.constraint(equalTo: seriesBadge.bottomAnchor, constant: -2),
             seriesLabel.leadingAnchor.constraint(equalTo: seriesBadge.leadingAnchor, constant: 8),
             seriesLabel.trailingAnchor.constraint(equalTo: seriesBadge.trailingAnchor, constant: -8),
-            
-            // Version (positioned from right)
-            versionLabel.trailingAnchor.constraint(equalTo: dateLabel.leadingAnchor, constant: -16),
-            versionLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            versionLabel.widthAnchor.constraint(equalToConstant: versionColumnWidth),
-            
-            // Date
-            dateLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -12),
-            dateLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            dateLabel.widthAnchor.constraint(equalToConstant: dateColumnWidth),
-            
-            // Status toggle
-            statusToggle.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor, constant: -8),
-            statusToggle.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            
-            // More button
-            moreButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
-            moreButton.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            moreButton.widthAnchor.constraint(equalToConstant: moreColumnWidth),
         ])
+        
+        // Name stack (flexible width)
+        nameStack.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12).isActive = true
+        nameStack.centerYAnchor.constraint(equalTo: containerView.centerYAnchor).isActive = true
+        nameWidthConstraint = nameStack.widthAnchor.constraint(equalToConstant: nameMinWidth)
+        nameWidthConstraint?.isActive = true
+        
+        // Author (flexible width)
+        authorLabel.leadingAnchor.constraint(equalTo: nameStack.trailingAnchor, constant: 16).isActive = true
+        authorLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor).isActive = true
+        authorWidthConstraint = authorLabel.widthAnchor.constraint(equalToConstant: authorMinWidth)
+        authorWidthConstraint?.isActive = true
+        
+        // Series badge - hugs content naturally
+        seriesBadge.leadingAnchor.constraint(equalTo: authorLabel.trailingAnchor, constant: 16).isActive = true
+        seriesBadge.centerYAnchor.constraint(equalTo: containerView.centerYAnchor).isActive = true
+        
+        // Version (flexible width)
+        versionLabel.leadingAnchor.constraint(equalTo: seriesBadge.trailingAnchor, constant: 16).isActive = true
+        versionLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor).isActive = true
+        versionWidthConstraint = versionLabel.widthAnchor.constraint(equalToConstant: versionMinWidth)
+        versionWidthConstraint?.isActive = true
+        
+        // Date (flexible width, anchored to right side)
+        dateLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor).isActive = true
+        dateLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -24).isActive = true
+        dateWidthConstraint = dateLabel.widthAnchor.constraint(equalToConstant: dateMinWidth)
+        dateWidthConstraint?.isActive = true
     }
     
-    @objc private func statusToggleChanged(_ sender: NSSwitch) {
-        onStatusToggled?(sender.state == .on)
-    }
-    
+    /// Update column widths based on available space
     override func viewDidLayout() {
         super.viewDidLayout()
+        
         // Update gradient layer frame
         if let gradientLayer = iconView.layer?.sublayers?.first as? CAGradientLayer {
             gradientLayer.frame = iconView.bounds
         }
+        
+        // Calculate available width for flexible columns
+        let totalWidth = view.bounds.width
+        
+        // Fixed widths: leftPad(16) + icon(32) + gap(12) + ... + gap(24) + toggle(52) + gap(12) + more(44) + rightPad(24)
+        let leftFixedWidth: CGFloat = 16 + 32 + 12  // left padding + icon + gap to name
+        let rightFixedWidth: CGFloat = 24 + toggleColumnWidth + 12 + moreColumnWidth + rightPadding
+        let fixedWidth = leftFixedWidth + rightFixedWidth
+        
+        // Series badge hugs content - estimate width based on label
+        let seriesWidth = seriesBadge.isHidden ? 0 : max(seriesMinWidth, seriesLabel.intrinsicContentSize.width + 16)
+        
+        // Gaps between columns: name-author(16), author-series(16), series-version(16), version-date(16)
+        // When columns are hidden, we have fewer gaps
+        let availableForFlexColumns = totalWidth - fixedWidth - seriesWidth
+        
+        // Check if we need to hide columns
+        let allColumnsMinWidth = nameMinWidth + 16 + authorMinWidth + 16 + 16 + versionMinWidth + 16 + dateMinWidth
+        let noVersionMinWidth = nameMinWidth + 16 + authorMinWidth + 16 + 16 + dateMinWidth
+        let noDateVersionMinWidth = nameMinWidth + 16 + authorMinWidth + 16
+        
+        let shouldHideVersion = availableForFlexColumns < allColumnsMinWidth
+        let shouldHideDate = availableForFlexColumns < noVersionMinWidth
+        
+        versionLabel.isHidden = shouldHideVersion
+        dateLabel.isHidden = shouldHideDate
+        
+        // Calculate actual available width based on visible columns
+        var gapsWidth: CGFloat = 16 + 16  // name-author, author-series (always present)
+        if !shouldHideVersion { gapsWidth += 16 }  // series-version
+        if !shouldHideDate { gapsWidth += 16 }     // version-date or series-date
+        
+        let flexWidth = availableForFlexColumns - gapsWidth
+        
+        // Distribute space proportionally to visible columns
+        if shouldHideDate && shouldHideVersion {
+            // Only name and author visible
+            let nameWidth = max(nameMinWidth, flexWidth * 0.60)
+            let authorWidth = max(authorMinWidth, flexWidth * 0.40)
+            nameWidthConstraint?.constant = nameWidth
+            authorWidthConstraint?.constant = authorWidth
+        } else if shouldHideVersion {
+            // Name, author, date visible
+            let nameWidth = max(nameMinWidth, flexWidth * 0.45)
+            let authorWidth = max(authorMinWidth, flexWidth * 0.28)
+            let dateWidth = max(dateMinWidth, flexWidth * 0.27)
+            nameWidthConstraint?.constant = nameWidth
+            authorWidthConstraint?.constant = authorWidth
+            dateWidthConstraint?.constant = dateWidth
+        } else {
+            // All columns visible
+            let nameWidth = max(nameMinWidth, flexWidth * 0.38)
+            let authorWidth = max(authorMinWidth, flexWidth * 0.24)
+            let versionWidth = max(versionMinWidth, flexWidth * 0.16)
+            let dateWidth = max(dateMinWidth, flexWidth * 0.22)
+            nameWidthConstraint?.constant = nameWidth
+            authorWidthConstraint?.constant = authorWidth
+            versionWidthConstraint?.constant = versionWidth
+            dateWidthConstraint?.constant = dateWidth
+        }
+        
         setupTrackingArea()
+    }
+    
+    @objc private func statusToggleChanged(_ sender: NSSwitch) {
+        onStatusToggled?(sender.state == .on)
     }
     
     override func viewDidLoad() {
