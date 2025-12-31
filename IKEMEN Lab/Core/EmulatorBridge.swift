@@ -375,9 +375,11 @@ class IkemenBridge: ObservableObject {
         for item in stageItems {
             // Check if it's a .def file at top level
             if item.pathExtension.lowercased() == "def" {
-                let isDisabled = ContentManager.shared.isStageDisabled(StageInfo(defFile: item), in: workingDir)
-                let stageInfo = StageInfo(defFile: item, isDisabled: isDisabled)
-                foundStages.append(stageInfo)
+                if isValidStageDefFile(item) {
+                    let isDisabled = ContentManager.shared.isStageDisabled(StageInfo(defFile: item), in: workingDir)
+                    let stageInfo = StageInfo(defFile: item, isDisabled: isDisabled)
+                    foundStages.append(stageInfo)
+                }
             }
             
             // Check if it's a directory - look for .def files inside
@@ -385,9 +387,11 @@ class IkemenBridge: ObservableObject {
             if fileManager.fileExists(atPath: item.path, isDirectory: &isDirectory), isDirectory.boolValue {
                 if let subItems = try? fileManager.contentsOfDirectory(at: item, includingPropertiesForKeys: nil) {
                     for subItem in subItems where subItem.pathExtension.lowercased() == "def" {
-                        let isDisabled = ContentManager.shared.isStageDisabled(StageInfo(defFile: subItem), in: workingDir)
-                        let stageInfo = StageInfo(defFile: subItem, isDisabled: isDisabled)
-                        foundStages.append(stageInfo)
+                        if isValidStageDefFile(subItem) {
+                            let isDisabled = ContentManager.shared.isStageDisabled(StageInfo(defFile: subItem), in: workingDir)
+                            let stageInfo = StageInfo(defFile: subItem, isDisabled: isDisabled)
+                            foundStages.append(stageInfo)
+                        }
                     }
                 }
             }
@@ -398,6 +402,30 @@ class IkemenBridge: ObservableObject {
         }
         
         print("Loaded \(foundStages.count) stages")
+    }
+    
+    /// Check if a .def file is actually a stage definition (not a character, storyboard, etc.)
+    private func isValidStageDefFile(_ url: URL) -> Bool {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        let lowercased = content.lowercased()
+        
+        // Exclude storyboards (intros/endings) - they have [SceneDef] section
+        if lowercased.contains("[scenedef]") {
+            return false
+        }
+        
+        // Exclude character definitions - they have [Files] with .cmd, .cns, .air
+        if lowercased.contains("[files]") &&
+           (lowercased.contains(".cmd") || lowercased.contains(".cns") || lowercased.contains(".air")) {
+            return false
+        }
+        
+        // Valid stages have [StageInfo], [BGdef], or [BG ] sections
+        let hasStageInfo = lowercased.contains("[stageinfo]")
+        let hasBGdef = lowercased.contains("[bgdef]")
+        let hasBGElements = lowercased.range(of: #"\[bg\s"#, options: .regularExpression) != nil
+        
+        return hasStageInfo || hasBGdef || hasBGElements
     }
     
     /// Load all screenpacks from the data directory
