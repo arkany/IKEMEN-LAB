@@ -1348,6 +1348,17 @@ class GameWindowController: NSWindowController {
         ])
         stackView.addArrangedSubview(advancedSection)
         
+        // Maintenance Section
+        let maintenanceSection = createSettingsSection(title: "Maintenance", settings: [
+            createButtonSetting(
+                label: "Image Cache",
+                buttonTitle: "Clear Cache",
+                description: "Clears cached character portraits and stage previews. Use if images appear outdated.",
+                action: #selector(clearImageCache(_:))
+            ),
+        ])
+        stackView.addArrangedSubview(maintenanceSection)
+        
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: container.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
@@ -1527,6 +1538,39 @@ class GameWindowController: NSWindowController {
         return container
     }
     
+    /// Create a button setting with label and description
+    private func createButtonSetting(label: String, buttonTitle: String, description: String, action: Selector) -> NSView {
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.spacing = 4
+        container.alignment = .leading
+        
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.spacing = 16
+        row.alignment = .centerY
+        
+        let labelField = NSTextField(labelWithString: label)
+        labelField.font = DesignFonts.body(size: 16)
+        labelField.textColor = DesignColors.textPrimary
+        labelField.widthAnchor.constraint(equalToConstant: 200).isActive = true
+        row.addArrangedSubview(labelField)
+        
+        let button = NSButton(title: buttonTitle, target: self, action: action)
+        button.bezelStyle = .rounded
+        row.addArrangedSubview(button)
+        
+        container.addArrangedSubview(row)
+        
+        // Add description label
+        let descLabel = NSTextField(labelWithString: description)
+        descLabel.font = NSFont.systemFont(ofSize: 12)
+        descLabel.textColor = DesignColors.textSecondary
+        container.addArrangedSubview(descLabel)
+        
+        return container
+    }
+    
     // MARK: - Settings Actions
     
     @objc private func resolutionChanged(_ sender: NSPopUpButton) {
@@ -1559,6 +1603,21 @@ class GameWindowController: NSWindowController {
         }
         
         saveIkemenConfigValue(section: section, key: key, value: "\(sender.intValue)")
+    }
+    
+    @objc private func clearImageCache(_ sender: NSButton) {
+        ImageCache.shared.clear()
+        
+        // Show confirmation
+        let alert = NSAlert()
+        alert.messageText = "Cache Cleared"
+        alert.informativeText = "The image cache has been cleared. Character portraits and stage previews will be reloaded."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+        
+        // Refresh the current view to reload images
+        NotificationCenter.default.post(name: NSNotification.Name("ImageCacheCleared"), object: nil)
     }
     
     // MARK: - Stage Creation

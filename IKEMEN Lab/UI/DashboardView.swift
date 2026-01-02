@@ -462,10 +462,10 @@ class DashboardView: NSView {
         
         leftColumn.addArrangedSubview(card)
         
-        // Card fills width of left column with min height
+        // Card fills width of left column with min height for 10 rows
         card.leadingAnchor.constraint(equalTo: leftColumn.leadingAnchor).isActive = true
         card.trailingAnchor.constraint(equalTo: leftColumn.trailingAnchor).isActive = true
-        card.heightAnchor.constraint(greaterThanOrEqualToConstant: 160).isActive = true
+        card.heightAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
     }
     
     private func createRecentlyInstalledHeader() -> NSView {
@@ -548,7 +548,7 @@ class DashboardView: NSView {
     /// Refresh recently installed data from database
     func refreshRecentlyInstalled() {
         do {
-            recentInstalls = try MetadataStore.shared.recentlyInstalled(limit: 5)
+            recentInstalls = try MetadataStore.shared.recentlyInstalled(limit: 10)
             updateRecentlyInstalledUI()
         } catch {
             print("Failed to load recent installs: \(error)")
@@ -1210,8 +1210,8 @@ class DashboardView: NSView {
         
         healthDetailContainer.isHidden = false
         
-        // Calculate height based on content (max 300px)
-        let contentHeight = min(healthDetailStack.fittingSize.height + 30, 300)
+        // Calculate height based on content (max 500px to allow more errors to be visible)
+        let contentHeight = min(healthDetailStack.fittingSize.height + 30, 500)
         
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.25

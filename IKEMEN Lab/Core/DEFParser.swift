@@ -98,6 +98,38 @@ public struct DEFParser {
         
         return ParseResult(values: values, sectionValues: sectionValues)
     }
+    
+    // MARK: - Content Type Detection
+    
+    /// Check if a .def file is actually a stage definition (not a character, storyboard, font, etc.)
+    /// Used by both EmulatorBridge and MetadataStore to filter valid stages
+    public static func isValidStageDefFile(_ url: URL) -> Bool {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        let lowercased = content.lowercased()
+        
+        // Exclude storyboards (intros/endings) - they have [SceneDef] section
+        if lowercased.contains("[scenedef]") {
+            return false
+        }
+        
+        // Exclude character definitions - they have [Files] with .cmd, .cns, .air
+        if lowercased.contains("[files]") &&
+           (lowercased.contains(".cmd") || lowercased.contains(".cns") || lowercased.contains(".air")) {
+            return false
+        }
+        
+        // Exclude font files - they have [Fnt] or [FNT v2] sections
+        if lowercased.contains("[fnt]") || lowercased.contains("[fnt v2]") {
+            return false
+        }
+        
+        // Valid stages have [StageInfo], [BGdef], or [BG ] sections
+        let hasStageInfo = lowercased.contains("[stageinfo]")
+        let hasBGdef = lowercased.contains("[bgdef]")
+        let hasBGElements = lowercased.range(of: #"\[bg\s"#, options: .regularExpression) != nil
+        
+        return hasStageInfo || hasBGdef || hasBGElements
+    }
 }
 
 // MARK: - Convenience Extensions

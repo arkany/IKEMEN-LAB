@@ -44,7 +44,7 @@ public protocol SFFVersionParser {
     static var version: Int { get }
     
     /// Extract a portrait sprite (group 9000) from SFF data
-    static func extractPortrait(from data: Data) -> Result<NSImage, SFFError>
+    static func extractPortrait(from data: Data, externalPalette: Data?) -> Result<NSImage, SFFError>
     
     /// Extract a stage preview sprite from SFF data
     static func extractStagePreview(from data: Data) -> Result<NSImage, SFFError>
@@ -65,13 +65,33 @@ public final class SFFParser {
         guard let data = try? Data(contentsOf: sffURL) else {
             return .failure(.fileNotFound(sffURL))
         }
-        return extractPortraitResult(from: data)
+        
+        // Try to find an external .act palette file
+        // Common pattern: sprite.sff -> sprite.act or uses first palette in folder
+        let actURL = sffURL.deletingPathExtension().appendingPathExtension("act")
+        var externalPalette: Data? = nil
+        
+        if FileManager.default.fileExists(atPath: actURL.path) {
+            externalPalette = try? Data(contentsOf: actURL)
+        } else {
+            // Look for any .act file in the same directory (common for characters)
+            let directory = sffURL.deletingLastPathComponent()
+            if let actFiles = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+                .filter({ $0.pathExtension.lowercased() == "act" }),
+               let firstAct = actFiles.first {
+                externalPalette = try? Data(contentsOf: firstAct)
+            }
+        }
+        
+        return extractPortraitResult(from: data, externalPalette: externalPalette)
     }
     
     /// Extract portrait sprite (group 9000) from SFF data
-    /// - Parameter data: Raw SFF file data
+    /// - Parameters:
+    ///   - data: Raw SFF file data
+    ///   - externalPalette: Optional external .act palette data (768 bytes RGB)
     /// - Returns: Result containing the extracted portrait image or an error
-    public static func extractPortraitResult(from data: Data) -> Result<NSImage, SFFError> {
+    public static func extractPortraitResult(from data: Data, externalPalette: Data? = nil) -> Result<NSImage, SFFError> {
         guard data.count > 32 else {
             return .failure(.fileTooSmall)
         }
@@ -84,9 +104,9 @@ public final class SFFParser {
         let verHi = data[15]
         
         if verHi >= 2 {
-            return SFFv2Parser.extractPortrait(from: data)
+            return SFFv2Parser.extractPortrait(from: data, externalPalette: externalPalette)
         } else {
-            return SFFv1Parser.extractPortrait(from: data)
+            return SFFv1Parser.extractPortrait(from: data, externalPalette: externalPalette)
         }
     }
     
@@ -97,13 +117,14 @@ public final class SFFParser {
         guard let data = try? Data(contentsOf: sffURL) else {
             return .failure(.fileNotFound(sffURL))
         }
-        return extractStagePreviewResult(from: data)
+        let debugName = sffURL.deletingPathExtension().lastPathComponent
+        return extractStagePreviewResult(from: data, debugName: debugName)
     }
     
     /// Extract stage preview from SFF data
     /// - Parameter data: Raw SFF file data
     /// - Returns: Result containing the extracted preview image or an error
-    public static func extractStagePreviewResult(from data: Data) -> Result<NSImage, SFFError> {
+    public static func extractStagePreviewResult(from data: Data, debugName: String? = nil) -> Result<NSImage, SFFError> {
         guard data.count > 32 else {
             return .failure(.fileTooSmall)
         }
@@ -118,7 +139,7 @@ public final class SFFParser {
         if verHi >= 2 {
             return SFFv2Parser.extractStagePreview(from: data)
         } else {
-            return SFFv1Parser.extractStagePreview(from: data)
+            return SFFv1Parser.extractStagePreviewWithDebug(from: data, debugName: debugName)
         }
     }
     
@@ -208,7 +229,7 @@ public struct SFFv1Parser: SFFVersionParser {
     
     public static var version: Int { 1 }
     
-    public static func extractPortrait(from data: Data) -> Result<NSImage, SFFError> {
+    public static func extractPortrait(from data: Data, externalPalette: Data? = nil) -> Result<NSImage, SFFError> {
         guard data.count > 32 else {
             return .failure(.fileTooSmall)
         }
@@ -221,7 +242,13 @@ public struct SFFv1Parser: SFFVersionParser {
         }
         
         var offset = Int(firstSubfileOffset)
-        var paletteData: Data?
+        var paletteData: Data? = externalPalette  // Use external palette as initial fallback
+        
+        // Collect group 9000 portrait candidates
+        // Convention: 9000,0 = small selection icon, 9000,1 = large portrait, 9000,2 = alternate portrait
+        var sprite9000_0: (offset: Int, length: UInt32, samePalette: UInt8)?
+        var sprite9000_1: (offset: Int, length: UInt32, samePalette: UInt8)?
+        var sprite9000_2: (offset: Int, length: UInt32, samePalette: UInt8)?
         
         for i in 0..<min(Int(numImages), 2000) {
             guard offset + 32 <= data.count else { break }
@@ -233,28 +260,31 @@ public struct SFFv1Parser: SFFVersionParser {
             let linkedIndex = SFFUtils.readUInt16(data, at: offset + 16)
             let samePalette = data[offset + 18]
             
-            // Store palette from first sprite
-            if i == 0 && subfileLength > 0 {
+            // Try to extract embedded palette from first sprite that has samePalette=0
+            // Embedded palette takes PRIORITY over external .act (which may be alternate palette)
+            if i == 0 && subfileLength > 0 && samePalette == 0 {
                 let pcxStart = offset + 32
                 let pcxEnd = min(pcxStart + Int(subfileLength), data.count)
                 if pcxEnd > pcxStart {
-                    paletteData = extractPCXPalette(from: data[pcxStart..<pcxEnd])
+                    if let embeddedPalette = extractPCXPalette(from: data[pcxStart..<pcxEnd]) {
+                        // Embedded palette is the character's primary palette - use it
+                        paletteData = embeddedPalette
+                    }
                 }
             }
             
-            // Portrait is group 9000, image 0
-            if groupNum == 9000 && imageNum == 0 {
-                if linkedIndex != 0 && linkedIndex < numImages {
-                    // Linked sprite - skip
-                } else if subfileLength > 0 {
-                    let pcxStart = offset + 32
-                    let pcxEnd = min(pcxStart + Int(subfileLength), data.count)
-                    if pcxEnd > pcxStart {
-                        let pcxData = data[pcxStart..<pcxEnd]
-                        if let image = decodePCX(Data(pcxData), sharedPalette: samePalette != 0 ? paletteData : nil) {
-                            return .success(image)
-                        }
-                    }
+            // Look for portrait sprites in group 9000
+            if groupNum == 9000 && linkedIndex == 0 && subfileLength > 0 {
+                if imageNum == 0 {
+                    sprite9000_0 = (offset, subfileLength, samePalette)
+                } else if imageNum == 1 {
+                    sprite9000_1 = (offset, subfileLength, samePalette)
+                } else if imageNum == 2 {
+                    sprite9000_2 = (offset, subfileLength, samePalette)
+                }
+                // Early exit if we found all candidates
+                if sprite9000_0 != nil && sprite9000_1 != nil && sprite9000_2 != nil {
+                    break
                 }
             }
             
@@ -262,10 +292,46 @@ public struct SFFv1Parser: SFFVersionParser {
             offset = Int(nextOffset)
         }
         
+        // Helper to decode and check if image is appropriate size for portrait
+        func tryDecode(_ candidate: (offset: Int, length: UInt32, samePalette: UInt8)?, imageNum: Int) -> (image: NSImage, isGoodSize: Bool)? {
+            guard let c = candidate else { return nil }
+            let pcxStart = c.offset + 32
+            let pcxEnd = min(pcxStart + Int(c.length), data.count)
+            guard pcxEnd > pcxStart else { return nil }
+            let pcxData = data[pcxStart..<pcxEnd]
+            
+            // If samePalette != 0, sprite uses shared palette (from first sprite or external .act)
+            // Always pass paletteData as fallback for sprites needing shared palette
+            let useSharedPalette = c.samePalette != 0
+            guard let image = decodePCX(Data(pcxData), sharedPalette: useSharedPalette ? paletteData : nil) else { return nil }
+            
+            // "Good size" = typical portrait range (80-250 pixels), not tiny icon or huge VS screen
+            let isGoodSize = image.size.width >= 80 && image.size.width <= 250 && 
+                             image.size.height >= 80 && image.size.height <= 250
+            return (image, isGoodSize)
+        }
+        
+        // Priority order: 9000,1, 9000,2, 9000,0
+        // But prefer "good size" portraits over oversized VS screens
+        let decoded1 = tryDecode(sprite9000_1, imageNum: 1)
+        let decoded2 = tryDecode(sprite9000_2, imageNum: 2)
+        let decoded0 = tryDecode(sprite9000_0, imageNum: 0)
+        
+        // Return first good-sized portrait, or first decodable image as fallback
+        if let d1 = decoded1, d1.isGoodSize { return .success(d1.image) }
+        if let d2 = decoded2, d2.isGoodSize { return .success(d2.image) }
+        if let d1 = decoded1 { return .success(d1.image) }  // 9000,1 even if oversized
+        if let d2 = decoded2 { return .success(d2.image) }  // 9000,2 even if oversized  
+        if let d0 = decoded0 { return .success(d0.image) }  // 9000,0 baseline fallback
+        
         return .failure(.spriteNotFound(group: 9000, image: 0))
     }
     
     public static func extractStagePreview(from data: Data) -> Result<NSImage, SFFError> {
+        return extractStagePreviewWithDebug(from: data, debugName: nil)
+    }
+    
+    public static func extractStagePreviewWithDebug(from data: Data, debugName: String?) -> Result<NSImage, SFFError> {
         let spriteCount = SFFUtils.readUInt32(data, at: 20)
         let firstSpriteOffset = SFFUtils.readUInt32(data, at: 24)
         
@@ -289,7 +355,7 @@ public struct SFFv1Parser: SFFVersionParser {
                 guard pcxEnd <= data.count else { continue }
                 
                 let pcxData = data[pcxStart..<pcxEnd]
-                if let image = decodePCX(Data(pcxData), sharedPalette: nil) {
+                if let image = decodePCX(Data(pcxData), sharedPalette: nil, debugContext: nil) {
                     return .success(image)
                 }
             }
@@ -298,7 +364,40 @@ public struct SFFv1Parser: SFFVersionParser {
             offset = Int(nextOffset)
         }
         
-        // Second pass: fall back to group 0 (background sprite)
+        // Second pass: find the LARGEST sprite (best represents the stage background)
+        // Group 0,0 is sometimes a transparent overlay, so we want the biggest actual sprite
+        var largestOffset = 0
+        var largestLength: UInt32 = 0
+        offset = Int(firstSpriteOffset)
+        
+        for _ in 0..<min(Int(spriteCount), 100) {
+            guard offset + 32 <= data.count else { break }
+            
+            let nextOffset = SFFUtils.readUInt32(data, at: offset)
+            let dataLength = SFFUtils.readUInt32(data, at: offset + 4)
+            
+            if dataLength > largestLength {
+                largestLength = dataLength
+                largestOffset = offset
+            }
+            
+            if nextOffset == 0 || nextOffset <= offset { break }
+            offset = Int(nextOffset)
+        }
+        
+        // Try the largest sprite
+        if largestLength > 0 {
+            let pcxStart = largestOffset + 32
+            let pcxEnd = pcxStart + Int(largestLength)
+            if pcxEnd <= data.count {
+                let pcxData = data[pcxStart..<pcxEnd]
+                if let image = decodePCX(Data(pcxData), sharedPalette: nil, debugContext: nil) {
+                    return .success(image)
+                }
+            }
+        }
+        
+        // Third pass: fall back to group 0,0 even if it might be transparent
         offset = Int(firstSpriteOffset)
         
         for _ in 0..<min(Int(spriteCount), 100) {
@@ -315,7 +414,7 @@ public struct SFFv1Parser: SFFVersionParser {
                 guard pcxEnd <= data.count else { continue }
                 
                 let pcxData = data[pcxStart..<pcxEnd]
-                if let image = decodePCX(Data(pcxData), sharedPalette: nil) {
+                if let image = decodePCX(Data(pcxData), sharedPalette: nil, debugContext: nil) {
                     return .success(image)
                 }
             }
@@ -339,7 +438,7 @@ public struct SFFv1Parser: SFFVersionParser {
         return nil
     }
     
-    private static func decodePCX(_ data: Data, sharedPalette: Data?) -> NSImage? {
+    private static func decodePCX(_ data: Data, sharedPalette: Data?, debugContext: String? = nil) -> NSImage? {
         guard data.count > 128 else { return nil }
         
         let manufacturer = data[0]
@@ -361,16 +460,23 @@ public struct SFFv1Parser: SFFVersionParser {
         
         let bytesPerLine = Int(UInt16(data[66]) | (UInt16(data[67]) << 8))
         
-        // Extract palette
+        // Extract palette - prefer embedded, fall back to shared/external
         var palette = [UInt8](repeating: 0, count: 768)
+        var foundEmbeddedPalette = false
+        
+        // Try to find embedded palette at end of PCX (marker byte 0x0C)
         if data.count > 769 {
             let paletteStart = data.count - 769
             if data[paletteStart] == 12 {
                 for i in 0..<768 {
                     palette[i] = data[paletteStart + 1 + i]
                 }
+                foundEmbeddedPalette = true
             }
-        } else if let sharedPal = sharedPalette, sharedPal.count >= 768 {
+        }
+        
+        // If no embedded palette found, use shared/external palette
+        if !foundEmbeddedPalette, let sharedPal = sharedPalette, sharedPal.count >= 768 {
             for i in 0..<768 {
                 palette[i] = sharedPal[sharedPal.startIndex + i]
             }
@@ -432,7 +538,7 @@ public struct SFFv2Parser: SFFVersionParser {
     
     public static var version: Int { 2 }
     
-    public static func extractPortrait(from data: Data) -> Result<NSImage, SFFError> {
+    public static func extractPortrait(from data: Data, externalPalette: Data? = nil) -> Result<NSImage, SFFError> {
         guard data.count > 36 else {
             return .failure(.fileTooSmall)
         }

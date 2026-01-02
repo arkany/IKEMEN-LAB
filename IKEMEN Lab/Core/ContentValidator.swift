@@ -372,13 +372,21 @@ public class ContentValidator {
         
         // Determine the actual file path
         let resolvedPath: URL
+        let defDir = defFile.deletingLastPathComponent()
+        
         if normalizedRef.contains("/") {
-            // Root-relative path (e.g., "stages/Bifrost.sff")
-            let rootDir = defFile.deletingLastPathComponent().deletingLastPathComponent()
-            resolvedPath = rootDir.appendingPathComponent(normalizedRef)
+            // Path contains directory - first try relative to DEF file's directory
+            let relativePath = defDir.appendingPathComponent(normalizedRef)
+            if fileManager.fileExists(atPath: relativePath.path) {
+                resolvedPath = relativePath
+            } else {
+                // Fall back to root-relative path (e.g., "stages/Bifrost.sff" from data folder)
+                let rootDir = defDir.deletingLastPathComponent()
+                resolvedPath = rootDir.appendingPathComponent(normalizedRef)
+            }
         } else {
-            // File-relative path (e.g., "Bifrost.sff")
-            resolvedPath = defFile.deletingLastPathComponent().appendingPathComponent(normalizedRef)
+            // Simple filename - relative to DEF file's directory
+            resolvedPath = defDir.appendingPathComponent(normalizedRef)
         }
         
         // Check if file exists with exact name
@@ -424,16 +432,25 @@ public class ContentValidator {
     /// Find a file with case-insensitive and special-character-tolerant matching
     private func findFileCaseInsensitive(reference: String, relativeTo defFile: URL) -> String? {
         let normalizedRef = reference.replacingOccurrences(of: "\\", with: "/")
+        let defDir = defFile.deletingLastPathComponent()
         let searchDir: URL
         let searchName: String
         
         if normalizedRef.contains("/") {
-            let rootDir = defFile.deletingLastPathComponent().deletingLastPathComponent()
             let components = normalizedRef.components(separatedBy: "/")
             searchName = components.last ?? reference
-            searchDir = rootDir.appendingPathComponent(components.dropLast().joined(separator: "/"))
+            
+            // First try relative to DEF file's directory
+            let relativeDir = defDir.appendingPathComponent(components.dropLast().joined(separator: "/"))
+            if fileManager.fileExists(atPath: relativeDir.path) {
+                searchDir = relativeDir
+            } else {
+                // Fall back to root-relative path
+                let rootDir = defDir.deletingLastPathComponent()
+                searchDir = rootDir.appendingPathComponent(components.dropLast().joined(separator: "/"))
+            }
         } else {
-            searchDir = defFile.deletingLastPathComponent()
+            searchDir = defDir
             searchName = normalizedRef
         }
         
@@ -477,14 +494,20 @@ public class ContentValidator {
         
         let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
         
+        // Filter out storyboard files (intro*.def, ending*.def) - these are cutscene definitions, not character defs
+        let characterDefFiles = defFiles.filter { file in
+            let name = file.deletingPathExtension().lastPathComponent.lowercased()
+            return !name.hasPrefix("intro") && !name.hasPrefix("ending")
+        }
+        
         // Prefer file matching folder name
         let folderName = folder.lastPathComponent.lowercased()
-        if let match = defFiles.first(where: { $0.deletingPathExtension().lastPathComponent.lowercased() == folderName }) {
+        if let match = characterDefFiles.first(where: { $0.deletingPathExtension().lastPathComponent.lowercased() == folderName }) {
             return match
         }
         
-        // Otherwise return first .def file found
-        return defFiles.first
+        // Otherwise return first valid .def file found
+        return characterDefFiles.first
     }
     
     /// Check for problematic characters in filename

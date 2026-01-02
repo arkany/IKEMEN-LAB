@@ -333,20 +333,23 @@ public final class ContentManager {
         // Read DEF file to determine content type
         for defFile in defFiles {
             if let defContent = try? String(contentsOf: defFile, encoding: .utf8).lowercased() {
-                // Stage DEF files have [StageInfo] section or bgdef/spr entries
-                let isStageFile = defContent.contains("[stageinfo]") || 
-                                  defContent.contains("[bg ") ||
-                                  defContent.contains("bgdef") ||
-                                  (defContent.contains("spr") && !defContent.contains("[files]"))
-                
                 // Character DEF files have [Files] section with cmd, cns, air, etc.
+                // Check this FIRST as it's the most specific indicator
                 let isCharacterFile = defContent.contains("[files]") && 
                                      (defContent.contains(".cmd") || defContent.contains(".cns") || defContent.contains(".air"))
                 
-                if isStageFile && !isCharacterFile {
-                    return try installStage(from: folderURL, to: workingDir)
-                } else if isCharacterFile {
+                if isCharacterFile {
                     return try installCharacter(from: folderURL, to: workingDir)
+                }
+                
+                // Stage DEF files have [StageInfo] or [BGdef] section
+                // Only check after confirming it's NOT a character
+                let isStageFile = defContent.contains("[stageinfo]") || 
+                                  defContent.contains("[bgdef]") ||
+                                  defContent.contains("[bg ")
+                
+                if isStageFile {
+                    return try installStage(from: folderURL, to: workingDir)
                 }
             }
         }

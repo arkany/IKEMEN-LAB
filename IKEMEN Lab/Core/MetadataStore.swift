@@ -340,6 +340,9 @@ public final class MetadataStore {
             let stageId = file.deletingPathExtension().lastPathComponent
             if stageId.hasPrefix(".") { continue }
             
+            // Skip non-stage .def files (storyboards, characters, fonts, etc.)
+            guard DEFParser.isValidStageDefFile(file) else { continue }
+            
             foundIds.insert(stageId)
             
             let info = StageInfo(defFile: file)

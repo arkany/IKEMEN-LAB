@@ -94,8 +94,14 @@ public struct StageInfo: Identifiable, Hashable {
                 // File-relative path - resolve from same directory as .def
                 self.sffFile = defFile.deletingLastPathComponent().appendingPathComponent(normalizedPath)
             }
+            
+            // Debug: check if file exists
+            if let sff = self.sffFile, !FileManager.default.fileExists(atPath: sff.path) {
+                print("[StageInfo] WARNING: SFF not found: \(sff.path)")
+            }
         } else {
             self.sffFile = nil
+            print("[StageInfo] WARNING: No spriteFile for \(defFile.lastPathComponent)")
         }
     }
 }
