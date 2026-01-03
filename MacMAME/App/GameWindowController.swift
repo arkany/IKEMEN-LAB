@@ -8,8 +8,8 @@ enum NavItem: String, CaseIterable {
     case dashboard = "Dashboard"
     case characters = "Characters"
     case stages = "Stages"
-    case addons = "Screenpacks"
-    case soundpacks = "Soundpacks"  // Hidden for now
+    case addons = "Add-ons"
+    case screenpacks = "Soundpacks"
     case settings = "Settings"
     
     /// SF Symbol name for each nav item
@@ -19,7 +19,7 @@ enum NavItem: String, CaseIterable {
         case .characters: return "figure.fencing"
         case .stages: return "photo"
         case .addons: return "square.stack.3d.up"
-        case .soundpacks: return "music.note"
+        case .screenpacks: return "music.note"
         case .settings: return "gearshape"
         }
     }
@@ -32,14 +32,6 @@ enum NavItem: String, CaseIterable {
         }
     }
     
-    /// Whether this item is hidden from the sidebar
-    var isHidden: Bool {
-        switch self {
-        case .soundpacks: return true
-        default: return false
-        }
-    }
-    
     /// Legacy icon name (for compatibility)
     var iconName: String {
         switch self {
@@ -47,7 +39,7 @@ enum NavItem: String, CaseIterable {
         case .characters: return "characters"
         case .stages: return "stages"
         case .addons: return "lifebars"
-        case .soundpacks: return "screenpacks"
+        case .screenpacks: return "screenpacks"
         case .settings: return "settings"
         }
     }
@@ -174,100 +166,6 @@ class GameWindowController: NSWindowController {
         
         // Select dashboard by default (after all views are initialized)
         selectNavItem(.dashboard)
-        
-        // Show FRE if needed (after short delay to let window appear)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.showFirstRunExperienceIfNeeded()
-        }
-    }
-    
-    // MARK: - First Run Experience
-    
-    private var firstRunView: FirstRunView?
-    
-    private func showFirstRunExperienceIfNeeded() {
-        let settings = AppSettings.shared
-        
-        // Skip if already completed FRE and has valid installation
-        if settings.hasCompletedFRE && settings.hasValidIkemenGOInstallation {
-            return
-        }
-        
-        // Also skip if development environment already has working directory
-        if ikemenBridge.workingDirectory != nil && settings.hasCompletedFRE {
-            return
-        }
-        
-        showFirstRunExperience()
-    }
-    
-    private func showFirstRunExperience() {
-        guard let window = window, let contentView = window.contentView else { return }
-        
-        // Apply blur to main content
-        sidebarView.alphaValue = 0.5
-        mainAreaView.alphaValue = 0.5
-        
-        // Create and show FRE overlay
-        let freView = FirstRunView(frame: contentView.bounds)
-        freView.translatesAutoresizingMaskIntoConstraints = false
-        firstRunView = freView
-        
-        freView.onComplete = { [weak self] selectedPath in
-            self?.handleFREComplete(with: selectedPath)
-        }
-        
-        freView.onSkip = { [weak self] in
-            self?.handleFRESkipped()
-        }
-        
-        contentView.addSubview(freView)
-        
-        NSLayoutConstraint.activate([
-            freView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            freView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            freView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            freView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-        ])
-        
-        // Animate in
-        freView.alphaValue = 0
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.3
-            freView.animator().alphaValue = 1
-        }
-    }
-    
-    private func handleFREComplete(with path: URL) {
-        let settings = AppSettings.shared
-        settings.ikemenGOPath = path
-        settings.hasCompletedFRE = true
-        
-        // Update the bridge to use the new path
-        ikemenBridge.setWorkingDirectory(path)
-        
-        // Refresh content
-        ikemenBridge.loadContent()
-        
-        // Restore main UI
-        restoreMainUIAfterFRE()
-        
-        // Show success toast
-        ToastManager.shared.showSuccess(title: "IKEMEN GO linked successfully!")
-    }
-    
-    private func handleFRESkipped() {
-        AppSettings.shared.hasCompletedFRE = true
-        restoreMainUIAfterFRE()
-    }
-    
-    private func restoreMainUIAfterFRE() {
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.3
-            sidebarView.animator().alphaValue = 1
-            mainAreaView.animator().alphaValue = 1
-        }
-        firstRunView = nil
     }
     
     // MARK: - Sidebar Setup
@@ -335,8 +233,8 @@ class GameWindowController: NSWindowController {
         navStack.alignment = .leading
         sidebarView.addSubview(navStack)
         
-        // Add nav items (except Settings and hidden items)
-        for item in NavItem.allCases where item != .settings && !item.isHidden {
+        // Add nav items (except Settings)
+        for item in NavItem.allCases where item != .settings {
             let button = createNewNavButton(for: item)
             navButtons[item] = button
             navStack.addArrangedSubview(button)
@@ -703,9 +601,6 @@ class GameWindowController: NSWindowController {
         dashboardView.onNavigateToStages = { [weak self] in
             self?.selectNavItem(.stages)
         }
-        dashboardView.onValidateContent = { [weak self] in
-            self?.runContentValidation()
-        }
         mainAreaView.addSubview(dashboardView)
         
         // Drop Zone (visible in empty state - legacy, kept for other views)
@@ -759,12 +654,6 @@ class GameWindowController: NSWindowController {
         characterDetailsView.showPlaceholder()  // Show placeholder initially
         characterDetailsView.onNameChanged = { [weak self] character, newName in
             self?.updateCharacterName(character, newName: newName)
-        }
-        characterDetailsView.onOpenFolder = { character in
-            NSWorkspace.shared.activateFileViewerSelecting([character.directory])
-        }
-        characterDetailsView.onDeleteCharacter = { [weak self] character in
-            self?.confirmRemoveCharacter(character)
         }
         mainAreaView.addSubview(characterDetailsView)
         
@@ -869,6 +758,7 @@ class GameWindowController: NSWindowController {
     @objc private func viewModeToggled(_ sender: NSSegmentedControl) {
         currentViewMode = sender.selectedSegment == 0 ? .grid : .list
         characterBrowserView.viewMode = currentViewMode
+        stageBrowserView.viewMode = currentViewMode
         screenpackBrowserView.viewMode = currentViewMode
     }
     
@@ -890,7 +780,7 @@ class GameWindowController: NSWindowController {
         }
         
         // Show/hide view mode toggle for content browsers
-        let showToggle = selectedNavItem == .characters || selectedNavItem == .stages || selectedNavItem == .soundpacks
+        let showToggle = selectedNavItem == .characters || selectedNavItem == .stages || selectedNavItem == .screenpacks
         viewModeToggle?.isHidden = !showToggle
         
         // Show/hide content header (hidden on dashboard)
@@ -903,7 +793,7 @@ class GameWindowController: NSWindowController {
             contentHeaderView?.setCurrentPage("Characters")
         case .stages:
             contentHeaderView?.setCurrentPage("Stages")
-        case .soundpacks:
+        case .screenpacks:
             contentHeaderView?.setCurrentPage("Screenpacks")
         case .addons:
             contentHeaderView?.setCurrentPage("Add-ons")
@@ -944,21 +834,21 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = false
             screenpackBrowserView?.isHidden = true
-        case .soundpacks:
-            // TODO: Implement soundpacks browser
-            dashboardView?.isHidden = true
-            dropZoneView?.isHidden = false
-            characterBrowserView?.isHidden = true
-            stageBrowserView?.isHidden = true
-            screenpackBrowserView?.isHidden = true
-        case .addons:
-            // Screenpacks browser (add-ons tab)
+            stageBrowserView?.viewMode = currentViewMode
+        case .screenpacks:
             dashboardView?.isHidden = true
             dropZoneView?.isHidden = true
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = false
             screenpackBrowserView?.viewMode = currentViewMode
+        case .addons:
+            // TODO: Implement add-ons browser
+            dashboardView?.isHidden = true
+            dropZoneView?.isHidden = false
+            characterBrowserView?.isHidden = true
+            stageBrowserView?.isHidden = true
+            screenpackBrowserView?.isHidden = true
         case .settings:
             // Show settings panel
             dashboardView?.isHidden = true
@@ -1060,8 +950,8 @@ class GameWindowController: NSWindowController {
                 }
             }
             
-        case .soundpacks:
-            // Soundpacks don't have MetadataStore yet, use simple filtering
+        case .screenpacks:
+            // Screenpacks don't have MetadataStore yet, use simple filtering
             let allScreenpacks = ikemenBridge.screenpacks
             if query.isEmpty {
                 screenpackBrowserView?.setScreenpacks(allScreenpacks)
@@ -1356,17 +1246,6 @@ class GameWindowController: NSWindowController {
         ])
         stackView.addArrangedSubview(advancedSection)
         
-        // Maintenance Section
-        let maintenanceSection = createSettingsSection(title: "Maintenance", settings: [
-            createButtonSetting(
-                label: "Image Cache",
-                buttonTitle: "Clear Cache",
-                description: "Clears cached character portraits and stage previews. Use if images appear outdated.",
-                action: #selector(clearImageCache(_:))
-            ),
-        ])
-        stackView.addArrangedSubview(maintenanceSection)
-        
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: container.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
@@ -1546,39 +1425,6 @@ class GameWindowController: NSWindowController {
         return container
     }
     
-    /// Create a button setting with label and description
-    private func createButtonSetting(label: String, buttonTitle: String, description: String, action: Selector) -> NSView {
-        let container = NSStackView()
-        container.orientation = .vertical
-        container.spacing = 4
-        container.alignment = .leading
-        
-        let row = NSStackView()
-        row.orientation = .horizontal
-        row.spacing = 16
-        row.alignment = .centerY
-        
-        let labelField = NSTextField(labelWithString: label)
-        labelField.font = DesignFonts.body(size: 16)
-        labelField.textColor = DesignColors.textPrimary
-        labelField.widthAnchor.constraint(equalToConstant: 200).isActive = true
-        row.addArrangedSubview(labelField)
-        
-        let button = NSButton(title: buttonTitle, target: self, action: action)
-        button.bezelStyle = .rounded
-        row.addArrangedSubview(button)
-        
-        container.addArrangedSubview(row)
-        
-        // Add description label
-        let descLabel = NSTextField(labelWithString: description)
-        descLabel.font = NSFont.systemFont(ofSize: 12)
-        descLabel.textColor = DesignColors.textSecondary
-        container.addArrangedSubview(descLabel)
-        
-        return container
-    }
-    
     // MARK: - Settings Actions
     
     @objc private func resolutionChanged(_ sender: NSPopUpButton) {
@@ -1611,21 +1457,6 @@ class GameWindowController: NSWindowController {
         }
         
         saveIkemenConfigValue(section: section, key: key, value: "\(sender.intValue)")
-    }
-    
-    @objc private func clearImageCache(_ sender: NSButton) {
-        ImageCache.shared.clear()
-        
-        // Show confirmation
-        let alert = NSAlert()
-        alert.messageText = "Cache Cleared"
-        alert.informativeText = "The image cache has been cleared. Character portraits and stage previews will be reloaded."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
-        
-        // Refresh the current view to reload images
-        NotificationCenter.default.post(name: NSNotification.Name("ImageCacheCleared"), object: nil)
     }
     
     // MARK: - Stage Creation
@@ -1966,61 +1797,6 @@ class GameWindowController: NSWindowController {
             } catch {
                 showError("Launch Failed", detail: error.localizedDescription)
             }
-        }
-    }
-    
-    // MARK: - Content Validation
-    
-    private func runContentValidation() {
-        guard let workingDir = ikemenBridge.workingDirectory else {
-            showError("Validation Failed", detail: "IKEMEN GO directory not configured")
-            return
-        }
-        
-        // Run validation in background
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let validator = ContentValidator.shared
-            
-            let stageResults = validator.validateAllStages(in: workingDir)
-            let charResults = validator.validateAllCharacters(in: workingDir)
-            let placementResults = validator.validateContentPlacement(in: workingDir)
-            
-            DispatchQueue.main.async {
-                self?.showValidationResults(stages: stageResults, characters: charResults, placement: placementResults)
-            }
-        }
-    }
-    
-    private func showValidationResults(stages: [ContentValidator.ValidationResult], characters: [ContentValidator.ValidationResult], placement: [ContentValidator.ValidationResult] = []) {
-        let allResults = stages + characters + placement
-        
-        // Update dashboard health status
-        dashboardView?.updateHealthStatus(results: allResults)
-        
-        let errorCount = allResults.reduce(0) { $0 + $1.errorCount }
-        let warningCount = allResults.reduce(0) { $0 + $1.warningCount }
-        
-        if errorCount == 0 && warningCount == 0 {
-            // Show success toast (health card already updated)
-            ToastManager.shared.showSuccess(title: "All content validated successfully!")
-            return
-        }
-        
-        // For now, just show toast - the dashboard card shows the count
-        // User can click "Fix All" on the dashboard if there are fixable issues
-        let fixableCount = allResults.reduce(0) { total, result in
-            total + result.issues.filter { $0.isFixable }.count
-        }
-        
-        var message = "Found \(errorCount) error(s), \(warningCount) warning(s)"
-        if fixableCount > 0 {
-            message += ". \(fixableCount) can be auto-fixed."
-        }
-        
-        if errorCount > 0 {
-            ToastManager.shared.showError(title: "Validation Issues Found", subtitle: message)
-        } else {
-            ToastManager.shared.showInfo(title: "Validation Complete", subtitle: message)
         }
     }
     
