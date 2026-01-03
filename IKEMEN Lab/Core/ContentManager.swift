@@ -556,6 +556,9 @@ public final class ContentManager {
     }
     
     /// Find the correct select.def entry for a character
+    /// IKEMEN GO expects either:
+    /// - Just folder name (e.g., "kfm") if folder/folder.def exists with exact case match
+    /// - Explicit path (e.g., "Bbhood/BBHood.def") if the def filename differs from folder name
     private func findCharacterDefEntry(charName: String, in charPath: URL) -> String {
         guard let contents = try? fileManager.contentsOfDirectory(at: charPath, includingPropertiesForKeys: nil) else {
             return charName
@@ -563,23 +566,25 @@ public final class ContentManager {
         
         let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
         
-        // If there's exactly one .def file and its name doesn't match the folder
-        if defFiles.count == 1, let defFile = defFiles.first {
-            let defName = defFile.deletingPathExtension().lastPathComponent
-            if defName.lowercased() != charName.lowercased() {
-                return "\(charName)/\(defFile.lastPathComponent)"
-            }
+        // Look for a .def file with EXACT case match to folder name
+        // e.g., folder "kfm" needs "kfm.def" (not "KFM.def" or "Kfm.def")
+        let exactMatchDef = defFiles.first { 
+            $0.deletingPathExtension().lastPathComponent == charName 
         }
         
-        // If there's a .def file matching the folder name, just use folder name
-        let matchingDef = defFiles.first { $0.deletingPathExtension().lastPathComponent.lowercased() == charName.lowercased() }
-        if matchingDef != nil {
+        if exactMatchDef != nil {
+            // Exact match - can use just the folder name
             return charName
         }
         
-        // If no exact match but there are def files, use the first one
-        if let firstDef = defFiles.first {
-            return "\(charName)/\(firstDef.lastPathComponent)"
+        // No exact match - need explicit path
+        // Prefer a def file that matches case-insensitively, otherwise use first def
+        let caseInsensitiveMatch = defFiles.first { 
+            $0.deletingPathExtension().lastPathComponent.lowercased() == charName.lowercased() 
+        }
+        
+        if let defFile = caseInsensitiveMatch ?? defFiles.first {
+            return "\(charName)/\(defFile.lastPathComponent)"
         }
         
         return charName
@@ -593,55 +598,30 @@ public final class ContentManager {
         
         let contents = try fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
         var installedStages: [String] = []
-        var renamedFiles: [(String, String)] = []
         
         for file in contents {
             let ext = file.pathExtension.lowercased()
-            let originalName = file.deletingPathExtension().lastPathComponent
             
-            // Sanitize the filename (without extension)
-            var sanitizedBaseName = sanitizeFolderName(originalName)
-            var sanitizedFileName = ext.isEmpty ? sanitizedBaseName : "\(sanitizedBaseName).\(ext)"
-            var destPath = stagesDir.appendingPathComponent(sanitizedFileName)
+            // IMPORTANT: Do NOT sanitize stage filenames!
+            // Stage .def files contain internal references to .sff files by exact name.
+            // Renaming breaks these references and causes IKEMEN GO to crash.
+            // Example: Green_Might_Hulk.def references "stages/Green_Might_(Hulk).sff"
+            // If we rename the .sff, the .def can't find it.
+            let destFileName = file.lastPathComponent
+            let destPath = stagesDir.appendingPathComponent(destFileName)
             
-            // Check for collision with different file
+            // Check for collision with existing file - if exists, replace it (update)
             if fileManager.fileExists(atPath: destPath.path) {
-                // For stages, we can't easily compare "same stage" vs "different stage"
-                // So we check if the original name matches (case-insensitive)
-                let existingIsUpdate = originalName.lowercased() == sanitizedBaseName.lowercased()
-                
-                if !existingIsUpdate {
-                    // Collision - append number to make unique
-                    var counter = 2
-                    var uniqueBase = "\(sanitizedBaseName)_\(counter)"
-                    var uniqueFile = ext.isEmpty ? uniqueBase : "\(uniqueBase).\(ext)"
-                    var uniquePath = stagesDir.appendingPathComponent(uniqueFile)
-                    while fileManager.fileExists(atPath: uniquePath.path) {
-                        counter += 1
-                        uniqueBase = "\(sanitizedBaseName)_\(counter)"
-                        uniqueFile = ext.isEmpty ? uniqueBase : "\(uniqueBase).\(ext)"
-                        uniquePath = stagesDir.appendingPathComponent(uniqueFile)
-                    }
-                    sanitizedBaseName = uniqueBase
-                    sanitizedFileName = uniqueFile
-                    destPath = uniquePath
-                } else {
-                    // True update - remove old file
-                    try fileManager.removeItem(at: destPath)
-                }
-            }
-            
-            // Track if we renamed
-            if sanitizedFileName != file.lastPathComponent {
-                renamedFiles.append((file.lastPathComponent, sanitizedFileName))
+                try fileManager.removeItem(at: destPath)
             }
             
             try fileManager.copyItem(at: file, to: destPath)
             
             if ext == "def" {
-                installedStages.append(sanitizedBaseName)
+                let stageName = file.deletingPathExtension().lastPathComponent
+                installedStages.append(stageName)
                 // Clear cached images
-                ImageCache.shared.clearStage(sanitizedBaseName)
+                ImageCache.shared.clearStage(stageName)
                 
                 // Index in metadata database
                 let info = StageInfo(defFile: destPath)
@@ -661,12 +641,6 @@ public final class ContentManager {
             result = "Installed \(installedStages.count) stages: \(installedStages.joined(separator: ", "))"
         } else {
             result = "No stages found to install"
-        }
-        
-        // Note any renamed files
-        if !renamedFiles.isEmpty {
-            let renamedNote = renamedFiles.map { "\($0.0) → \($0.1)" }.joined(separator: ", ")
-            result += " (renamed: \(renamedNote))"
         }
         
         return result
