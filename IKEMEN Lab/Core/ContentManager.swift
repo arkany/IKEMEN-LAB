@@ -331,27 +331,45 @@ public final class ContentManager {
         }
         
         // Read DEF file to determine content type
+        // Filter out storyboard .def files (intros/endings with [SceneDef])
+        var characterDefFile: URL? = nil
+        var stageDefFile: URL? = nil
+        
         for defFile in defFiles {
             if let defContent = try? String(contentsOf: defFile, encoding: .utf8).lowercased() {
+                // Skip storyboards (intros/endings) - they have [SceneDef] section
+                if defContent.contains("[scenedef]") {
+                    continue
+                }
+                
                 // Character DEF files have [Files] section with cmd, cns, air, etc.
-                // Check this FIRST as it's the most specific indicator
                 let isCharacterFile = defContent.contains("[files]") && 
                                      (defContent.contains(".cmd") || defContent.contains(".cns") || defContent.contains(".air"))
                 
                 if isCharacterFile {
-                    return try installCharacter(from: folderURL, to: workingDir)
+                    characterDefFile = defFile
+                    break  // Found a character, use it
                 }
                 
                 // Stage DEF files have [StageInfo] or [BGdef] section
-                // Only check after confirming it's NOT a character
                 let isStageFile = defContent.contains("[stageinfo]") || 
                                   defContent.contains("[bgdef]") ||
                                   defContent.contains("[bg ")
                 
                 if isStageFile {
-                    return try installStage(from: folderURL, to: workingDir)
+                    stageDefFile = defFile
+                    // Don't break - keep looking for characters (they take priority)
                 }
             }
+        }
+        
+        // Install based on what we found (character takes priority over stage)
+        if characterDefFile != nil {
+            return try installCharacter(from: folderURL, to: workingDir)
+        }
+        
+        if stageDefFile != nil {
+            return try installStage(from: folderURL, to: workingDir)
         }
         
         // Fallback: check for character-specific files
@@ -395,17 +413,76 @@ public final class ContentManager {
         // Copy to data directory
         try fileManager.copyItem(at: source, to: destPath)
         
-        // If the screenpack has a select.def, sync existing characters to it
-        let screenpackSelectDef = destPath.appendingPathComponent("select.def")
-        if fileManager.fileExists(atPath: screenpackSelectDef.path) {
-            syncCharactersToScreenpack(selectDefPath: screenpackSelectDef, workingDir: workingDir)
-        }
+        // Redirect screenpack to use the global select.def instead of its own
+        redirectScreenpackToGlobalSelectDef(screenpackPath: destPath)
         
         let action = isUpdate ? "Updated" : "Installed"
         return "\(action) screenpack: \(displayName)"
     }
     
+    /// Modify a screenpack's system.def to use the global select.def
+    /// This ensures all screenpacks share the same character roster
+    private func redirectScreenpackToGlobalSelectDef(screenpackPath: URL) {
+        let systemDefPath = screenpackPath.appendingPathComponent("system.def")
+        
+        guard fileManager.fileExists(atPath: systemDefPath.path),
+              var content = try? String(contentsOf: systemDefPath, encoding: .utf8) else {
+            return
+        }
+        
+        // Find and replace select.def references to point to the global one
+        // Common patterns: "select = select.def" or "select=select.def"
+        // Replace with path relative from data/screenpack/ back to data/select.def
+        let patterns = [
+            (try? NSRegularExpression(pattern: #"^(\s*select\s*=\s*)select\.def"#, options: [.anchorsMatchLines, .caseInsensitive])),
+            (try? NSRegularExpression(pattern: #"^(\s*select\s*=\s*)["\']?select\.def["\']?"#, options: [.anchorsMatchLines, .caseInsensitive]))
+        ]
+        
+        var modified = false
+        for pattern in patterns.compactMap({ $0 }) {
+            let range = NSRange(content.startIndex..., in: content)
+            if pattern.firstMatch(in: content, range: range) != nil {
+                content = pattern.stringByReplacingMatches(in: content, range: range, withTemplate: "$1../select.def")
+                modified = true
+            }
+        }
+        
+        if modified {
+            try? content.write(to: systemDefPath, atomically: true, encoding: .utf8)
+            print("Redirected screenpack to global select.def: \(screenpackPath.lastPathComponent)")
+        }
+    }
+    
+    /// Redirect all installed screenpacks to use the global select.def
+    /// Call this to fix existing screenpacks that have their own select.def
+    public func redirectAllScreenpacksToGlobalSelectDef(in workingDir: URL) -> Int {
+        let dataDir = workingDir.appendingPathComponent("data")
+        var fixedCount = 0
+        
+        guard let contents = try? fileManager.contentsOfDirectory(at: dataDir, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return 0
+        }
+        
+        for item in contents {
+            var isDir: ObjCBool = false
+            if fileManager.fileExists(atPath: item.path, isDirectory: &isDir), isDir.boolValue {
+                let systemDefPath = item.appendingPathComponent("system.def")
+                if fileManager.fileExists(atPath: systemDefPath.path) {
+                    // Check if this screenpack has its own select.def that might be in use
+                    let screenpackSelectDef = item.appendingPathComponent("select.def")
+                    if fileManager.fileExists(atPath: screenpackSelectDef.path) {
+                        redirectScreenpackToGlobalSelectDef(screenpackPath: item)
+                        fixedCount += 1
+                    }
+                }
+            }
+        }
+        
+        return fixedCount
+    }
+    
     /// Sync characters from the chars/ folder to a screenpack's select.def
+    @available(*, deprecated, message: "Use redirectScreenpackToGlobalSelectDef instead")
     public func syncCharactersToScreenpack(selectDefPath: URL, workingDir: URL) {
         let charsDir = workingDir.appendingPathComponent("chars")
         
@@ -559,6 +636,7 @@ public final class ContentManager {
     /// IKEMEN GO expects either:
     /// - Just folder name (e.g., "kfm") if folder/folder.def exists with exact case match
     /// - Explicit path (e.g., "Bbhood/BBHood.def") if the def filename differs from folder name
+    /// NOTE: Skips storyboard .def files (intros/endings with [SceneDef])
     private func findCharacterDefEntry(charName: String, in charPath: URL) -> String {
         guard let contents = try? fileManager.contentsOfDirectory(at: charPath, includingPropertiesForKeys: nil) else {
             return charName
@@ -566,9 +644,21 @@ public final class ContentManager {
         
         let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
         
+        // Filter out storyboard .def files (they have [SceneDef] section)
+        let characterDefFiles = defFiles.filter { defFile in
+            guard let content = try? String(contentsOf: defFile, encoding: .utf8).lowercased() else {
+                return false
+            }
+            // Must have [Files] section and NOT have [SceneDef]
+            return content.contains("[files]") && !content.contains("[scenedef]")
+        }
+        
+        // If no character defs found, fall back to all defs (for safety)
+        let candidateDefs = characterDefFiles.isEmpty ? defFiles : characterDefFiles
+        
         // Look for a .def file with EXACT case match to folder name
         // e.g., folder "kfm" needs "kfm.def" (not "KFM.def" or "Kfm.def")
-        let exactMatchDef = defFiles.first { 
+        let exactMatchDef = candidateDefs.first { 
             $0.deletingPathExtension().lastPathComponent == charName 
         }
         
@@ -579,11 +669,11 @@ public final class ContentManager {
         
         // No exact match - need explicit path
         // Prefer a def file that matches case-insensitively, otherwise use first def
-        let caseInsensitiveMatch = defFiles.first { 
+        let caseInsensitiveMatch = candidateDefs.first { 
             $0.deletingPathExtension().lastPathComponent.lowercased() == charName.lowercased() 
         }
         
-        if let defFile = caseInsensitiveMatch ?? defFiles.first {
+        if let defFile = caseInsensitiveMatch ?? candidateDefs.first {
             return "\(charName)/\(defFile.lastPathComponent)"
         }
         
