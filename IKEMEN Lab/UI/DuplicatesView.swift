@@ -265,13 +265,13 @@ extension DuplicatesView: NSTableViewDelegate {
             return nil
             
         case .characterDuplicate(let group):
-            return makeCellForDuplicateGroup(group, columnId: columnId, isCharacter: true)
+            return makeCellForDuplicateGroup(group, columnId: columnId)
             
         case .stageDuplicate(let group):
-            return makeCellForDuplicateGroup(group, columnId: columnId, isCharacter: false)
+            return makeCellForDuplicateGroup(group, columnId: columnId)
             
         case .screenpackDuplicate(let group):
-            return makeCellForDuplicateGroup(group, columnId: columnId, isCharacter: false)
+            return makeCellForDuplicateGroup(group, columnId: columnId)
             
         case .outdatedCharacter(let item):
             return makeCellForOutdatedItem(
@@ -292,7 +292,7 @@ extension DuplicatesView: NSTableViewDelegate {
     }
     
     private func makeCellForDuplicateGroup<T>(_ group: DuplicateDetector.DuplicateGroup<T>, 
-                                               columnId: String, isCharacter: Bool) -> NSView? {
+                                               columnId: String) -> NSView? {
         switch columnId {
         case "name":
             let names = group.items.compactMap { item -> String? in

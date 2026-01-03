@@ -153,21 +153,24 @@ public final class DuplicateDetector {
             
             // Find the newest version
             guard let newest = versioned.max(by: { v1, v2 in
-                v1.1.isNewerThan(v2.1) == false
+                // Return true if v2 is newer than v1 (so v2 comes later, making it the max)
+                v2.1.isNewerThan(v1.1) ?? false
             }) else { continue }
             
             // All others are outdated
             for (char, version) in versioned {
-                if char.id != newest.0.id,
-                   let isNewer = version.isNewerThan(newest.1),
-                   !isNewer {
-                    let item = OutdatedItem(
-                        item: char,
-                        newerItem: newest.0,
-                        itemVersion: version,
-                        newerVersion: newest.1
-                    )
-                    outdated.append(item)
+                if char.id != newest.0.id {
+                    // Check if this version is older than the newest
+                    // Only add if we can definitively determine it's older
+                    if let isNewer = version.isNewerThan(newest.1), !isNewer {
+                        let item = OutdatedItem(
+                            item: char,
+                            newerItem: newest.0,
+                            itemVersion: version,
+                            newerVersion: newest.1
+                        )
+                        outdated.append(item)
+                    }
                 }
             }
         }
@@ -318,9 +321,22 @@ public final class DuplicateDetector {
     // MARK: - Helper Methods
     
     /// Compute SHA-256 hash of a file
+    /// Uses streaming to avoid loading entire file into memory
     private static func computeFileHash(_ url: URL) -> String? {
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        let hash = SHA256.hash(data: data)
+        guard let fileHandle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? fileHandle.close() }
+        
+        var hasher = SHA256()
+        let bufferSize = 1024 * 1024 // 1MB buffer
+        
+        while autoreleasepool(invoking: {
+            let data = fileHandle.readData(ofLength: bufferSize)
+            if data.isEmpty { return false }
+            hasher.update(data: data)
+            return true
+        }) {}
+        
+        let hash = hasher.finalize()
         return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
     
@@ -451,7 +467,7 @@ public final class DuplicateDetector {
         
         // Try to extract version number from name or versiondate
         var version: String? = nil
-        let versionPattern = #"v?(\d+\.?\d*)"#
+        let versionPattern = #"v?(\d+(?:\.\d+)*)"#
         if let regex = try? NSRegularExpression(pattern: versionPattern, options: [.caseInsensitive]) {
             let text = "\(char.displayName) \(dateString)"
             let range = NSRange(text.startIndex..., in: text)
