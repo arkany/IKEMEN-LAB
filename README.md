@@ -40,7 +40,10 @@ IKEMEN Lab makes it easy to install, organize, and manage your characters, stage
 ## 📸 Screenshots
 
 <!-- TODO: Add screenshots -->
-*Coming soon*
+<img width="1528" height="944" alt="image" src="https://github.com/user-attachments/assets/512e8ef8-7843-44ca-aca9-62332db89dbd" />
+<img width="1528" height="944" alt="image" src="https://github.com/user-attachments/assets/4c542d66-870e-4b1a-92f1-b889510d33f8" />
+<img width="1528" height="944" alt="image" src="https://github.com/user-attachments/assets/701c5609-da2d-435d-ab43-f6358ce24c24" />
+
 
 ---
 
@@ -78,8 +81,7 @@ IKEMEN Lab makes it easy to install, organize, and manage your characters, stage
 ---
 
 ## 🗺️ Roadmap
-
-See [plan.md](plan.md) for the full roadmap.
+You can help us decide! Add your request in Issues or Discussions.
 
 ### Upcoming Features
 - 📁 **Collections** — Group characters (e.g., "Marvel", "SNK Bosses")
