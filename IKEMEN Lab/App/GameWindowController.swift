@@ -9,7 +9,6 @@ enum NavItem: String, CaseIterable {
     case characters = "Characters"
     case stages = "Stages"
     case addons = "Screenpacks"
-    case duplicates = "Duplicates"
     case soundpacks = "Soundpacks"  // Hidden for now
     case settings = "Settings"
     
@@ -20,7 +19,6 @@ enum NavItem: String, CaseIterable {
         case .characters: return "figure.fencing"
         case .stages: return "photo"
         case .addons: return "square.stack.3d.up"
-        case .duplicates: return "doc.on.doc"
         case .soundpacks: return "music.note"
         case .settings: return "gearshape"
         }
@@ -49,7 +47,6 @@ enum NavItem: String, CaseIterable {
         case .characters: return "characters"
         case .stages: return "stages"
         case .addons: return "lifebars"
-        case .duplicates: return "duplicates"
         case .soundpacks: return "screenpacks"
         case .settings: return "settings"
         }
@@ -93,7 +90,6 @@ class GameWindowController: NSWindowController {
     private var characterDetailsWidthConstraint: NSLayoutConstraint!
     private var stageBrowserView: StageBrowserView!
     private var screenpackBrowserView: ScreenpackBrowserView!
-    private var duplicatesView: DuplicatesView!
     private var viewModeToggle: NSSegmentedControl!
     private var createStageButton: NSButton!
     
@@ -815,18 +811,6 @@ class GameWindowController: NSWindowController {
         }
         mainAreaView.addSubview(screenpackBrowserView)
         
-        // Duplicates View (hidden initially)
-        duplicatesView = DuplicatesView(frame: .zero)
-        duplicatesView.translatesAutoresizingMaskIntoConstraints = false
-        duplicatesView.isHidden = true
-        duplicatesView.onCharacterRemove = { [weak self] character in
-            self?.removeCharacter(character)
-        }
-        duplicatesView.onStageRemove = { [weak self] stage in
-            self?.removeStage(stage)
-        }
-        mainAreaView.addSubview(duplicatesView)
-        
         // Character details panel width constraint (420px per HTML design)
         characterDetailsWidthConstraint = characterDetailsView.widthAnchor.constraint(equalToConstant: 420)
         
@@ -879,12 +863,6 @@ class GameWindowController: NSWindowController {
             screenpackBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             screenpackBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             screenpackBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
-            
-            // Duplicates view fills main area (below header)
-            duplicatesView.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
-            duplicatesView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
-            duplicatesView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
-            duplicatesView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
         ])
     }
     
@@ -929,8 +907,6 @@ class GameWindowController: NSWindowController {
             contentHeaderView?.setCurrentPage("Screenpacks")
         case .addons:
             contentHeaderView?.setCurrentPage("Add-ons")
-        case .duplicates:
-            contentHeaderView?.setCurrentPage("Duplicates")
         case .settings:
             contentHeaderView?.setCurrentPage("Settings")
         default:
@@ -954,7 +930,6 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
-            duplicatesView?.isHidden = true
             updateDashboardStats()
         case .characters:
             dashboardView?.isHidden = true
@@ -962,7 +937,6 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = false
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
-            duplicatesView?.isHidden = true
             characterBrowserView?.viewMode = currentViewMode
         case .stages:
             dashboardView?.isHidden = true
@@ -970,7 +944,6 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = false
             screenpackBrowserView?.isHidden = true
-            duplicatesView?.isHidden = true
         case .soundpacks:
             // TODO: Implement soundpacks browser
             dashboardView?.isHidden = true
@@ -978,7 +951,6 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
-            duplicatesView?.isHidden = true
         case .addons:
             // Screenpacks browser (add-ons tab)
             dashboardView?.isHidden = true
@@ -986,17 +958,7 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = false
-            duplicatesView?.isHidden = true
             screenpackBrowserView?.viewMode = currentViewMode
-        case .duplicates:
-            // Duplicates view
-            dashboardView?.isHidden = true
-            dropZoneView?.isHidden = true
-            characterBrowserView?.isHidden = true
-            stageBrowserView?.isHidden = true
-            screenpackBrowserView?.isHidden = true
-            duplicatesView?.isHidden = false
-            duplicatesView?.refresh()
         case .settings:
             // Show settings panel
             dashboardView?.isHidden = true
@@ -1004,7 +966,6 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
-            duplicatesView?.isHidden = true
             showSettingsContent()
         case nil:
             // Empty state - show drop zone
@@ -1013,7 +974,6 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
-            duplicatesView?.isHidden = true
         }
     }
     
