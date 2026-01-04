@@ -41,6 +41,7 @@
 		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
 		031 /* FirstRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 132 /* FirstRunView.swift */; };
 		032 /* ContentValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133 /* ContentValidator.swift */; };
+		033 /* TagDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134 /* TagDetector.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -77,6 +78,7 @@
 		131 /* ContentHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentHeaderView.swift; sourceTree = "<group>"; };
 		132 /* FirstRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstRunView.swift; sourceTree = "<group>"; };
 		133 /* ContentValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentValidator.swift; sourceTree = "<group>"; };
+		134 /* TagDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagDetector.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -172,6 +174,7 @@
 				129 /* StageGenerator.swift */,
 				130 /* MetadataStore.swift */,
 				133 /* ContentValidator.swift */,
+				134 /* TagDetector.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -325,6 +328,7 @@
 				030 /* ContentHeaderView.swift in Sources */,
 				031 /* FirstRunView.swift in Sources */,
 				032 /* ContentValidator.swift in Sources */,
+				033 /* TagDetector.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
