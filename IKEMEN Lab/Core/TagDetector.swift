@@ -178,49 +178,48 @@ class TagDetector {
     ]
     
     /// Style patterns - pattern to tag mapping with special handling
+    /// matchAuthor: true = check author with word boundary
+    /// matchAuthor: false = check folder/author with contains (multi-word patterns)
     private let stylePatterns: [(pattern: String, tag: String, matchAuthor: Bool)] = [
-        // POTS Style - check author
+        // POTS Style - check author with word boundary
         ("pots", "POTS Style", true),
         
-        // Infinite Style - check author
+        // Infinite Style - check author with word boundary
         ("infinite", "Infinite Style", true),
         
-        // CVS Style - check author for "cvs style" or "cvs2"
+        // CVS Style - multi-word patterns safe with contains
         ("cvs style", "CVS Style", false),
-        ("cvs2", "CVS Style", false),
+        ("cvs2 style", "CVS Style", false),
         
-        // MVC Style - check author for "mvc style" or "mvc2"
+        // MVC Style - multi-word patterns safe with contains  
         ("mvc style", "MVC Style", false),
-        ("mvc2", "MVC Style", false),
+        ("mvc2 style", "MVC Style", false),
     ]
     
-    /// Quality/Type patterns - require word boundaries to avoid false positives
-    /// e.g., "ai" shouldn't match "Ginrai", "fairy"
-    private let qualityPatterns: [(pattern: String, tag: String)] = [
-        // AI Enhanced - word boundary critical (avoid "Ginrai", "fairy", etc.)
+    /// Quality/Type patterns - two categories:
+    /// 1. Exact patterns (multi-word or with delimiters) - safe with contains
+    /// 2. Word patterns - require word boundary matching
+    private let qualityExactPatterns: [(pattern: String, tag: String)] = [
+        // AI Enhanced - patterns with delimiters/multi-word are safe
         ("ai enhanced", "AI Enhanced"),
         ("ai patch", "AI Enhanced"),
-        (" ai ", "AI Enhanced"),  // Space-padded for safety
+        (" ai ", "AI Enhanced"),  // Space-padded
         ("_ai_", "AI Enhanced"),  // Underscore-padded
-        ("_ai", "AI Enhanced"),   // Trailing underscore
+        ("_ai", "AI Enhanced"),   // Trailing underscore (end of folder name)
+        ("ai_", "AI Enhanced"),   // Leading underscore (start of suffix)
+        ("-ai-", "AI Enhanced"),  // Hyphen-padded
+        ("-ai", "AI Enhanced"),   // Hyphen suffix
         ("boss ai", "AI Enhanced"),
-        ("cpu", "AI Enhanced"),
         
-        // Edit
-        ("edit", "Edit"),
-        ("arranged", "Edit"),
-        
-        // Beta - word boundary
-        ("beta", "Beta"),
-        ("wip", "Beta"),
-        
-        // HD - word boundary critical
+        // HD - patterns with delimiters are safe
         (" hd", "HD"),
         ("_hd", "HD"),
+        ("-hd", "HD"),
         ("hd ", "HD"),
         ("hi-res", "HD"),
         ("hires", "HD"),
         ("high res", "HD"),
+        ("high-res", "HD"),
         
         // Hi-Res (MUGEN 1.0)
         ("mugen1", "Hi-Res"),
@@ -229,6 +228,20 @@ class TagDetector {
         
         // Lo-Res (WinMUGEN)
         ("winmugen", "Lo-Res"),
+    ]
+    
+    /// Quality patterns that need word boundary matching
+    private let qualityWordPatterns: [(pattern: String, tag: String)] = [
+        // Edit - word boundary to avoid "credited", "edited"
+        ("edit", "Edit"),
+        ("arranged", "Edit"),
+        
+        // Beta - word boundary to avoid "alphabet"
+        ("beta", "Beta"),
+        ("wip", "Beta"),
+        
+        // CPU - word boundary to avoid partial matches
+        ("cpu", "AI Enhanced"),
     ]
     
     // MARK: - Public Methods
@@ -301,8 +314,17 @@ class TagDetector {
         
         // Detect quality/type - check folder name AND author
         let qualitySearchText = folderName + " " + author
-        for (pattern, tag) in qualityPatterns {
+        
+        // Exact patterns (multi-word or with delimiters) - safe with contains
+        for (pattern, tag) in qualityExactPatterns {
             if qualitySearchText.contains(pattern) {
+                tags.insert(tag)
+            }
+        }
+        
+        // Word patterns - require word boundary matching
+        for (pattern, tag) in qualityWordPatterns {
+            if containsWord(pattern, in: qualitySearchText) {
                 tags.insert(tag)
             }
         }
@@ -365,8 +387,17 @@ class TagDetector {
         
         // Detect quality/type - check filename AND author
         let qualitySearchText = fileName + " " + author
-        for (pattern, tag) in qualityPatterns {
+        
+        // Exact patterns (multi-word or with delimiters) - safe with contains
+        for (pattern, tag) in qualityExactPatterns {
             if qualitySearchText.contains(pattern) {
+                tags.insert(tag)
+            }
+        }
+        
+        // Word patterns - require word boundary matching
+        for (pattern, tag) in qualityWordPatterns {
+            if containsWord(pattern, in: qualitySearchText) {
                 tags.insert(tag)
             }
         }
