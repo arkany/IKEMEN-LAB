@@ -8,176 +8,227 @@ class TagDetector {
     
     private init() {}
     
-    // MARK: - Regex Patterns
+    // MARK: - Regex Cache
+    
+    /// Cache of compiled regex patterns for word boundary matching
+    private var regexCache: [String: NSRegularExpression] = [:]
+    private let regexLock = NSLock()
+    
+    /// Get or create a regex for word boundary matching
+    private func wordBoundaryRegex(for pattern: String) -> NSRegularExpression? {
+        regexLock.lock()
+        defer { regexLock.unlock() }
+        
+        if let cached = regexCache[pattern] {
+            return cached
+        }
+        
+        // Escape special regex characters in pattern, then wrap with word boundaries
+        let escaped = NSRegularExpression.escapedPattern(for: pattern)
+        guard let regex = try? NSRegularExpression(pattern: "\\b\(escaped)\\b", options: .caseInsensitive) else {
+            return nil
+        }
+        regexCache[pattern] = regex
+        return regex
+    }
+    
+    /// Check if a word (with boundaries) exists in text
+    private func containsWord(_ word: String, in text: String) -> Bool {
+        guard let regex = wordBoundaryRegex(for: word) else { return false }
+        let range = NSRange(text.startIndex..., in: text)
+        return regex.firstMatch(in: text, options: [], range: range) != nil
+    }
+    
+    // MARK: - Special Regex Patterns
     
     /// Compiled regex for "sf" word boundary (excludes "sfx")
     private static let sfRegex: NSRegularExpression? = {
-        return try? NSRegularExpression(pattern: "\\bsf\\b(?!x)", options: [])
+        return try? NSRegularExpression(pattern: "\\bsf\\b(?!x)", options: .caseInsensitive)
     }()
     
-    /// Compiled regex for "mk" followed by number
+    /// Compiled regex for "mk" followed by number (mk1, mk2, mk3, etc.)
     private static let mkRegex: NSRegularExpression? = {
-        return try? NSRegularExpression(pattern: "\\bmk\\s*\\d", options: [])
+        return try? NSRegularExpression(pattern: "\\bmk\\s*\\d", options: .caseInsensitive)
     }()
     
     // MARK: - Pattern Definitions
     
-    /// Street Fighter character names
+    /// Street Fighter character names (require word boundary matching)
     private let streetFighterCharacters = [
-        "ryu", "ken", "chun-li", "guile", "zangief", "dhalsim",
-        "blanka", "e.honda", "vega", "sagat", "m.bison", "balrog",
-        "cammy", "fei long", "dee jay", "t.hawk", "akuma", "sakura"
+        "ryu", "ken", "chun-li", "chun li", "guile", "zangief", "dhalsim",
+        "blanka", "e.honda", "e honda", "vega", "sagat", "m.bison", "m bison", "balrog",
+        "cammy", "fei long", "dee jay", "t.hawk", "t hawk", "akuma", "sakura",
+        "dan", "rose", "gen", "rolento", "sodom", "birdie", "adon", "cody", "guy"
     ]
     
     /// Source Game patterns - pattern to tag mapping
-    private let sourceGamePatterns: [(pattern: String, tag: String)] = [
-        // KOF
-        ("kof", "KOF"),
-        ("king of fighters", "KOF"),
+    /// Patterns marked with useWordBoundary=true require exact word matching
+    private let sourceGamePatterns: [(pattern: String, tag: String, useWordBoundary: Bool)] = [
+        // KOF - word boundary to avoid "strikofist" false positives
+        ("kof", "KOF", true),
+        ("king of fighters", "KOF", false),
         
-        // MVC
-        ("mvc", "MVC"),
-        ("marvel vs capcom", "MVC"),
+        // MVC - word boundary needed
+        ("mvc", "MVC", true),
+        ("marvel vs capcom", "MVC", false),
         
-        // CVS
-        ("cvs", "CVS"),
-        ("capcom vs snk", "CVS"),
+        // CVS - word boundary needed
+        ("cvs", "CVS", true),
+        ("capcom vs snk", "CVS", false),
         
-        // Street Fighter (but not sfx)
-        ("street fighter", "Street Fighter"),
-        ("sf", "Street Fighter"),  // Will be handled specially
+        // Street Fighter (but not sfx) - handled specially via sfRegex
+        ("street fighter", "Street Fighter", false),
         
-        // Guilty Gear
-        ("guilty gear", "Guilty Gear"),
-        ("guiltygear", "Guilty Gear"),
-        ("ggxx", "Guilty Gear"),
-        ("ggxrd", "Guilty Gear"),
+        // Guilty Gear - multi-word is safe
+        ("guilty gear", "Guilty Gear", false),
+        ("guiltygear", "Guilty Gear", false),
+        ("ggxx", "Guilty Gear", true),
+        ("ggxrd", "Guilty Gear", true),
+        ("ggst", "Guilty Gear", true),
         
         // Melty Blood
-        ("melty", "Melty Blood"),
-        ("mbaa", "Melty Blood"),
+        ("melty blood", "Melty Blood", false),
+        ("melty", "Melty Blood", true),
+        ("mbaa", "Melty Blood", true),
         
         // JoJo
-        ("jojo", "JoJo"),
-        ("hftf", "JoJo"),
+        ("jojo", "JoJo", true),
+        ("hftf", "JoJo", true),
         
         // Dragon Ball
-        ("dbz", "Dragon Ball"),
-        ("dragon ball", "Dragon Ball"),
-        ("dragonball", "Dragon Ball"),
+        ("dbz", "Dragon Ball", true),
+        ("dragon ball", "Dragon Ball", false),
+        ("dragonball", "Dragon Ball", false),
         
-        // Naruto
-        ("naruto", "Naruto"),
+        // Naruto - word boundary to avoid partial matches
+        ("naruto", "Naruto", true),
         
         // BlazBlue
-        ("blazblue", "BlazBlue"),
-        ("bbcf", "BlazBlue"),
-        ("bbcp", "BlazBlue"),
+        ("blazblue", "BlazBlue", false),
+        ("bbcf", "BlazBlue", true),
+        ("bbcp", "BlazBlue", true),
         
         // Tekken
-        ("tekken", "Tekken"),
+        ("tekken", "Tekken", true),
         
-        // Mortal Kombat
-        ("mortal kombat", "Mortal Kombat"),
+        // Mortal Kombat - multi-word is safe
+        ("mortal kombat", "Mortal Kombat", false),
         
         // Fatal Fury
-        ("fatal fury", "Fatal Fury"),
-        ("garou", "Fatal Fury"),
-        ("motw", "Fatal Fury"),
+        ("fatal fury", "Fatal Fury", false),
+        ("garou", "Fatal Fury", true),
+        ("motw", "Fatal Fury", true),
         
         // Samurai Shodown
-        ("samurai shodown", "Samurai Shodown"),
-        ("samsho", "Samurai Shodown"),
+        ("samurai shodown", "Samurai Shodown", false),
+        ("samsho", "Samurai Shodown", true),
         
         // Darkstalkers
-        ("darkstalkers", "Darkstalkers"),
-        ("vampire savior", "Darkstalkers"),
+        ("darkstalkers", "Darkstalkers", false),
+        ("vampire savior", "Darkstalkers", false),
     ]
     
     /// Franchise patterns - pattern to tag mapping
-    private let franchisePatterns: [(pattern: String, tag: String)] = [
-        // Marvel
-        ("marvel", "Marvel"),
-        ("x-men", "Marvel"),
-        ("xmen", "Marvel"),
-        ("avengers", "Marvel"),
-        ("cyclops", "Marvel"),
-        ("wolverine", "Marvel"),
-        ("magneto", "Marvel"),
-        ("storm", "Marvel"),
-        ("spider-man", "Marvel"),
-        ("spiderman", "Marvel"),
+    /// Note: Removed overly broad patterns like "dc", "storm" that cause false positives
+    private let franchisePatterns: [(pattern: String, tag: String, useWordBoundary: Bool)] = [
+        // Marvel - specific character names need word boundaries
+        ("marvel", "Marvel", true),
+        ("x-men", "Marvel", false),
+        ("xmen", "Marvel", true),
+        ("avengers", "Marvel", true),
+        ("cyclops", "Marvel", true),
+        ("wolverine", "Marvel", true),
+        ("magneto", "Marvel", true),
+        ("spider-man", "Marvel", false),
+        ("spiderman", "Marvel", true),
+        ("iron man", "Marvel", false),
+        ("ironman", "Marvel", true),
+        ("captain america", "Marvel", false),
+        ("hulk", "Marvel", true),
+        ("thor", "Marvel", true),
+        ("deadpool", "Marvel", true),
+        ("venom", "Marvel", true),
         
-        // DC
-        ("dc", "DC"),
-        ("batman", "DC"),
-        ("superman", "DC"),
-        ("justice league", "DC"),
+        // DC - require specific character names, not just "dc" (too many false positives)
+        ("batman", "DC", true),
+        ("superman", "DC", true),
+        ("wonder woman", "DC", false),
+        ("justice league", "DC", false),
+        ("joker", "DC", true),
+        ("harley quinn", "DC", false),
+        ("green lantern", "DC", false),
+        ("flash", "DC", true),
+        ("aquaman", "DC", true),
         
-        // Capcom (general pattern)
-        ("capcom", "Capcom"),
-        // Note: Street Fighter characters also trigger Capcom via streetFighterCharacters
+        // SNK - word boundary needed
+        ("snk", "SNK", true),
+        ("kyo kusanagi", "SNK", false),
+        ("iori yagami", "SNK", false),
+        ("terry bogard", "SNK", false),
         
-        // SNK
-        ("snk", "SNK"),
-        ("kyo", "SNK"),
-        ("iori", "SNK"),
-        ("terry", "SNK"),
+        // Capcom - word boundary
+        ("capcom", "Capcom", true),
         
-        // Disney
-        ("disney", "Disney"),
+        // Disney - word boundary
+        ("disney", "Disney", true),
+        ("kingdom hearts", "Disney", false),
         
-        // Anime
-        ("anime", "Anime"),
+        // Anime (generic) - word boundary
+        ("anime", "Anime", true),
     ]
     
     /// Style patterns - pattern to tag mapping with special handling
     private let stylePatterns: [(pattern: String, tag: String, matchAuthor: Bool)] = [
-        // POTS Style
+        // POTS Style - check author
         ("pots", "POTS Style", true),
-        ("pots style", "POTS Style", false),
         
-        // Infinite Style
+        // Infinite Style - check author
         ("infinite", "Infinite Style", true),
         
-        // CVS Style - check author OR folder
-        ("cvs", "CVS Style", false),
+        // CVS Style - check author for "cvs style" or "cvs2"
+        ("cvs style", "CVS Style", false),
+        ("cvs2", "CVS Style", false),
         
-        // MVC Style - check folder for mvc2 OR author for mvc
+        // MVC Style - check author for "mvc style" or "mvc2"
+        ("mvc style", "MVC Style", false),
         ("mvc2", "MVC Style", false),
     ]
     
-    /// MVC Style author patterns (checked separately to avoid false positives)
-    private let mvcStyleAuthors = ["mvc"]
-    
-    /// Quality/Type patterns - pattern to tag mapping
+    /// Quality/Type patterns - require word boundaries to avoid false positives
+    /// e.g., "ai" shouldn't match "Ginrai", "fairy"
     private let qualityPatterns: [(pattern: String, tag: String)] = [
-        // AI Enhanced
-        ("ai", "AI Enhanced"),
+        // AI Enhanced - word boundary critical (avoid "Ginrai", "fairy", etc.)
+        ("ai enhanced", "AI Enhanced"),
+        ("ai patch", "AI Enhanced"),
+        (" ai ", "AI Enhanced"),  // Space-padded for safety
+        ("_ai_", "AI Enhanced"),  // Underscore-padded
+        ("_ai", "AI Enhanced"),   // Trailing underscore
+        ("boss ai", "AI Enhanced"),
         ("cpu", "AI Enhanced"),
-        ("boss", "AI Enhanced"),
         
         // Edit
         ("edit", "Edit"),
         ("arranged", "Edit"),
         
-        // Beta
+        // Beta - word boundary
         ("beta", "Beta"),
         ("wip", "Beta"),
         
-        // HD
-        ("hd", "HD"),
+        // HD - word boundary critical
+        (" hd", "HD"),
+        ("_hd", "HD"),
+        ("hd ", "HD"),
         ("hi-res", "HD"),
         ("hires", "HD"),
+        ("high res", "HD"),
         
-        // Hi-Res (MUGEN 1.0) - more specific patterns
+        // Hi-Res (MUGEN 1.0)
         ("mugen1", "Hi-Res"),
         ("mugen 1.0", "Hi-Res"),
         ("mugen1.0", "Hi-Res"),
         
         // Lo-Res (WinMUGEN)
         ("winmugen", "Lo-Res"),
-        ("wm", "Lo-Res"),
     ]
     
     // MARK: - Public Methods
@@ -195,12 +246,9 @@ class TagDetector {
         let searchText = [folderName, displayName, author].joined(separator: " ")
         
         // Detect source games
-        for (pattern, tag) in sourceGamePatterns {
-            // Special handling for "sf" - only match if not "sfx"
-            if pattern == "sf" {
-                let range = NSRange(searchText.startIndex..., in: searchText)
-                if let regex = TagDetector.sfRegex,
-                   regex.firstMatch(in: searchText, options: [], range: range) != nil {
+        for (pattern, tag, useWordBoundary) in sourceGamePatterns {
+            if useWordBoundary {
+                if containsWord(pattern, in: searchText) {
                     tags.insert(tag)
                 }
             } else if searchText.contains(pattern) {
@@ -208,9 +256,20 @@ class TagDetector {
             }
         }
         
+        // Special handling for "sf" - only match if not "sfx"
+        let range = NSRange(searchText.startIndex..., in: searchText)
+        if let regex = TagDetector.sfRegex,
+           regex.firstMatch(in: searchText, options: [], range: range) != nil {
+            tags.insert("Street Fighter")
+        }
+        
         // Detect franchises
-        for (pattern, tag) in franchisePatterns {
-            if searchText.contains(pattern) {
+        for (pattern, tag, useWordBoundary) in franchisePatterns {
+            if useWordBoundary {
+                if containsWord(pattern, in: searchText) {
+                    tags.insert(tag)
+                }
+            } else if searchText.contains(pattern) {
                 tags.insert(tag)
             }
         }
@@ -219,7 +278,8 @@ class TagDetector {
         for (pattern, tag, matchAuthor) in stylePatterns {
             if matchAuthor {
                 // Check author specifically for style patterns (POTS, Infinite)
-                if author.contains(pattern) {
+                // Use word boundary to avoid false positives
+                if containsWord(pattern, in: author) {
                     tags.insert(tag)
                 }
             } else {
@@ -230,31 +290,24 @@ class TagDetector {
             }
         }
         
-        // MVC Style for author containing "mvc" (separate check to avoid false positives with folder names)
-        for mvcPattern in mvcStyleAuthors {
-            if author.contains(mvcPattern) {
-                tags.insert("MVC Style")
-            }
-        }
-        
         // Special case: Street Fighter characters (also add Capcom franchise)
-        for character in streetFighterCharacters {
-            if searchText.contains(character) {
+        for sfCharacter in streetFighterCharacters {
+            if containsWord(sfCharacter, in: searchText) {
                 tags.insert("Street Fighter")
                 tags.insert("Capcom")
                 break
             }
         }
         
-        // Detect quality/type
+        // Detect quality/type - check folder name AND author
+        let qualitySearchText = folderName + " " + author
         for (pattern, tag) in qualityPatterns {
-            if folderName.contains(pattern) {
+            if qualitySearchText.contains(pattern) {
                 tags.insert(tag)
             }
         }
         
         // Special case: Mortal Kombat with mk followed by number
-        let range = NSRange(searchText.startIndex..., in: searchText)
         if let regex = TagDetector.mkRegex,
            regex.firstMatch(in: searchText, options: [], range: range) != nil {
             tags.insert("Mortal Kombat")
@@ -282,12 +335,9 @@ class TagDetector {
         let searchText = [fileName, stageName, author].joined(separator: " ")
         
         // Detect source games
-        for (pattern, tag) in sourceGamePatterns {
-            // Special handling for "sf" - only match if not "sfx"
-            if pattern == "sf" {
-                let range = NSRange(searchText.startIndex..., in: searchText)
-                if let regex = TagDetector.sfRegex,
-                   regex.firstMatch(in: searchText, options: [], range: range) != nil {
+        for (pattern, tag, useWordBoundary) in sourceGamePatterns {
+            if useWordBoundary {
+                if containsWord(pattern, in: searchText) {
                     tags.insert(tag)
                 }
             } else if searchText.contains(pattern) {
@@ -295,23 +345,33 @@ class TagDetector {
             }
         }
         
+        // Special handling for "sf" - only match if not "sfx"
+        let range = NSRange(searchText.startIndex..., in: searchText)
+        if let regex = TagDetector.sfRegex,
+           regex.firstMatch(in: searchText, options: [], range: range) != nil {
+            tags.insert("Street Fighter")
+        }
+        
         // Detect franchises
-        for (pattern, tag) in franchisePatterns {
-            if searchText.contains(pattern) {
+        for (pattern, tag, useWordBoundary) in franchisePatterns {
+            if useWordBoundary {
+                if containsWord(pattern, in: searchText) {
+                    tags.insert(tag)
+                }
+            } else if searchText.contains(pattern) {
                 tags.insert(tag)
             }
         }
         
-        // Detect quality/type (stages typically don't have style patterns)
-        // Only check filename for consistency with character detection
+        // Detect quality/type - check filename AND author
+        let qualitySearchText = fileName + " " + author
         for (pattern, tag) in qualityPatterns {
-            if fileName.contains(pattern) {
+            if qualitySearchText.contains(pattern) {
                 tags.insert(tag)
             }
         }
         
         // Special case: Mortal Kombat with mk followed by number
-        let range = NSRange(searchText.startIndex..., in: searchText)
         if let regex = TagDetector.mkRegex,
            regex.firstMatch(in: searchText, options: [], range: range) != nil {
             tags.insert("Mortal Kombat")
