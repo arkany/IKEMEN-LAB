@@ -11,10 +11,14 @@ class TagDetector {
     // MARK: - Regex Patterns
     
     /// Compiled regex for "sf" word boundary (excludes "sfx")
-    private static let sfRegex = try! NSRegularExpression(pattern: "\\bsf\\b(?!x)", options: [])
+    private static let sfRegex: NSRegularExpression? = {
+        return try? NSRegularExpression(pattern: "\\bsf\\b(?!x)", options: [])
+    }()
     
     /// Compiled regex for "mk" followed by number
-    private static let mkRegex = try! NSRegularExpression(pattern: "\\bmk\\s*\\d", options: [])
+    private static let mkRegex: NSRegularExpression? = {
+        return try? NSRegularExpression(pattern: "\\bmk\\s*\\d", options: [])
+    }()
     
     // MARK: - Pattern Definitions
     
@@ -195,7 +199,8 @@ class TagDetector {
             // Special handling for "sf" - only match if not "sfx"
             if pattern == "sf" {
                 let range = NSRange(searchText.startIndex..., in: searchText)
-                if TagDetector.sfRegex.firstMatch(in: searchText, options: [], range: range) != nil {
+                if let regex = TagDetector.sfRegex,
+                   regex.firstMatch(in: searchText, options: [], range: range) != nil {
                     tags.insert(tag)
                 }
             } else if searchText.contains(pattern) {
@@ -250,7 +255,8 @@ class TagDetector {
         
         // Special case: Mortal Kombat with mk followed by number
         let range = NSRange(searchText.startIndex..., in: searchText)
-        if TagDetector.mkRegex.firstMatch(in: searchText, options: [], range: range) != nil {
+        if let regex = TagDetector.mkRegex,
+           regex.firstMatch(in: searchText, options: [], range: range) != nil {
             tags.insert("Mortal Kombat")
         }
         
@@ -280,7 +286,8 @@ class TagDetector {
             // Special handling for "sf" - only match if not "sfx"
             if pattern == "sf" {
                 let range = NSRange(searchText.startIndex..., in: searchText)
-                if TagDetector.sfRegex.firstMatch(in: searchText, options: [], range: range) != nil {
+                if let regex = TagDetector.sfRegex,
+                   regex.firstMatch(in: searchText, options: [], range: range) != nil {
                     tags.insert(tag)
                 }
             } else if searchText.contains(pattern) {
@@ -305,7 +312,8 @@ class TagDetector {
         
         // Special case: Mortal Kombat with mk followed by number
         let range = NSRange(searchText.startIndex..., in: searchText)
-        if TagDetector.mkRegex.firstMatch(in: searchText, options: [], range: range) != nil {
+        if let regex = TagDetector.mkRegex,
+           regex.firstMatch(in: searchText, options: [], range: range) != nil {
             tags.insert("Mortal Kombat")
         }
         
