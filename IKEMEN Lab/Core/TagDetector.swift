@@ -110,11 +110,9 @@ class TagDetector {
         ("superman", "DC"),
         ("justice league", "DC"),
         
-        // Capcom
+        // Capcom (general pattern)
         ("capcom", "Capcom"),
-        ("ryu", "Capcom"),
-        ("chun-li", "Capcom"),
-        ("akuma", "Capcom"),
+        // Note: Street Fighter characters also trigger Capcom via streetFighterCharacters
         
         // SNK
         ("snk", "SNK"),
@@ -234,10 +232,11 @@ class TagDetector {
             }
         }
         
-        // Special case: Street Fighter characters
+        // Special case: Street Fighter characters (also add Capcom franchise)
         for character in streetFighterCharacters {
             if searchText.contains(character) {
                 tags.insert("Street Fighter")
+                tags.insert("Capcom")
                 break
             }
         }
