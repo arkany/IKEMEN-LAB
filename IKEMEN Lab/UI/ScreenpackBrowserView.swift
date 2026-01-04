@@ -179,17 +179,18 @@ extension ScreenpackBrowserView: NSCollectionViewDataSource {
     
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
         let screenpack = screenpacks[indexPath.item]
+        let rosterSize = IkemenBridge.shared.characters.count
         
         if viewMode == .grid {
             let item = collectionView.makeItem(withIdentifier: ScreenpackGridItem.identifier, for: indexPath) as! ScreenpackGridItem
-            item.configure(with: screenpack)
+            item.configure(with: screenpack, rosterSize: rosterSize)
             item.onActivate = { [weak self] in
                 self?.onScreenpackActivate?(screenpack)
             }
             return item
         } else {
             let item = collectionView.makeItem(withIdentifier: ScreenpackListItem.identifier, for: indexPath) as! ScreenpackListItem
-            item.configure(with: screenpack)
+            item.configure(with: screenpack, rosterSize: rosterSize)
             item.onActivate = { [weak self] in
                 self?.onScreenpackActivate?(screenpack)
             }
@@ -221,6 +222,8 @@ class ScreenpackGridItem: NSCollectionViewItem {
     private var authorLabel: NSTextField!
     private var activeBadge: NSView!
     private var activeBadgeLabel: NSTextField!
+    private var warningBadge: NSView!
+    private var warningBadgeLabel: NSTextField!
     private var resolutionLabel: NSTextField!
     private var activateButton: NSButton!
     
@@ -267,6 +270,23 @@ class ScreenpackGridItem: NSCollectionViewItem {
         activeBadgeLabel.font = DesignFonts.caption(size: 11)
         activeBadgeLabel.textColor = DesignColors.greenAccent
         activeBadge.addSubview(activeBadgeLabel)
+        
+        // Warning badge (roster exceeds slots)
+        warningBadge = NSView()
+        warningBadge.translatesAutoresizingMaskIntoConstraints = false
+        warningBadge.wantsLayer = true
+        warningBadge.layer?.backgroundColor = NSColor.systemOrange.withAlphaComponent(0.2).cgColor
+        warningBadge.layer?.cornerRadius = 4
+        warningBadge.layer?.borderWidth = 1
+        warningBadge.layer?.borderColor = NSColor.systemOrange.cgColor
+        warningBadge.isHidden = true
+        containerView.addSubview(warningBadge)
+        
+        warningBadgeLabel = NSTextField(labelWithString: "⚠️ Slots")
+        warningBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        warningBadgeLabel.font = DesignFonts.caption(size: 10)
+        warningBadgeLabel.textColor = NSColor.systemOrange
+        warningBadge.addSubview(warningBadgeLabel)
         
         // Resolution label (top-left)
         resolutionLabel = NSTextField(labelWithString: "")
@@ -329,6 +349,15 @@ class ScreenpackGridItem: NSCollectionViewItem {
             activeBadgeLabel.leadingAnchor.constraint(equalTo: activeBadge.leadingAnchor, constant: 6),
             activeBadgeLabel.trailingAnchor.constraint(equalTo: activeBadge.trailingAnchor, constant: -6),
             
+            // Warning badge below active badge
+            warningBadge.topAnchor.constraint(equalTo: activeBadge.bottomAnchor, constant: 4),
+            warningBadge.trailingAnchor.constraint(equalTo: previewImageView.trailingAnchor, constant: -4),
+            
+            warningBadgeLabel.topAnchor.constraint(equalTo: warningBadge.topAnchor, constant: 2),
+            warningBadgeLabel.bottomAnchor.constraint(equalTo: warningBadge.bottomAnchor, constant: -2),
+            warningBadgeLabel.leadingAnchor.constraint(equalTo: warningBadge.leadingAnchor, constant: 4),
+            warningBadgeLabel.trailingAnchor.constraint(equalTo: warningBadge.trailingAnchor, constant: -4),
+            
             // Resolution in top-left
             resolutionLabel.topAnchor.constraint(equalTo: previewImageView.topAnchor, constant: 4),
             resolutionLabel.leadingAnchor.constraint(equalTo: previewImageView.leadingAnchor, constant: 4),
@@ -377,7 +406,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
         }
     }
     
-    func configure(with screenpack: ScreenpackInfo) {
+    func configure(with screenpack: ScreenpackInfo, rosterSize: Int = 0) {
         nameLabel.stringValue = screenpack.name
         authorLabel.stringValue = "by \(screenpack.author)"
         
@@ -387,6 +416,15 @@ class ScreenpackGridItem: NSCollectionViewItem {
             info += " • \(screenpack.characterSlots) slots"
         }
         resolutionLabel.stringValue = " \(info) "
+        
+        // Show warning if roster exceeds slot limit
+        if screenpack.characterSlots > 0 && rosterSize > screenpack.characterSlots {
+            warningBadge.isHidden = false
+            warningBadgeLabel.stringValue = "⚠️ \(rosterSize)/\(screenpack.characterSlots)"
+            warningBadgeLabel.toolTip = "Your roster (\(rosterSize) chars) exceeds this screenpack's \(screenpack.characterSlots) slots. Some characters won't be visible."
+        } else {
+            warningBadge.isHidden = true
+        }
         
         // Show active badge
         if screenpack.isActive {
@@ -427,6 +465,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
         authorLabel.stringValue = ""
         resolutionLabel.stringValue = ""
         activeBadge.isHidden = true
+        warningBadge.isHidden = true
         activateButton.isHidden = true
         isSelected = false
         onActivate = nil
@@ -444,6 +483,7 @@ class ScreenpackListItem: NSCollectionViewItem {
     private var authorLabel: NSTextField!
     private var resolutionLabel: NSTextField!
     private var statusLabel: NSTextField!
+    private var warningLabel: NSTextField!
     private var activateButton: NSButton!
     
     var onActivate: (() -> Void)?
@@ -493,6 +533,14 @@ class ScreenpackListItem: NSCollectionViewItem {
         statusLabel.font = DesignFonts.body(size: 14)
         statusLabel.textColor = DesignColors.greenAccent
         containerView.addSubview(statusLabel)
+        
+        // Warning label (roster exceeds slots)
+        warningLabel = NSTextField(labelWithString: "")
+        warningLabel.translatesAutoresizingMaskIntoConstraints = false
+        warningLabel.font = DesignFonts.caption(size: 12)
+        warningLabel.textColor = NSColor.systemOrange
+        warningLabel.isHidden = true
+        containerView.addSubview(warningLabel)
         
         // Activate button
         activateButton = NSButton(title: "Activate", target: self, action: #selector(activateClicked))
@@ -552,7 +600,7 @@ class ScreenpackListItem: NSCollectionViewItem {
         }
     }
     
-    func configure(with screenpack: ScreenpackInfo) {
+    func configure(with screenpack: ScreenpackInfo, rosterSize: Int = 0) {
         nameLabel.stringValue = screenpack.name
         
         // Show author and component summary
@@ -569,6 +617,15 @@ class ScreenpackListItem: NSCollectionViewItem {
             info += " • \(screenpack.characterLimitString)"
         }
         resolutionLabel.stringValue = info
+        
+        // Show warning if roster exceeds slot limit
+        if screenpack.characterSlots > 0 && rosterSize > screenpack.characterSlots {
+            warningLabel.isHidden = false
+            warningLabel.stringValue = "⚠️ Roster (\(rosterSize)) exceeds \(screenpack.characterSlots) slots"
+            warningLabel.toolTip = "Some characters won't be visible in this screenpack's select screen."
+        } else {
+            warningLabel.isHidden = true
+        }
         
         if screenpack.isActive {
             statusLabel.stringValue = "● Active"
@@ -588,6 +645,7 @@ class ScreenpackListItem: NSCollectionViewItem {
         authorLabel.stringValue = ""
         resolutionLabel.stringValue = ""
         statusLabel.stringValue = ""
+        warningLabel.isHidden = true
         activateButton.isHidden = true
         isSelected = false
         onActivate = nil
