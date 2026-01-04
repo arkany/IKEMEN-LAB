@@ -8,6 +8,14 @@ class TagDetector {
     
     private init() {}
     
+    // MARK: - Regex Patterns
+    
+    /// Compiled regex for "sf" word boundary (excludes "sfx")
+    private static let sfRegex = try! NSRegularExpression(pattern: "\\bsf\\b(?!x)", options: [])
+    
+    /// Compiled regex for "mk" followed by number
+    private static let mkRegex = try! NSRegularExpression(pattern: "\\bmk\\s*\\d", options: [])
+    
     // MARK: - Pattern Definitions
     
     /// Street Fighter character names
@@ -182,13 +190,14 @@ class TagDetector {
         let author = character.author.lowercased()
         
         // Combined search text for general pattern matching
-        let searchText = "\(folderName) \(displayName) \(author)"
+        let searchText = [folderName, displayName, author].joined(separator: " ")
         
         // Detect source games
         for (pattern, tag) in sourceGamePatterns {
             // Special handling for "sf" - only match if not "sfx"
             if pattern == "sf" {
-                if searchText.range(of: "\\bsf\\b(?!x)", options: .regularExpression) != nil {
+                let range = NSRange(searchText.startIndex..., in: searchText)
+                if TagDetector.sfRegex.firstMatch(in: searchText, options: [], range: range) != nil {
                     tags.insert(tag)
                 }
             } else if searchText.contains(pattern) {
@@ -241,7 +250,8 @@ class TagDetector {
         }
         
         // Special case: Mortal Kombat with mk followed by number
-        if searchText.range(of: "\\bmk\\s*\\d", options: .regularExpression) != nil {
+        let range = NSRange(searchText.startIndex..., in: searchText)
+        if TagDetector.mkRegex.firstMatch(in: searchText, options: [], range: range) != nil {
             tags.insert("Mortal Kombat")
         }
         
@@ -264,13 +274,14 @@ class TagDetector {
         let author = stage.author.lowercased()
         
         // Combined search text for general pattern matching
-        let searchText = "\(fileName) \(stageName) \(author)"
+        let searchText = [fileName, stageName, author].joined(separator: " ")
         
         // Detect source games
         for (pattern, tag) in sourceGamePatterns {
             // Special handling for "sf" - only match if not "sfx"
             if pattern == "sf" {
-                if searchText.range(of: "\\bsf\\b(?!x)", options: .regularExpression) != nil {
+                let range = NSRange(searchText.startIndex..., in: searchText)
+                if TagDetector.sfRegex.firstMatch(in: searchText, options: [], range: range) != nil {
                     tags.insert(tag)
                 }
             } else if searchText.contains(pattern) {
@@ -294,7 +305,8 @@ class TagDetector {
         }
         
         // Special case: Mortal Kombat with mk followed by number
-        if searchText.range(of: "\\bmk\\s*\\d", options: .regularExpression) != nil {
+        let range = NSRange(searchText.startIndex..., in: searchText)
+        if TagDetector.mkRegex.firstMatch(in: searchText, options: [], range: range) != nil {
             tags.insert("Mortal Kombat")
         }
         
