@@ -133,9 +133,12 @@ class TagDetector {
         // CVS Style - check author OR folder
         ("cvs", "CVS Style", false),
         
-        // MVC Style - only for mvc2 in folder or mvc in author
+        // MVC Style - check folder for mvc2 OR author for mvc
         ("mvc2", "MVC Style", false),
     ]
+    
+    /// MVC Style author patterns (checked separately to avoid false positives)
+    private let mvcStyleAuthors = ["mvc"]
     
     /// Quality/Type patterns - pattern to tag mapping
     private let qualityPatterns: [(pattern: String, tag: String)] = [
@@ -157,10 +160,10 @@ class TagDetector {
         ("hi-res", "HD"),
         ("hires", "HD"),
         
-        // Hi-Res (MUGEN 1.0)
+        // Hi-Res (MUGEN 1.0) - more specific patterns
         ("mugen1", "Hi-Res"),
         ("mugen 1.0", "Hi-Res"),
-        ("1.0", "Hi-Res"),
+        ("mugen1.0", "Hi-Res"),
         
         // Lo-Res (WinMUGEN)
         ("winmugen", "Lo-Res"),
@@ -215,9 +218,11 @@ class TagDetector {
             }
         }
         
-        // Special case: MVC Style for author containing "mvc" (not just mvc2)
-        if author.contains("mvc") {
-            tags.insert("MVC Style")
+        // MVC Style for author containing "mvc" (separate check to avoid false positives with folder names)
+        for mvcPattern in mvcStyleAuthors {
+            if author.contains(mvcPattern) {
+                tags.insert("MVC Style")
+            }
         }
         
         // Special case: Street Fighter characters
@@ -281,8 +286,9 @@ class TagDetector {
         }
         
         // Detect quality/type (stages typically don't have style patterns)
+        // Only check filename for consistency with character detection
         for (pattern, tag) in qualityPatterns {
-            if fileName.contains(pattern) || stageName.contains(pattern) {
+            if fileName.contains(pattern) {
                 tags.insert(tag)
             }
         }
