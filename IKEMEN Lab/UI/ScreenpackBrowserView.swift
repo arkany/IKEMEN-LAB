@@ -179,17 +179,18 @@ extension ScreenpackBrowserView: NSCollectionViewDataSource {
     
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
         let screenpack = screenpacks[indexPath.item]
+        let rosterSize = IkemenBridge.shared.characters.count
         
         if viewMode == .grid {
             let item = collectionView.makeItem(withIdentifier: ScreenpackGridItem.identifier, for: indexPath) as! ScreenpackGridItem
-            item.configure(with: screenpack)
+            item.configure(with: screenpack, currentRosterSize: rosterSize)
             item.onActivate = { [weak self] in
                 self?.onScreenpackActivate?(screenpack)
             }
             return item
         } else {
             let item = collectionView.makeItem(withIdentifier: ScreenpackListItem.identifier, for: indexPath) as! ScreenpackListItem
-            item.configure(with: screenpack)
+            item.configure(with: screenpack, currentRosterSize: rosterSize)
             item.onActivate = { [weak self] in
                 self?.onScreenpackActivate?(screenpack)
             }
@@ -222,6 +223,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
     private var activeBadge: NSView!
     private var activeBadgeLabel: NSTextField!
     private var resolutionLabel: NSTextField!
+    private var warningLabel: NSTextField!
     private var activateButton: NSButton!
     
     var onActivate: (() -> Void)?
@@ -280,6 +282,19 @@ class ScreenpackGridItem: NSCollectionViewItem {
         resolutionLabel.isEditable = false
         containerView.addSubview(resolutionLabel)
         
+        // Warning label (slots exceeded)
+        warningLabel = NSTextField(labelWithString: "")
+        warningLabel.translatesAutoresizingMaskIntoConstraints = false
+        warningLabel.font = DesignFonts.caption(size: 10)
+        warningLabel.textColor = DesignColors.warning
+        warningLabel.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.9)
+        warningLabel.wantsLayer = true
+        warningLabel.layer?.cornerRadius = 3
+        warningLabel.isBordered = false
+        warningLabel.isEditable = false
+        warningLabel.isHidden = true
+        containerView.addSubview(warningLabel)
+        
         // Name label
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -333,6 +348,10 @@ class ScreenpackGridItem: NSCollectionViewItem {
             resolutionLabel.topAnchor.constraint(equalTo: previewImageView.topAnchor, constant: 4),
             resolutionLabel.leadingAnchor.constraint(equalTo: previewImageView.leadingAnchor, constant: 4),
             
+            // Warning label below resolution
+            warningLabel.topAnchor.constraint(equalTo: resolutionLabel.bottomAnchor, constant: 2),
+            warningLabel.leadingAnchor.constraint(equalTo: previewImageView.leadingAnchor, constant: 4),
+            
             // Name: 4px below preview
             nameLabel.topAnchor.constraint(equalTo: previewImageView.bottomAnchor, constant: 4),
             nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
@@ -377,7 +396,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
         }
     }
     
-    func configure(with screenpack: ScreenpackInfo) {
+    func configure(with screenpack: ScreenpackInfo, currentRosterSize: Int = 0) {
         nameLabel.stringValue = screenpack.name
         authorLabel.stringValue = "by \(screenpack.author)"
         
@@ -387,6 +406,15 @@ class ScreenpackGridItem: NSCollectionViewItem {
             info += " • \(screenpack.characterSlots) slots"
         }
         resolutionLabel.stringValue = " \(info) "
+        
+        // Show warning if roster exceeds slots
+        if screenpack.characterSlots > 0 && currentRosterSize > screenpack.characterSlots {
+            let overflow = currentRosterSize - screenpack.characterSlots
+            warningLabel.stringValue = " ⚠️ \(overflow) chars hidden "
+            warningLabel.isHidden = false
+        } else {
+            warningLabel.isHidden = true
+        }
         
         // Show active badge
         if screenpack.isActive {
@@ -426,6 +454,8 @@ class ScreenpackGridItem: NSCollectionViewItem {
         nameLabel.stringValue = ""
         authorLabel.stringValue = ""
         resolutionLabel.stringValue = ""
+        warningLabel.stringValue = ""
+        warningLabel.isHidden = true
         activeBadge.isHidden = true
         activateButton.isHidden = true
         isSelected = false
@@ -444,6 +474,7 @@ class ScreenpackListItem: NSCollectionViewItem {
     private var authorLabel: NSTextField!
     private var resolutionLabel: NSTextField!
     private var statusLabel: NSTextField!
+    private var warningLabel: NSTextField!
     private var activateButton: NSButton!
     
     var onActivate: (() -> Void)?
@@ -494,6 +525,14 @@ class ScreenpackListItem: NSCollectionViewItem {
         statusLabel.textColor = DesignColors.greenAccent
         containerView.addSubview(statusLabel)
         
+        // Warning label (slots exceeded)
+        warningLabel = NSTextField(labelWithString: "")
+        warningLabel.translatesAutoresizingMaskIntoConstraints = false
+        warningLabel.font = DesignFonts.caption(size: 11)
+        warningLabel.textColor = DesignColors.warning
+        warningLabel.isHidden = true
+        containerView.addSubview(warningLabel)
+        
         // Activate button
         activateButton = NSButton(title: "Activate", target: self, action: #selector(activateClicked))
         activateButton.translatesAutoresizingMaskIntoConstraints = false
@@ -515,7 +554,10 @@ class ScreenpackListItem: NSCollectionViewItem {
             authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
             
             resolutionLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            resolutionLabel.trailingAnchor.constraint(equalTo: statusLabel.leadingAnchor, constant: -20),
+            resolutionLabel.trailingAnchor.constraint(equalTo: warningLabel.leadingAnchor, constant: -12),
+            
+            warningLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            warningLabel.trailingAnchor.constraint(equalTo: statusLabel.leadingAnchor, constant: -12),
             
             statusLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             statusLabel.trailingAnchor.constraint(equalTo: activateButton.leadingAnchor, constant: -12),
@@ -552,7 +594,7 @@ class ScreenpackListItem: NSCollectionViewItem {
         }
     }
     
-    func configure(with screenpack: ScreenpackInfo) {
+    func configure(with screenpack: ScreenpackInfo, currentRosterSize: Int = 0) {
         nameLabel.stringValue = screenpack.name
         
         // Show author and component summary
@@ -569,6 +611,15 @@ class ScreenpackListItem: NSCollectionViewItem {
             info += " • \(screenpack.characterLimitString)"
         }
         resolutionLabel.stringValue = info
+        
+        // Show warning if roster exceeds slots
+        if screenpack.characterSlots > 0 && currentRosterSize > screenpack.characterSlots {
+            let overflow = currentRosterSize - screenpack.characterSlots
+            warningLabel.stringValue = "⚠️ \(overflow) chars hidden"
+            warningLabel.isHidden = false
+        } else {
+            warningLabel.isHidden = true
+        }
         
         if screenpack.isActive {
             statusLabel.stringValue = "● Active"
@@ -588,6 +639,8 @@ class ScreenpackListItem: NSCollectionViewItem {
         authorLabel.stringValue = ""
         resolutionLabel.stringValue = ""
         statusLabel.stringValue = ""
+        warningLabel.stringValue = ""
+        warningLabel.isHidden = true
         activateButton.isHidden = true
         isSelected = false
         onActivate = nil
