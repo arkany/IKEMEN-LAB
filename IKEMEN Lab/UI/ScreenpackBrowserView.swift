@@ -218,231 +218,308 @@ class ScreenpackGridItem: NSCollectionViewItem {
     
     private var containerView: NSView!
     private var previewImageView: NSImageView!
+    private var gradientLayer: CAGradientLayer!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
-    private var activeBadge: NSView!
-    private var activeBadgeLabel: NSTextField!
+    private var statusDot: NSView!
+    private var resolutionBadge: NSView!
     private var resolutionLabel: NSTextField!
+    private var warningBadge: NSView!
     private var warningLabel: NSTextField!
-    private var activateButton: NSButton!
+    private var placeholderLabel: NSTextField!
+    
+    private var trackingArea: NSTrackingArea?
+    private var isHovered = false
+    private var currentScreenpack: ScreenpackInfo?
+    
+    // Animation duration (200ms to match character browser)
+    private let animationDuration: CGFloat = 0.2
     
     var onActivate: (() -> Void)?
     
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 180))
         view.wantsLayer = true
-        
         setupViews()
     }
     
     private func setupViews() {
-        // Container
+        // Container - rounded-xl (12px), with subtle border
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        containerView.layer?.cornerRadius = 12
+        containerView.layer?.masksToBounds = true
+        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
         containerView.layer?.borderWidth = 1
-        containerView.layer?.borderColor = NSColor.clear.cgColor
+        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         view.addSubview(containerView)
         
-        // Preview image - wider aspect ratio for screenpacks
+        // Preview image - fills container
         previewImageView = NSImageView(frame: .zero)
         previewImageView.translatesAutoresizingMaskIntoConstraints = false
         previewImageView.imageScaling = .scaleProportionallyUpOrDown
         previewImageView.wantsLayer = true
-        previewImageView.layer?.backgroundColor = DesignColors.placeholderBackground.cgColor
+        previewImageView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
         containerView.addSubview(previewImageView)
         
-        // Active badge
-        activeBadge = NSView()
-        activeBadge.translatesAutoresizingMaskIntoConstraints = false
-        activeBadge.wantsLayer = true
-        activeBadge.layer?.backgroundColor = DesignColors.greenAccent.withAlphaComponent(0.2).cgColor
-        activeBadge.layer?.cornerRadius = 4
-        activeBadge.layer?.borderWidth = 1
-        activeBadge.layer?.borderColor = DesignColors.greenAccent.cgColor
-        activeBadge.isHidden = true
-        containerView.addSubview(activeBadge)
+        // Placeholder text (shows when no preview)
+        placeholderLabel = NSTextField(labelWithString: "")
+        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        placeholderLabel.font = DesignFonts.header(size: 32)
+        placeholderLabel.textColor = NSColor.white.withAlphaComponent(0.05)
+        placeholderLabel.alignment = .center
+        containerView.addSubview(placeholderLabel)
         
-        activeBadgeLabel = NSTextField(labelWithString: "Active")
-        activeBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
-        activeBadgeLabel.font = DesignFonts.caption(size: 11)
-        activeBadgeLabel.textColor = DesignColors.greenAccent
-        activeBadge.addSubview(activeBadgeLabel)
+        // Gradient overlay - from top transparent to bottom dark
+        gradientLayer = CAGradientLayer()
+        gradientLayer.colors = [
+            NSColor.clear.cgColor,
+            NSColor.clear.cgColor,
+            DesignColors.zinc900.withAlphaComponent(0.9).cgColor
+        ]
+        gradientLayer.locations = [0.0, 0.4, 1.0]
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
+        containerView.layer?.addSublayer(gradientLayer)
         
-        // Resolution label (top-left)
+        // Status dot (top-right) - emerald for active
+        statusDot = NSView()
+        statusDot.translatesAutoresizingMaskIntoConstraints = false
+        statusDot.wantsLayer = true
+        statusDot.layer?.cornerRadius = 5
+        statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
+        statusDot.layer?.shadowColor = DesignColors.positive.cgColor
+        statusDot.layer?.shadowOffset = .zero
+        statusDot.layer?.shadowRadius = 6
+        statusDot.layer?.shadowOpacity = 0.6
+        statusDot.isHidden = true
+        containerView.addSubview(statusDot)
+        
+        // Resolution badge (top-left)
+        resolutionBadge = NSView()
+        resolutionBadge.translatesAutoresizingMaskIntoConstraints = false
+        resolutionBadge.wantsLayer = true
+        resolutionBadge.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.7).cgColor
+        resolutionBadge.layer?.cornerRadius = 4
+        containerView.addSubview(resolutionBadge)
+        
         resolutionLabel = NSTextField(labelWithString: "")
         resolutionLabel.translatesAutoresizingMaskIntoConstraints = false
-        resolutionLabel.font = DesignFonts.caption(size: 11)
-        resolutionLabel.textColor = DesignColors.grayText
-        resolutionLabel.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.8)
-        resolutionLabel.wantsLayer = true
-        resolutionLabel.layer?.cornerRadius = 3
+        resolutionLabel.font = DesignFonts.caption(size: 10)
+        resolutionLabel.textColor = DesignColors.textSecondary
         resolutionLabel.isBordered = false
         resolutionLabel.isEditable = false
-        containerView.addSubview(resolutionLabel)
+        resolutionLabel.drawsBackground = false
+        resolutionBadge.addSubview(resolutionLabel)
         
-        // Warning label (slots exceeded)
+        // Warning badge (below resolution)
+        warningBadge = NSView()
+        warningBadge.translatesAutoresizingMaskIntoConstraints = false
+        warningBadge.wantsLayer = true
+        warningBadge.layer?.backgroundColor = DesignColors.warningBackground.cgColor
+        warningBadge.layer?.cornerRadius = 4
+        warningBadge.isHidden = true
+        containerView.addSubview(warningBadge)
+        
         warningLabel = NSTextField(labelWithString: "")
         warningLabel.translatesAutoresizingMaskIntoConstraints = false
         warningLabel.font = DesignFonts.caption(size: 10)
         warningLabel.textColor = DesignColors.warning
-        warningLabel.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.9)
-        warningLabel.wantsLayer = true
-        warningLabel.layer?.cornerRadius = 3
         warningLabel.isBordered = false
         warningLabel.isEditable = false
-        warningLabel.isHidden = true
-        containerView.addSubview(warningLabel)
+        warningLabel.drawsBackground = false
+        warningBadge.addSubview(warningLabel)
         
-        // Name label
+        // Name label - bottom-left, white, semibold
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.header(size: 16)
-        nameLabel.textColor = DesignColors.grayText
-        nameLabel.alignment = .center
+        nameLabel.font = DesignFonts.body(size: 14)
+        nameLabel.textColor = .white
         nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.maximumNumberOfLines = 1
         containerView.addSubview(nameLabel)
         
-        // Author label
+        // Author label - below name, zinc-400
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.body(size: 12)
-        authorLabel.textColor = DesignColors.grayText
-        authorLabel.alignment = .center
+        authorLabel.font = DesignFonts.caption(size: 11)
+        authorLabel.textColor = DesignColors.textTertiary
         authorLabel.lineBreakMode = .byTruncatingTail
         authorLabel.maximumNumberOfLines = 1
         containerView.addSubview(authorLabel)
         
-        // Activate button
-        activateButton = NSButton(title: "Activate", target: self, action: #selector(activateClicked))
-        activateButton.translatesAutoresizingMaskIntoConstraints = false
-        activateButton.bezelStyle = .rounded
-        activateButton.font = DesignFonts.body(size: 12)
-        activateButton.isHidden = true
-        containerView.addSubview(activateButton)
-        
+        // Layout
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            // Preview: 12px from top, 12px sides, 90px tall
-            previewImageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
-            previewImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
-            previewImageView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
-            previewImageView.heightAnchor.constraint(equalToConstant: 90),
+            previewImageView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            previewImageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            previewImageView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            previewImageView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             
-            // Active badge in top-right of preview
-            activeBadge.topAnchor.constraint(equalTo: previewImageView.topAnchor, constant: 4),
-            activeBadge.trailingAnchor.constraint(equalTo: previewImageView.trailingAnchor, constant: -4),
+            placeholderLabel.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            placeholderLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor, constant: -20),
             
-            activeBadgeLabel.topAnchor.constraint(equalTo: activeBadge.topAnchor, constant: 2),
-            activeBadgeLabel.bottomAnchor.constraint(equalTo: activeBadge.bottomAnchor, constant: -2),
-            activeBadgeLabel.leadingAnchor.constraint(equalTo: activeBadge.leadingAnchor, constant: 6),
-            activeBadgeLabel.trailingAnchor.constraint(equalTo: activeBadge.trailingAnchor, constant: -6),
+            statusDot.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 10),
+            statusDot.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
+            statusDot.widthAnchor.constraint(equalToConstant: 10),
+            statusDot.heightAnchor.constraint(equalToConstant: 10),
             
-            // Resolution in top-left
-            resolutionLabel.topAnchor.constraint(equalTo: previewImageView.topAnchor, constant: 4),
-            resolutionLabel.leadingAnchor.constraint(equalTo: previewImageView.leadingAnchor, constant: 4),
+            resolutionBadge.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 10),
+            resolutionBadge.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
             
-            // Warning label below resolution
-            warningLabel.topAnchor.constraint(equalTo: resolutionLabel.bottomAnchor, constant: 2),
-            warningLabel.leadingAnchor.constraint(equalTo: previewImageView.leadingAnchor, constant: 4),
+            resolutionLabel.topAnchor.constraint(equalTo: resolutionBadge.topAnchor, constant: 3),
+            resolutionLabel.bottomAnchor.constraint(equalTo: resolutionBadge.bottomAnchor, constant: -3),
+            resolutionLabel.leadingAnchor.constraint(equalTo: resolutionBadge.leadingAnchor, constant: 6),
+            resolutionLabel.trailingAnchor.constraint(equalTo: resolutionBadge.trailingAnchor, constant: -6),
             
-            // Name: 4px below preview
-            nameLabel.topAnchor.constraint(equalTo: previewImageView.bottomAnchor, constant: 4),
-            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
-            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
+            warningBadge.topAnchor.constraint(equalTo: resolutionBadge.bottomAnchor, constant: 4),
+            warningBadge.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
             
-            // Author: 2px below name
-            authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
-            authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
-            authorLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
+            warningLabel.topAnchor.constraint(equalTo: warningBadge.topAnchor, constant: 3),
+            warningLabel.bottomAnchor.constraint(equalTo: warningBadge.bottomAnchor, constant: -3),
+            warningLabel.leadingAnchor.constraint(equalTo: warningBadge.leadingAnchor, constant: 6),
+            warningLabel.trailingAnchor.constraint(equalTo: warningBadge.trailingAnchor, constant: -6),
             
-            // Activate button: bottom right
-            activateButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -8),
-            activateButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
+            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
+            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
+            nameLabel.bottomAnchor.constraint(equalTo: authorLabel.topAnchor, constant: -2),
+            
+            authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
+            authorLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
+            authorLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12),
         ])
     }
     
-    @objc private func activateClicked() {
-        onActivate?()
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        gradientLayer.frame = containerView.bounds
+        setupTrackingArea()
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupTrackingArea()
+    }
+    
+    private func setupTrackingArea() {
+        if let existing = trackingArea {
+            view.removeTrackingArea(existing)
+        }
+        trackingArea = NSTrackingArea(
+            rect: view.bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow],
+            owner: self,
+            userInfo: nil
+        )
+        view.addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+        updateAppearance(animated: true)
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+        updateAppearance(animated: true)
     }
     
     override var isSelected: Bool {
         didSet {
-            updateSelectionAppearance()
+            updateAppearance(animated: true)
         }
     }
     
-    private func updateSelectionAppearance() {
-        if isSelected {
-            containerView.layer?.borderColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.shadowOffset = CGSize.zero
-            containerView.layer?.shadowRadius = 18
-            containerView.layer?.shadowOpacity = 0.4
-            // Show activate button when selected (if not already active)
-            activateButton.isHidden = false
-        } else {
-            containerView.layer?.borderColor = NSColor.clear.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowOpacity = 0
-            activateButton.isHidden = true
+    private func updateAppearance(animated: Bool) {
+        let duration = animated ? animationDuration : 0
+        let isActive = currentScreenpack?.isActive ?? false
+        
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            
+            if isSelected {
+                // Selected: bright border, subtle glow
+                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.4).cgColor
+                containerView.layer?.shadowColor = NSColor.white.cgColor
+                containerView.layer?.shadowOffset = .zero
+                containerView.layer?.shadowRadius = 8
+                containerView.layer?.shadowOpacity = 0.15
+            } else if isHovered {
+                // Hovered: medium border
+                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+                containerView.layer?.shadowOpacity = 0
+            } else if isActive {
+                // Active (not hovered/selected): emerald tint
+                containerView.animator().layer?.borderColor = DesignColors.positive.withAlphaComponent(0.3).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+                containerView.layer?.shadowColor = DesignColors.positive.cgColor
+                containerView.layer?.shadowOpacity = 0.1
+            } else {
+                // Default: subtle border
+                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+                containerView.layer?.shadowOpacity = 0
+            }
         }
     }
     
     func configure(with screenpack: ScreenpackInfo, currentRosterSize: Int = 0) {
+        currentScreenpack = screenpack
         nameLabel.stringValue = screenpack.name
-        authorLabel.stringValue = "by \(screenpack.author)"
+        authorLabel.stringValue = screenpack.author
+        
+        // Placeholder initial
+        if let firstChar = screenpack.name.first?.uppercased() {
+            placeholderLabel.stringValue = firstChar
+        }
         
         // Show resolution and character limit
         var info = screenpack.resolutionString
         if screenpack.characterSlots > 0 {
             info += " • \(screenpack.characterSlots) slots"
         }
-        resolutionLabel.stringValue = " \(info) "
+        resolutionLabel.stringValue = info
         
         // Show warning if roster exceeds slots
         if screenpack.characterSlots > 0 && currentRosterSize > screenpack.characterSlots {
             let overflow = currentRosterSize - screenpack.characterSlots
-            warningLabel.stringValue = " ⚠️ \(overflow) chars hidden "
-            warningLabel.isHidden = false
+            warningLabel.stringValue = "⚠️ \(overflow) hidden"
+            warningBadge.isHidden = false
         } else {
-            warningLabel.isHidden = true
+            warningBadge.isHidden = true
         }
         
-        // Show active badge
-        if screenpack.isActive {
-            activeBadge.isHidden = false
-            containerView.layer?.borderColor = DesignColors.greenAccent.withAlphaComponent(0.5).cgColor
-            containerView.layer?.borderWidth = 2
-            activateButton.isHidden = true // Can't activate already active
-        } else {
-            activeBadge.isHidden = true
-            containerView.layer?.borderColor = NSColor.clear.cgColor
-            containerView.layer?.borderWidth = 1
-        }
+        // Show status dot for active screenpack
+        statusDot.isHidden = !screenpack.isActive
+        
+        // Update appearance for active state
+        updateAppearance(animated: false)
         
         // Check cache first
         let cacheKey = "screenpack:\(screenpack.id)"
         if let cached = ImageCache.shared.get(cacheKey) {
             previewImageView.image = cached
+            placeholderLabel.isHidden = true
             return
         }
         
         // Load preview image asynchronously
         previewImageView.image = nil
+        placeholderLabel.isHidden = false
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             if let image = screenpack.loadPreviewImage() {
-                // Store in cache
                 ImageCache.shared.set(image, for: cacheKey)
                 DispatchQueue.main.async {
                     self?.previewImageView.image = image
+                    self?.placeholderLabel.isHidden = true
                 }
             }
         }
@@ -455,11 +532,19 @@ class ScreenpackGridItem: NSCollectionViewItem {
         authorLabel.stringValue = ""
         resolutionLabel.stringValue = ""
         warningLabel.stringValue = ""
-        warningLabel.isHidden = true
-        activeBadge.isHidden = true
-        activateButton.isHidden = true
+        warningBadge.isHidden = true
+        statusDot.isHidden = true
+        placeholderLabel.stringValue = ""
+        placeholderLabel.isHidden = false
+        currentScreenpack = nil
+        isHovered = false
         isSelected = false
         onActivate = nil
+        
+        // Reset appearance
+        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+        containerView.layer?.shadowOpacity = 0
     }
 }
 
@@ -470,19 +555,26 @@ class ScreenpackListItem: NSCollectionViewItem {
     static let identifier = NSUserInterfaceItemIdentifier("ScreenpackListItem")
     
     private var containerView: NSView!
+    private var thumbnailView: NSImageView!
+    private var placeholderLabel: NSTextField!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
     private var resolutionLabel: NSTextField!
-    private var statusLabel: NSTextField!
+    private var statusDot: NSView!
+    private var warningBadge: NSView!
     private var warningLabel: NSTextField!
-    private var activateButton: NSButton!
+    
+    private var trackingArea: NSTrackingArea?
+    private var isHovered = false
+    private var currentScreenpack: ScreenpackInfo?
+    
+    private let animationDuration: CGFloat = 0.2
     
     var onActivate: (() -> Void)?
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 60))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 56))
         view.wantsLayer = true
-        
         setupViews()
     }
     
@@ -490,159 +582,275 @@ class ScreenpackListItem: NSCollectionViewItem {
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        containerView.layer?.cornerRadius = 8
+        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
         containerView.layer?.borderWidth = 1
-        containerView.layer?.borderColor = NSColor.clear.cgColor
+        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         view.addSubview(containerView)
+        
+        // Thumbnail (small preview)
+        thumbnailView = NSImageView(frame: .zero)
+        thumbnailView.translatesAutoresizingMaskIntoConstraints = false
+        thumbnailView.imageScaling = .scaleProportionallyUpOrDown
+        thumbnailView.wantsLayer = true
+        thumbnailView.layer?.cornerRadius = 6
+        thumbnailView.layer?.masksToBounds = true
+        thumbnailView.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        containerView.addSubview(thumbnailView)
+        
+        // Placeholder initial
+        placeholderLabel = NSTextField(labelWithString: "")
+        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        placeholderLabel.font = DesignFonts.header(size: 18)
+        placeholderLabel.textColor = NSColor.white.withAlphaComponent(0.1)
+        placeholderLabel.alignment = .center
+        containerView.addSubview(placeholderLabel)
         
         // Name
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.header(size: 16)
-        nameLabel.textColor = DesignColors.creamText
+        nameLabel.font = DesignFonts.body(size: 14)
+        nameLabel.textColor = .white
         nameLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(nameLabel)
         
         // Author
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.body(size: 12)
-        authorLabel.textColor = DesignColors.grayText
+        authorLabel.font = DesignFonts.caption(size: 12)
+        authorLabel.textColor = DesignColors.textTertiary
         authorLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(authorLabel)
         
-        // Resolution
+        // Resolution (right side)
         resolutionLabel = NSTextField(labelWithString: "")
         resolutionLabel.translatesAutoresizingMaskIntoConstraints = false
-        resolutionLabel.font = DesignFonts.body(size: 14)
-        resolutionLabel.textColor = DesignColors.grayText
+        resolutionLabel.font = DesignFonts.caption(size: 11)
+        resolutionLabel.textColor = DesignColors.textSecondary
+        resolutionLabel.alignment = .right
         containerView.addSubview(resolutionLabel)
         
-        // Status (Active indicator)
-        statusLabel = NSTextField(labelWithString: "")
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.font = DesignFonts.body(size: 14)
-        statusLabel.textColor = DesignColors.greenAccent
-        containerView.addSubview(statusLabel)
+        // Status dot (next to name for active)
+        statusDot = NSView()
+        statusDot.translatesAutoresizingMaskIntoConstraints = false
+        statusDot.wantsLayer = true
+        statusDot.layer?.cornerRadius = 4
+        statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
+        statusDot.layer?.shadowColor = DesignColors.positive.cgColor
+        statusDot.layer?.shadowOffset = .zero
+        statusDot.layer?.shadowRadius = 4
+        statusDot.layer?.shadowOpacity = 0.5
+        statusDot.isHidden = true
+        containerView.addSubview(statusDot)
         
-        // Warning label (slots exceeded)
+        // Warning badge
+        warningBadge = NSView()
+        warningBadge.translatesAutoresizingMaskIntoConstraints = false
+        warningBadge.wantsLayer = true
+        warningBadge.layer?.backgroundColor = DesignColors.warningBackground.cgColor
+        warningBadge.layer?.cornerRadius = 4
+        warningBadge.isHidden = true
+        containerView.addSubview(warningBadge)
+        
         warningLabel = NSTextField(labelWithString: "")
         warningLabel.translatesAutoresizingMaskIntoConstraints = false
-        warningLabel.font = DesignFonts.caption(size: 11)
+        warningLabel.font = DesignFonts.caption(size: 10)
         warningLabel.textColor = DesignColors.warning
-        warningLabel.isHidden = true
-        containerView.addSubview(warningLabel)
-        
-        // Activate button
-        activateButton = NSButton(title: "Activate", target: self, action: #selector(activateClicked))
-        activateButton.translatesAutoresizingMaskIntoConstraints = false
-        activateButton.bezelStyle = .rounded
-        activateButton.font = DesignFonts.body(size: 12)
-        activateButton.isHidden = true
-        containerView.addSubview(activateButton)
+        warningLabel.isBordered = false
+        warningLabel.isEditable = false
+        warningLabel.drawsBackground = false
+        warningBadge.addSubview(warningLabel)
         
         NSLayoutConstraint.activate([
-            containerView.topAnchor.constraint(equalTo: view.topAnchor),
+            containerView.topAnchor.constraint(equalTo: view.topAnchor, constant: 2),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -2),
             
-            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            // Thumbnail on left (16:9 ratio, ~72x40)
+            thumbnailView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
+            thumbnailView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            thumbnailView.widthAnchor.constraint(equalToConstant: 72),
+            thumbnailView.heightAnchor.constraint(equalToConstant: 40),
+            
+            placeholderLabel.centerXAnchor.constraint(equalTo: thumbnailView.centerXAnchor),
+            placeholderLabel.centerYAnchor.constraint(equalTo: thumbnailView.centerYAnchor),
+            
+            // Status dot next to name
+            statusDot.leadingAnchor.constraint(equalTo: thumbnailView.trailingAnchor, constant: 12),
+            statusDot.centerYAnchor.constraint(equalTo: nameLabel.centerYAnchor),
+            statusDot.widthAnchor.constraint(equalToConstant: 8),
+            statusDot.heightAnchor.constraint(equalToConstant: 8),
+            
+            // Name (after status dot if visible, otherwise after thumbnail)
+            nameLabel.leadingAnchor.constraint(equalTo: statusDot.trailingAnchor, constant: 8),
             nameLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 10),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: warningBadge.leadingAnchor, constant: -12),
             
+            // Author below name
             authorLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
+            authorLabel.trailingAnchor.constraint(lessThanOrEqualTo: resolutionLabel.leadingAnchor, constant: -12),
             
+            // Warning badge (before resolution)
+            warningBadge.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            warningBadge.trailingAnchor.constraint(equalTo: resolutionLabel.leadingAnchor, constant: -12),
+            
+            warningLabel.topAnchor.constraint(equalTo: warningBadge.topAnchor, constant: 3),
+            warningLabel.bottomAnchor.constraint(equalTo: warningBadge.bottomAnchor, constant: -3),
+            warningLabel.leadingAnchor.constraint(equalTo: warningBadge.leadingAnchor, constant: 6),
+            warningLabel.trailingAnchor.constraint(equalTo: warningBadge.trailingAnchor, constant: -6),
+            
+            // Resolution on right
             resolutionLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            resolutionLabel.trailingAnchor.constraint(equalTo: warningLabel.leadingAnchor, constant: -12),
-            
-            warningLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            warningLabel.trailingAnchor.constraint(equalTo: statusLabel.leadingAnchor, constant: -12),
-            
-            statusLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            statusLabel.trailingAnchor.constraint(equalTo: activateButton.leadingAnchor, constant: -12),
-            
-            activateButton.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            activateButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            resolutionLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            resolutionLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 100),
         ])
     }
     
-    @objc private func activateClicked() {
-        onActivate?()
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        setupTrackingArea()
+    }
+    
+    private func setupTrackingArea() {
+        if let existing = trackingArea {
+            view.removeTrackingArea(existing)
+        }
+        trackingArea = NSTrackingArea(
+            rect: view.bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow],
+            owner: self,
+            userInfo: nil
+        )
+        view.addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+        updateAppearance(animated: true)
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+        updateAppearance(animated: true)
     }
     
     override var isSelected: Bool {
         didSet {
-            updateSelectionAppearance()
+            updateAppearance(animated: true)
         }
     }
     
-    private func updateSelectionAppearance() {
-        if isSelected {
-            containerView.layer?.borderColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowColor = DesignColors.selectedBorder.cgColor
-            containerView.layer?.shadowOffset = CGSize.zero
-            containerView.layer?.shadowRadius = 18
-            containerView.layer?.shadowOpacity = 0.4
-            activateButton.isHidden = false
-        } else {
-            containerView.layer?.borderColor = NSColor.clear.cgColor
-            containerView.layer?.borderWidth = 1
-            containerView.layer?.shadowOpacity = 0
-            activateButton.isHidden = true
+    private func updateAppearance(animated: Bool) {
+        let duration = animated ? animationDuration : 0
+        let isActive = currentScreenpack?.isActive ?? false
+        
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            
+            if isSelected {
+                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.4).cgColor
+                containerView.layer?.shadowColor = NSColor.white.cgColor
+                containerView.layer?.shadowOffset = .zero
+                containerView.layer?.shadowRadius = 6
+                containerView.layer?.shadowOpacity = 0.1
+            } else if isHovered {
+                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+                containerView.layer?.shadowOpacity = 0
+            } else if isActive {
+                containerView.animator().layer?.borderColor = DesignColors.positive.withAlphaComponent(0.2).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.15).cgColor
+                containerView.layer?.shadowOpacity = 0
+            } else {
+                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+                containerView.layer?.shadowOpacity = 0
+            }
         }
     }
     
     func configure(with screenpack: ScreenpackInfo, currentRosterSize: Int = 0) {
+        currentScreenpack = screenpack
         nameLabel.stringValue = screenpack.name
+        
+        // Placeholder initial
+        if let firstChar = screenpack.name.first?.uppercased() {
+            placeholderLabel.stringValue = firstChar
+        }
         
         // Show author and component summary
         let componentSummary = screenpack.componentSummary
         if componentSummary != "Standard Screenpack" {
-            authorLabel.stringValue = "by \(screenpack.author) • \(componentSummary)"
+            authorLabel.stringValue = "\(screenpack.author) • \(componentSummary)"
         } else {
-            authorLabel.stringValue = "by \(screenpack.author)"
+            authorLabel.stringValue = screenpack.author
         }
         
         // Show resolution and character limit
         var info = screenpack.resolutionString
         if screenpack.characterSlots > 0 {
-            info += " • \(screenpack.characterLimitString)"
+            info += " • \(screenpack.characterSlots) slots"
         }
         resolutionLabel.stringValue = info
         
         // Show warning if roster exceeds slots
         if screenpack.characterSlots > 0 && currentRosterSize > screenpack.characterSlots {
             let overflow = currentRosterSize - screenpack.characterSlots
-            warningLabel.stringValue = "⚠️ \(overflow) chars hidden"
-            warningLabel.isHidden = false
+            warningLabel.stringValue = "⚠️ \(overflow) hidden"
+            warningBadge.isHidden = false
         } else {
-            warningLabel.isHidden = true
+            warningBadge.isHidden = true
         }
         
-        if screenpack.isActive {
-            statusLabel.stringValue = "● Active"
-            statusLabel.textColor = DesignColors.greenAccent
-            containerView.layer?.borderColor = DesignColors.greenAccent.withAlphaComponent(0.3).cgColor
-            containerView.layer?.borderWidth = 1
-            activateButton.isHidden = true
+        // Show status dot for active
+        statusDot.isHidden = !screenpack.isActive
+        
+        // Update appearance for active state
+        updateAppearance(animated: false)
+        
+        // Load thumbnail
+        let cacheKey = "screenpack:\(screenpack.id)"
+        if let cached = ImageCache.shared.get(cacheKey) {
+            thumbnailView.image = cached
+            placeholderLabel.isHidden = true
         } else {
-            statusLabel.stringValue = ""
-            containerView.layer?.borderColor = NSColor.clear.cgColor
+            thumbnailView.image = nil
+            placeholderLabel.isHidden = false
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                if let image = screenpack.loadPreviewImage() {
+                    ImageCache.shared.set(image, for: cacheKey)
+                    DispatchQueue.main.async {
+                        self?.thumbnailView.image = image
+                        self?.placeholderLabel.isHidden = true
+                    }
+                }
+            }
         }
     }
     
     override func prepareForReuse() {
         super.prepareForReuse()
+        thumbnailView.image = nil
+        placeholderLabel.stringValue = ""
+        placeholderLabel.isHidden = false
         nameLabel.stringValue = ""
         authorLabel.stringValue = ""
         resolutionLabel.stringValue = ""
-        statusLabel.stringValue = ""
+        statusDot.isHidden = true
         warningLabel.stringValue = ""
-        warningLabel.isHidden = true
-        activateButton.isHidden = true
+        warningBadge.isHidden = true
+        currentScreenpack = nil
+        isHovered = false
         isSelected = false
         onActivate = nil
+        
+        // Reset appearance
+        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+        containerView.layer?.shadowOpacity = 0
     }
 }
