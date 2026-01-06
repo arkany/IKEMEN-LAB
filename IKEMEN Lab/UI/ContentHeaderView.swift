@@ -1,5 +1,186 @@
 import Cocoa
 
+// MARK: - View Mode Toggle
+
+/// Icon-based grid/list view toggle matching stages-list view.html design
+/// Two icon buttons: grid icon and list icon
+/// Active state: text-white bg-white/5 rounded
+/// Inactive state: text-zinc-600 hover:text-white
+class ViewModeToggle: NSView {
+    
+    enum Mode {
+        case grid
+        case list
+    }
+    
+    var onModeChanged: ((Mode) -> Void)?
+    
+    private(set) var currentMode: Mode = .grid {
+        didSet {
+            updateAppearance()
+        }
+    }
+    
+    private var gridButton: NSButton!
+    private var listButton: NSButton!
+    private var gridTrackingArea: NSTrackingArea?
+    private var listTrackingArea: NSTrackingArea?
+    private var isGridHovered = false
+    private var isListHovered = false
+    
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setup()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+    
+    private func setup() {
+        wantsLayer = true
+        
+        // Container for buttons with gap-2 (8px)
+        let stack = NSStackView()
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.orientation = .horizontal
+        stack.spacing = 8
+        stack.alignment = .centerY
+        addSubview(stack)
+        
+        // Grid button
+        gridButton = createIconButton(symbolName: "square.grid.2x2", tooltip: "Grid view")
+        gridButton.target = self
+        gridButton.action = #selector(gridClicked)
+        stack.addArrangedSubview(gridButton)
+        
+        // List button
+        listButton = createIconButton(symbolName: "list.bullet", tooltip: "List view")
+        listButton.target = self
+        listButton.action = #selector(listClicked)
+        stack.addArrangedSubview(listButton)
+        
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+        ])
+        
+        updateAppearance()
+        setupTrackingAreas()
+    }
+    
+    private func createIconButton(symbolName: String, tooltip: String) -> NSButton {
+        let button = NSButton(frame: .zero)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.isBordered = false
+        button.bezelStyle = .inline
+        button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: tooltip)
+        button.imagePosition = .imageOnly
+        button.toolTip = tooltip
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 4
+        
+        NSLayoutConstraint.activate([
+            button.widthAnchor.constraint(equalToConstant: 28),
+            button.heightAnchor.constraint(equalToConstant: 28),
+        ])
+        
+        return button
+    }
+    
+    private func setupTrackingAreas() {
+        // Grid button tracking
+        gridTrackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: ["button": "grid"]
+        )
+        gridButton.addTrackingArea(gridTrackingArea!)
+        
+        // List button tracking
+        listTrackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: ["button": "list"]
+        )
+        listButton.addTrackingArea(listTrackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        guard let userInfo = event.trackingArea?.userInfo as? [String: String],
+              let buttonId = userInfo["button"] else { return }
+        
+        if buttonId == "grid" {
+            isGridHovered = true
+        } else {
+            isListHovered = true
+        }
+        updateAppearance()
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        guard let userInfo = event.trackingArea?.userInfo as? [String: String],
+              let buttonId = userInfo["button"] else { return }
+        
+        if buttonId == "grid" {
+            isGridHovered = false
+        } else {
+            isListHovered = false
+        }
+        updateAppearance()
+    }
+    
+    private func updateAppearance() {
+        // Grid button
+        if currentMode == .grid {
+            gridButton.contentTintColor = .white
+            gridButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        } else if isGridHovered {
+            gridButton.contentTintColor = .white
+            gridButton.layer?.backgroundColor = NSColor.clear.cgColor
+        } else {
+            gridButton.contentTintColor = DesignColors.zinc600
+            gridButton.layer?.backgroundColor = NSColor.clear.cgColor
+        }
+        
+        // List button
+        if currentMode == .list {
+            listButton.contentTintColor = .white
+            listButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        } else if isListHovered {
+            listButton.contentTintColor = .white
+            listButton.layer?.backgroundColor = NSColor.clear.cgColor
+        } else {
+            listButton.contentTintColor = DesignColors.zinc600
+            listButton.layer?.backgroundColor = NSColor.clear.cgColor
+        }
+    }
+    
+    @objc private func gridClicked() {
+        if currentMode != .grid {
+            currentMode = .grid
+            onModeChanged?(.grid)
+        }
+    }
+    
+    @objc private func listClicked() {
+        if currentMode != .list {
+            currentMode = .list
+            onModeChanged?(.list)
+        }
+    }
+    
+    /// Set the current mode without triggering callback
+    func setMode(_ mode: Mode) {
+        currentMode = mode
+    }
+}
+
 // MARK: - Custom Search Field
 
 /// Custom styled search field matching the HTML design
@@ -250,11 +431,13 @@ class ContentHeaderView: NSView {
     
     var onSearch: ((String) -> Void)?
     var onHomeClicked: (() -> Void)?
+    var onViewModeChanged: ((ViewModeToggle.Mode) -> Void)?
     
     // MARK: - Properties
     
     private var breadcrumbStack: NSStackView!
     private var searchField: StyledSearchField!
+    private var viewModeToggle: ViewModeToggle!
     private var homeLabel: NSTextField!  // Legacy, kept for compatibility
     private var homeButtonRef: NSButton!
     private var chevronImage: NSImageView!
@@ -290,6 +473,7 @@ class ContentHeaderView: NSView {
         layer?.addSublayer(borderLayer)
         
         setupBreadcrumb()
+        setupViewModeToggle()
         setupSearchField()
         setupConstraints()
     }
@@ -368,6 +552,17 @@ class ContentHeaderView: NSView {
         addSubview(searchField)
     }
     
+    private func setupViewModeToggle() {
+        // View mode toggle (grid/list icons)
+        viewModeToggle = ViewModeToggle(frame: .zero)
+        viewModeToggle.translatesAutoresizingMaskIntoConstraints = false
+        viewModeToggle.isHidden = true  // Hidden by default, shown for browser views
+        viewModeToggle.onModeChanged = { [weak self] mode in
+            self?.onViewModeChanged?(mode)
+        }
+        addSubview(viewModeToggle)
+    }
+    
     private func handleSearchTextChanged(_ text: String) {
         // Debounce search to avoid too many queries while typing
         searchDebounceTimer?.invalidate()
@@ -381,6 +576,10 @@ class ContentHeaderView: NSView {
             // Breadcrumb on left
             breadcrumbStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 32),
             breadcrumbStack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            
+            // View mode toggle before search field (gap-4 = 16px)
+            viewModeToggle.trailingAnchor.constraint(equalTo: searchField.leadingAnchor, constant: -16),
+            viewModeToggle.centerYAnchor.constraint(equalTo: centerYAnchor),
             
             // Search field on right - matches HTML: w-64 (256px)
             searchField.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -32),
@@ -407,6 +606,21 @@ class ContentHeaderView: NSView {
     /// Get current search text
     var searchText: String {
         searchField.stringValue
+    }
+    
+    /// Show or hide the view mode toggle
+    func setViewModeToggleVisible(_ visible: Bool) {
+        viewModeToggle.isHidden = !visible
+    }
+    
+    /// Set the current view mode (without triggering callback)
+    func setViewMode(_ mode: ViewModeToggle.Mode) {
+        viewModeToggle.setMode(mode)
+    }
+    
+    /// Get current view mode
+    var currentViewMode: ViewModeToggle.Mode {
+        viewModeToggle.currentMode
     }
     
     // MARK: - Actions

@@ -94,7 +94,6 @@ class GameWindowController: NSWindowController {
     private var stageBrowserView: StageBrowserView!
     private var screenpackBrowserView: ScreenpackBrowserView!
     private var duplicatesView: DuplicatesView!
-    private var viewModeToggle: NSSegmentedControl!
     private var createStageButton: NSButton!
     
     // Search state
@@ -106,8 +105,7 @@ class GameWindowController: NSWindowController {
     // MARK: - State
     
     var isGameLoaded: Bool { ikemenBridge.isEngineRunning }
-    var isPaused: Bool = false
-    
+    var isPaused: Bool = false    
     // MARK: - Icons
     
     private func loadIcon(named name: String, tintColor: NSColor? = nil) -> NSImage? {
@@ -686,6 +684,9 @@ class GameWindowController: NSWindowController {
         contentHeaderView.onHomeClicked = { [weak self] in
             self?.selectNavItem(.dashboard)
         }
+        contentHeaderView.onViewModeChanged = { [weak self] mode in
+            self?.handleViewModeChanged(mode)
+        }
         mainAreaView.addSubview(contentHeaderView)
         
         // Dashboard View
@@ -721,13 +722,6 @@ class GameWindowController: NSWindowController {
         // Apply new design styling
         dropZoneView.applyFigmaStyle(borderColor: DesignColors.borderDashed, textColor: DesignColors.textTertiary, font: DesignFonts.body(size: 14))
         mainAreaView.addSubview(dropZoneView)
-        
-        // View Mode Toggle (Grid/List)
-        viewModeToggle = NSSegmentedControl(labels: ["Grid", "List"], trackingMode: .selectOne, target: self, action: #selector(viewModeToggled(_:)))
-        viewModeToggle.translatesAutoresizingMaskIntoConstraints = false
-        viewModeToggle.selectedSegment = 0
-        viewModeToggle.isHidden = true
-        mainAreaView.addSubview(viewModeToggle)
         
         // Create Stage from PNG button (hidden by default, shown when on stages tab)
         createStageButton = NSButton(title: "Create from PNG", target: self, action: #selector(createStageFromPNG(_:)))
@@ -842,13 +836,9 @@ class GameWindowController: NSWindowController {
             dashboardView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor),
             dashboardView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor),
             
-            // View mode toggle in top-right of content area (below header)
-            viewModeToggle.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
-            viewModeToggle.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
-            
-            // Create stage button - to the left of view mode toggle
+            // Create stage button - top-right of content area (below header)
             createStageButton.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
-            createStageButton.trailingAnchor.constraint(equalTo: viewModeToggle.leadingAnchor, constant: -12),
+            createStageButton.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             
             // Drop zone fills main area with padding
             dropZoneView.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
@@ -857,25 +847,25 @@ class GameWindowController: NSWindowController {
             dropZoneView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
             
             // Character browser - left side, stops at detail panel
-            characterBrowserView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
+            characterBrowserView.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
             characterBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             characterBrowserView.trailingAnchor.constraint(equalTo: characterDetailsView.leadingAnchor, constant: -16),
             characterBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
             
             // Character details panel - always visible on right side (420px width)
-            characterDetailsView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
+            characterDetailsView.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
             characterDetailsView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             characterDetailsView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
             characterDetailsWidthConstraint,
             
-            // Stage browser fills main area (below toggle)
-            stageBrowserView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
+            // Stage browser fills main area (below header)
+            stageBrowserView.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
             stageBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             stageBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             stageBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
             
-            // Screenpack browser fills main area (below toggle)
-            screenpackBrowserView.topAnchor.constraint(equalTo: viewModeToggle.bottomAnchor, constant: 16),
+            // Screenpack browser fills main area (below header)
+            screenpackBrowserView.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
             screenpackBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             screenpackBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             screenpackBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
@@ -888,10 +878,11 @@ class GameWindowController: NSWindowController {
         ])
     }
     
-    @objc private func viewModeToggled(_ sender: NSSegmentedControl) {
-        currentViewMode = sender.selectedSegment == 0 ? .grid : .list
+    private func handleViewModeChanged(_ mode: ViewModeToggle.Mode) {
+        currentViewMode = mode == .grid ? .grid : .list
         characterBrowserView.viewMode = currentViewMode
         screenpackBrowserView.viewMode = currentViewMode
+        // Note: stageBrowserView is always list view, doesn't support grid/list toggle
     }
     
     private func updateMainAreaContent() {
@@ -911,13 +902,17 @@ class GameWindowController: NSWindowController {
             characterDetailsView?.showPlaceholder()
         }
         
-        // Show/hide view mode toggle for content browsers
-        let showToggle = selectedNavItem == .characters || selectedNavItem == .stages || selectedNavItem == .soundpacks
-        viewModeToggle?.isHidden = !showToggle
-        
         // Show/hide content header (hidden on dashboard)
         let showHeader = selectedNavItem != .dashboard && selectedNavItem != nil
         contentHeaderView?.isHidden = !showHeader
+        
+        // Show/hide view mode toggle in header for content browsers
+        // Note: stages is list-only so doesn't need toggle
+        let showToggle = selectedNavItem == .characters || selectedNavItem == .soundpacks
+        contentHeaderView?.setViewModeToggleVisible(showToggle)
+        
+        // Sync toggle state with current view mode
+        contentHeaderView?.setViewMode(currentViewMode == .grid ? .grid : .list)
         
         // Update breadcrumb based on current view
         switch selectedNavItem {
