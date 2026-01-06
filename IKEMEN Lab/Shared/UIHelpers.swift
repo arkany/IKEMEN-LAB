@@ -127,6 +127,12 @@ public struct DesignColors {
     /// Positive background - emerald-500/10
     public static let positiveBackground = NSColor(red: 0x10/255.0, green: 0xb9/255.0, blue: 0x81/255.0, alpha: 0.1)
     
+    /// Warning - amber-500
+    public static let warning = NSColor(red: 0xf5/255.0, green: 0x9e/255.0, blue: 0x0b/255.0, alpha: 1.0)
+    
+    /// Warning background - amber-500/10
+    public static let warningBackground = NSColor(red: 0xf5/255.0, green: 0x9e/255.0, blue: 0x0b/255.0, alpha: 0.1)
+    
     /// Character badge - blue-500
     public static let badgeCharacter = NSColor(red: 0x3b/255.0, green: 0x82/255.0, blue: 0xf6/255.0, alpha: 1.0)
     

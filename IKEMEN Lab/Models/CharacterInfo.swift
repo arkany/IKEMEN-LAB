@@ -18,6 +18,11 @@ public struct CharacterInfo: Identifiable, Hashable {
     /// Alias for directory - the character's root folder
     public var path: URL { directory }
     
+    /// Automatically inferred tags based on folder name, display name, and author
+    public var inferredTags: [String] {
+        return TagDetector.shared.detectTags(for: self)
+    }
+    
     public init(directory: URL, defFile: URL, isDisabled: Bool = false) {
         self.directory = directory
         self.defFile = defFile

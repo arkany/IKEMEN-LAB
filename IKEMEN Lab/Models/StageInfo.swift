@@ -48,6 +48,11 @@ public struct StageInfo: Identifiable, Hashable {
         return SFFParser.extractStagePreview(from: sff)
     }
     
+    /// Automatically inferred tags based on file name, stage name, and author
+    public var inferredTags: [String] {
+        return TagDetector.shared.detectTags(for: self)
+    }
+    
     public init(defFile: URL, isDisabled: Bool = false) {
         self.defFile = defFile
         self.id = defFile.deletingPathExtension().lastPathComponent
