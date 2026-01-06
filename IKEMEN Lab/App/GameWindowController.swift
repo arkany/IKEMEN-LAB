@@ -9,6 +9,7 @@ enum NavItem: String, CaseIterable {
     case characters = "Characters"
     case stages = "Stages"
     case addons = "Screenpacks"
+    case collections = "Collections"
     case duplicates = "Duplicates"
     case soundpacks = "Soundpacks"  // Hidden for now
     case settings = "Settings"
@@ -20,6 +21,7 @@ enum NavItem: String, CaseIterable {
         case .characters: return "figure.fencing"
         case .stages: return "photo"
         case .addons: return "square.stack.3d.up"
+        case .collections: return "folder.fill"
         case .duplicates: return "doc.on.doc"
         case .soundpacks: return "music.note"
         case .settings: return "gearshape"
@@ -29,7 +31,7 @@ enum NavItem: String, CaseIterable {
     /// Whether this item should show a count badge
     var showsCount: Bool {
         switch self {
-        case .characters, .stages: return true
+        case .characters, .stages, .collections: return true
         default: return false
         }
     }
@@ -49,6 +51,7 @@ enum NavItem: String, CaseIterable {
         case .characters: return "characters"
         case .stages: return "stages"
         case .addons: return "lifebars"
+        case .collections: return "collections"
         case .duplicates: return "duplicates"
         case .soundpacks: return "screenpacks"
         case .settings: return "settings"
@@ -93,6 +96,7 @@ class GameWindowController: NSWindowController {
     private var characterDetailsWidthConstraint: NSLayoutConstraint!
     private var stageBrowserView: StageBrowserView!
     private var screenpackBrowserView: ScreenpackBrowserView!
+    private var collectionsBrowserView: CollectionsBrowserView!
     private var duplicatesView: DuplicatesView!
     private var createStageButton: NSButton!
     
@@ -821,6 +825,19 @@ class GameWindowController: NSWindowController {
         }
         mainAreaView.addSubview(duplicatesView)
         
+        // Collections Browser (hidden initially)
+        collectionsBrowserView = CollectionsBrowserView(frame: .zero)
+        collectionsBrowserView.translatesAutoresizingMaskIntoConstraints = false
+        collectionsBrowserView.isHidden = true
+        collectionsBrowserView.onCollectionSelected = { [weak self] collection in
+            // TODO: Show collection details view
+            self?.statusLabel.stringValue = "Collection: \(collection.name)"
+        }
+        collectionsBrowserView.onCreateCollection = { [weak self] in
+            self?.showCreateCollectionDialog()
+        }
+        mainAreaView.addSubview(collectionsBrowserView)
+        
         // Character details panel width constraint (420px per HTML design)
         characterDetailsWidthConstraint = characterDetailsView.widthAnchor.constraint(equalToConstant: 420)
         
@@ -875,6 +892,12 @@ class GameWindowController: NSWindowController {
             duplicatesView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             duplicatesView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             duplicatesView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
+            
+            // Collections browser fills main area (below header)
+            collectionsBrowserView.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
+            collectionsBrowserView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
+            collectionsBrowserView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
+            collectionsBrowserView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
         ])
     }
     
@@ -924,6 +947,8 @@ class GameWindowController: NSWindowController {
             contentHeaderView?.setCurrentPage("Screenpacks")
         case .addons:
             contentHeaderView?.setCurrentPage("Add-ons")
+        case .collections:
+            contentHeaderView?.setCurrentPage("Collections")
         case .duplicates:
             contentHeaderView?.setCurrentPage("Duplicates")
         case .settings:
@@ -949,6 +974,7 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
+            collectionsBrowserView?.isHidden = true
             duplicatesView?.isHidden = true
             updateDashboardStats()
         case .characters:
@@ -957,6 +983,7 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = false
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
+            collectionsBrowserView?.isHidden = true
             duplicatesView?.isHidden = true
             characterBrowserView?.viewMode = currentViewMode
         case .stages:
@@ -965,6 +992,7 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = false
             screenpackBrowserView?.isHidden = true
+            collectionsBrowserView?.isHidden = true
             duplicatesView?.isHidden = true
         case .soundpacks:
             // TODO: Implement soundpacks browser
@@ -973,6 +1001,7 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
+            collectionsBrowserView?.isHidden = true
             duplicatesView?.isHidden = true
         case .addons:
             // Screenpacks browser (add-ons tab)
@@ -981,8 +1010,19 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = false
+            collectionsBrowserView?.isHidden = true
             duplicatesView?.isHidden = true
             screenpackBrowserView?.viewMode = currentViewMode
+        case .collections:
+            // Collections browser
+            dashboardView?.isHidden = true
+            dropZoneView?.isHidden = true
+            characterBrowserView?.isHidden = true
+            stageBrowserView?.isHidden = true
+            screenpackBrowserView?.isHidden = true
+            collectionsBrowserView?.isHidden = false
+            duplicatesView?.isHidden = true
+            collectionsBrowserView?.refresh()
         case .duplicates:
             // Duplicates view
             dashboardView?.isHidden = true
@@ -990,6 +1030,7 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
+            collectionsBrowserView?.isHidden = true
             duplicatesView?.isHidden = false
             duplicatesView?.refresh()
         case .settings:
@@ -999,6 +1040,7 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
+            collectionsBrowserView?.isHidden = true
             duplicatesView?.isHidden = true
             showSettingsContent()
         case nil:
@@ -1008,6 +1050,7 @@ class GameWindowController: NSWindowController {
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
+            collectionsBrowserView?.isHidden = true
             duplicatesView?.isHidden = true
         }
     }
@@ -1282,6 +1325,78 @@ class GameWindowController: NSWindowController {
     private func revealCharacterInFinder(_ character: CharacterInfo) {
         NSWorkspace.shared.activateFileViewerSelecting([character.path])
     }
+    
+    // MARK: - Collection Management
+    
+    private func showCreateCollectionDialog() {
+        let alert = NSAlert()
+        alert.messageText = "Create Collection"
+        alert.informativeText = "Enter details for the new collection:"
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+        
+        // Create a container for input fields
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 60))
+        
+        // Collection name field
+        let nameLabel = NSTextField(labelWithString: "Name:")
+        nameLabel.frame = NSRect(x: 0, y: 36, width: 70, height: 20)
+        container.addSubview(nameLabel)
+        
+        let nameInput = NSTextField(frame: NSRect(x: 75, y: 34, width: 225, height: 24))
+        nameInput.placeholderString = "e.g., Marvel, SNK Bosses"
+        container.addSubview(nameInput)
+        
+        // Description field
+        let descLabel = NSTextField(labelWithString: "Description:")
+        descLabel.frame = NSRect(x: 0, y: 4, width: 70, height: 20)
+        container.addSubview(descLabel)
+        
+        let descInput = NSTextField(frame: NSRect(x: 75, y: 2, width: 225, height: 24))
+        descInput.placeholderString = "Optional"
+        container.addSubview(descInput)
+        
+        alert.accessoryView = container
+        
+        alert.beginSheetModal(for: window!) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            
+            let name = nameInput.stringValue.trimmingCharacters(in: .whitespaces)
+            guard !name.isEmpty else {
+                self?.showAlert(title: "Invalid Name", message: "Please enter a collection name.")
+                return
+            }
+            
+            let description = descInput.stringValue.trimmingCharacters(in: .whitespaces)
+            
+            do {
+                _ = try MetadataStore.shared.createCollection(name: name, description: description)
+                ToastManager.shared.showSuccess(
+                    title: "Collection created",
+                    subtitle: "\(name) is ready for content."
+                )
+                self?.collectionsBrowserView?.refresh()
+                self?.updateCollectionsCount()
+            } catch {
+                self?.showAlert(title: "Failed to Create Collection", message: error.localizedDescription)
+            }
+        }
+    }
+    
+    private func updateCollectionsCount() {
+        do {
+            let count = try MetadataStore.shared.allCollections().count
+            updateNavItemCount(.collections, count: count)
+        } catch {
+            print("Failed to update collections count: \(error)")
+        }
+    }
+    
+    private func revealCharacterInFinder(_ character: CharacterInfo) {
+        NSWorkspace.shared.activateFileViewerSelecting([character.path])
+    }
+    
+    // MARK: - Character Removal
     
     private func confirmRemoveCharacter(_ character: CharacterInfo) {
         let alert = NSAlert()
@@ -1883,6 +1998,9 @@ class GameWindowController: NSWindowController {
                 if try MetadataStore.shared.characterCount() == 0 {
                     try MetadataStore.shared.reindexAll(from: workingDir)
                 }
+                
+                // Initialize collections count
+                updateCollectionsCount()
             } catch {
                 print("Failed to initialize MetadataStore: \(error)")
             }

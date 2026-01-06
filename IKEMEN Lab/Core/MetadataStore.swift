@@ -49,6 +49,27 @@ public struct RecentInstall: Codable, FetchableRecord {
     public var author: String           // Author for display
 }
 
+/// Collection record stored in SQLite
+public struct CollectionRecord: Codable, FetchableRecord, PersistableRecord, Identifiable {
+    public static let databaseTableName = "collections"
+    
+    public var id: String              // UUID
+    public var name: String
+    public var description: String
+    public var createdAt: Date
+    public var updatedAt: Date
+}
+
+/// Collection item record (junction table for many-to-many)
+public struct CollectionItemRecord: Codable, FetchableRecord, PersistableRecord {
+    public static let databaseTableName = "collection_items"
+    
+    public var collectionId: String    // Foreign key to collections
+    public var itemId: String          // Item ID (character folder, stage def name, screenpack folder)
+    public var itemType: String        // "character", "stage", or "screenpack"
+    public var addedAt: Date
+}
+
 // MARK: - Metadata Store
 
 /// SQLite-backed metadata index for characters and stages
@@ -114,6 +135,28 @@ public final class MetadataStore {
             t.column("updatedAt", .datetime).notNull()
             t.column("sourceGame", .text)
             t.column("resolution", .text)
+        }
+        
+        // Collections table
+        try db.create(table: "collections", ifNotExists: true) { t in
+            t.column("id", .text).primaryKey()
+            t.column("name", .text).notNull().indexed()
+            t.column("description", .text).notNull()
+            t.column("createdAt", .datetime).notNull()
+            t.column("updatedAt", .datetime).notNull()
+        }
+        
+        // Collection items table (junction table)
+        try db.create(table: "collection_items", ifNotExists: true) { t in
+            t.column("collectionId", .text).notNull()
+                .indexed()
+                .references("collections", onDelete: .cascade)
+            t.column("itemId", .text).notNull()
+            t.column("itemType", .text).notNull()
+            t.column("addedAt", .datetime).notNull()
+            
+            // Composite primary key
+            t.primaryKey(["collectionId", "itemId", "itemType"])
         }
         
         // Full-text search indexes (for future advanced search)
@@ -360,6 +403,216 @@ public final class MetadataStore {
     public func reindexAll(from workingDir: URL) throws {
         try reindexCharacters(from: workingDir)
         try reindexStages(from: workingDir)
+    }
+    
+    // MARK: - Collection Operations
+    
+    /// Get all collections
+    public func allCollections() throws -> [CollectionInfo] {
+        guard let queue = dbQueue else { return [] }
+        
+        return try queue.read { db in
+            let records = try CollectionRecord
+                .order(Column("name").collating(.localizedCaseInsensitiveCompare))
+                .fetchAll(db)
+            
+            // Load items for each collection
+            return try records.map { record in
+                let items = try CollectionItemRecord
+                    .filter(Column("collectionId") == record.id)
+                    .order(Column("addedAt").desc)
+                    .fetchAll(db)
+                
+                let collectionItems = items.map { item in
+                    CollectionItem(
+                        id: item.itemId,
+                        type: CollectionItemType(rawValue: item.itemType) ?? .character,
+                        addedAt: item.addedAt
+                    )
+                }
+                
+                return CollectionInfo(
+                    id: record.id,
+                    name: record.name,
+                    description: record.description,
+                    items: collectionItems,
+                    createdAt: record.createdAt,
+                    updatedAt: record.updatedAt
+                )
+            }
+        }
+    }
+    
+    /// Get a collection by ID
+    public func collection(id: String) throws -> CollectionInfo? {
+        guard let queue = dbQueue else { return nil }
+        
+        return try queue.read { db in
+            guard let record = try CollectionRecord.fetchOne(db, key: id) else {
+                return nil
+            }
+            
+            let items = try CollectionItemRecord
+                .filter(Column("collectionId") == id)
+                .order(Column("addedAt").desc)
+                .fetchAll(db)
+            
+            let collectionItems = items.map { item in
+                CollectionItem(
+                    id: item.itemId,
+                    type: CollectionItemType(rawValue: item.itemType) ?? .character,
+                    addedAt: item.addedAt
+                )
+            }
+            
+            return CollectionInfo(
+                id: record.id,
+                name: record.name,
+                description: record.description,
+                items: collectionItems,
+                createdAt: record.createdAt,
+                updatedAt: record.updatedAt
+            )
+        }
+    }
+    
+    /// Create a new collection
+    public func createCollection(name: String, description: String = "") throws -> CollectionInfo {
+        let collection = CollectionInfo(name: name, description: description)
+        
+        try dbQueue?.write { db in
+            let record = CollectionRecord(
+                id: collection.id,
+                name: collection.name,
+                description: collection.description,
+                createdAt: collection.createdAt,
+                updatedAt: collection.updatedAt
+            )
+            try record.insert(db)
+        }
+        
+        return collection
+    }
+    
+    /// Update a collection's metadata (name, description)
+    public func updateCollection(_ collection: CollectionInfo) throws {
+        try dbQueue?.write { db in
+            let record = CollectionRecord(
+                id: collection.id,
+                name: collection.name,
+                description: collection.description,
+                createdAt: collection.createdAt,
+                updatedAt: Date()
+            )
+            try record.update(db)
+        }
+    }
+    
+    /// Delete a collection
+    public func deleteCollection(id: String) throws {
+        try dbQueue?.write { db in
+            // Items will be cascade deleted due to foreign key constraint
+            _ = try CollectionRecord.deleteOne(db, key: id)
+        }
+    }
+    
+    /// Add an item to a collection
+    public func addItemToCollection(collectionId: String, itemId: String, itemType: CollectionItemType) throws {
+        try dbQueue?.write { db in
+            let record = CollectionItemRecord(
+                collectionId: collectionId,
+                itemId: itemId,
+                itemType: itemType.rawValue,
+                addedAt: Date()
+            )
+            try record.insert(db)
+            
+            // Update collection's updatedAt timestamp
+            try db.execute(
+                sql: "UPDATE collections SET updatedAt = ? WHERE id = ?",
+                arguments: [Date(), collectionId]
+            )
+        }
+    }
+    
+    /// Remove an item from a collection
+    public func removeItemFromCollection(collectionId: String, itemId: String, itemType: CollectionItemType) throws {
+        try dbQueue?.write { db in
+            try CollectionItemRecord
+                .filter(Column("collectionId") == collectionId)
+                .filter(Column("itemId") == itemId)
+                .filter(Column("itemType") == itemType.rawValue)
+                .deleteAll(db)
+            
+            // Update collection's updatedAt timestamp
+            try db.execute(
+                sql: "UPDATE collections SET updatedAt = ? WHERE id = ?",
+                arguments: [Date(), collectionId]
+            )
+        }
+    }
+    
+    /// Get all collections that contain a specific item
+    public func collectionsContaining(itemId: String, itemType: CollectionItemType) throws -> [CollectionInfo] {
+        guard let queue = dbQueue else { return [] }
+        
+        return try queue.read { db in
+            let sql = """
+                SELECT c.* FROM collections c
+                INNER JOIN collection_items ci ON c.id = ci.collectionId
+                WHERE ci.itemId = ? AND ci.itemType = ?
+                ORDER BY c.name COLLATE NOCASE
+            """
+            
+            let records = try CollectionRecord.fetchAll(db, sql: sql, arguments: [itemId, itemType.rawValue])
+            
+            // Load full collection info for each
+            return try records.compactMap { record in
+                try collection(id: record.id)
+            }
+        }
+    }
+    
+    /// Search collections by name
+    public func searchCollections(query: String) throws -> [CollectionInfo] {
+        guard !query.isEmpty else {
+            return try allCollections()
+        }
+        
+        guard let queue = dbQueue else { return [] }
+        
+        let pattern = "%\(query)%"
+        return try queue.read { db in
+            let records = try CollectionRecord
+                .filter(Column("name").like(pattern) || Column("description").like(pattern))
+                .order(Column("name").collating(.localizedCaseInsensitiveCompare))
+                .fetchAll(db)
+            
+            // Load items for each collection
+            return try records.map { record in
+                let items = try CollectionItemRecord
+                    .filter(Column("collectionId") == record.id)
+                    .order(Column("addedAt").desc)
+                    .fetchAll(db)
+                
+                let collectionItems = items.map { item in
+                    CollectionItem(
+                        id: item.itemId,
+                        type: CollectionItemType(rawValue: item.itemType) ?? .character,
+                        addedAt: item.addedAt
+                    )
+                }
+                
+                return CollectionInfo(
+                    id: record.id,
+                    name: record.name,
+                    description: record.description,
+                    items: collectionItems,
+                    createdAt: record.createdAt,
+                    updatedAt: record.updatedAt
+                )
+            }
+        }
     }
     
     // MARK: - Utility
