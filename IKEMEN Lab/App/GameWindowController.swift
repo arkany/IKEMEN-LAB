@@ -1392,6 +1392,8 @@ class GameWindowController: NSWindowController {
         }
     }
     
+    // MARK: - Character Finder
+    
     private func revealCharacterInFinder(_ character: CharacterInfo) {
         NSWorkspace.shared.activateFileViewerSelecting([character.path])
     }

@@ -141,7 +141,7 @@ public final class MetadataStore {
         try db.create(table: "collections", ifNotExists: true) { t in
             t.column("id", .text).primaryKey()
             t.column("name", .text).notNull().indexed()
-            t.column("description", .text).notNull()
+            t.column("description", .text).notNull().defaults(to: "")
             t.column("createdAt", .datetime).notNull()
             t.column("updatedAt", .datetime).notNull()
         }
@@ -528,10 +528,7 @@ public final class MetadataStore {
             try record.insert(db)
             
             // Update collection's updatedAt timestamp
-            try db.execute(
-                sql: "UPDATE collections SET updatedAt = ? WHERE id = ?",
-                arguments: [Date(), collectionId]
-            )
+            try updateCollectionTimestamp(collectionId, in: db)
         }
     }
     
@@ -545,11 +542,16 @@ public final class MetadataStore {
                 .deleteAll(db)
             
             // Update collection's updatedAt timestamp
-            try db.execute(
-                sql: "UPDATE collections SET updatedAt = ? WHERE id = ?",
-                arguments: [Date(), collectionId]
-            )
+            try updateCollectionTimestamp(collectionId, in: db)
         }
+    }
+    
+    /// Update collection's updatedAt timestamp (helper method)
+    private func updateCollectionTimestamp(_ collectionId: String, in db: Database) throws {
+        try db.execute(
+            sql: "UPDATE collections SET updatedAt = ? WHERE id = ?",
+            arguments: [Date(), collectionId]
+        )
     }
     
     /// Get all collections that contain a specific item

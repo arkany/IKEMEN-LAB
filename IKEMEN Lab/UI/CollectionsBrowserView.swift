@@ -297,7 +297,7 @@ class HoverableCollectionCard: NSView {
         
         trackingArea = NSTrackingArea(
             rect: bounds,
-            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect, .assumeInside],
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
             owner: self,
             userInfo: nil
         )
