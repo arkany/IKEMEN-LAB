@@ -307,7 +307,7 @@ class IkemenBridge: ObservableObject {
             
             // Look for .def file with same name as directory
             let defFile = charDir.appendingPathComponent(charDir.lastPathComponent + ".def")
-            if fileManager.fileExists(atPath: defFile.path) {
+            if fileManager.fileExists(atPath: defFile.path) && DEFParser.isValidCharacterDefFile(defFile) {
                 // Check if character is disabled in select.def
                 let tempChar = CharacterInfo(directory: charDir, defFile: defFile, isDisabled: false)
                 let isDisabled = ContentManager.shared.isCharacterDisabled(tempChar, in: workingDir)
@@ -319,11 +319,8 @@ class IkemenBridge: ObservableObject {
                 if let contents = try? fileManager.contentsOfDirectory(at: charDir, includingPropertiesForKeys: nil) {
                     let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
                     
-                    // Filter out storyboard files (intro*.def, ending*.def)
-                    let characterDefFiles = defFiles.filter { file in
-                        let name = file.deletingPathExtension().lastPathComponent.lowercased()
-                        return !name.hasPrefix("intro") && !name.hasPrefix("ending")
-                    }
+                    // Filter to only valid character def files (not storyboards, fonts, stages)
+                    let characterDefFiles = defFiles.filter { DEFParser.isValidCharacterDefFile($0) }
                     
                     // Prefer def file matching folder name, otherwise take first valid one
                     let folderName = charDir.lastPathComponent.lowercased()

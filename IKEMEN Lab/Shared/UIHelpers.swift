@@ -295,7 +295,7 @@ public struct TextStyle {
 public struct BrowserLayout {
     // Grid view
     public static let gridItemWidth: CGFloat = 160
-    public static let gridItemHeight: CGFloat = 160
+    public static let gridItemHeight: CGFloat = 180
     public static let stageGridItemWidth: CGFloat = 320  // Stages are twice as wide
     public static let stageGridItemHeight: CGFloat = 160
     

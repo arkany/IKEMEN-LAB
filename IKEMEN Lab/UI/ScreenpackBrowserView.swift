@@ -1,6 +1,54 @@
 import Cocoa
 import Combine
 
+// MARK: - Section Header View
+
+/// Section header for list view matching add-ons.html design
+/// text-xs font-semibold text-zinc-500 uppercase tracking-widest
+class ScreenpackSectionHeader: NSView, NSCollectionViewElement {
+    
+    static let identifier = NSUserInterfaceItemIdentifier("ScreenpackSectionHeader")
+    
+    private var titleLabel: NSTextField!
+    
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setup()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+    
+    private func setup() {
+        wantsLayer = true
+        
+        titleLabel = NSTextField(labelWithString: "")
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        titleLabel.textColor = DesignColors.textTertiary
+        titleLabel.isSelectable = false
+        addSubview(titleLabel)
+        
+        NSLayoutConstraint.activate([
+            // 8px to align with thumbnail left edge inside list items
+            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            titleLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+        ])
+    }
+    
+    func configure(title: String) {
+        // Apply uppercase with wide letter spacing
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
+            .foregroundColor: DesignColors.textTertiary,
+            .kern: 2.0  // tracking-widest equivalent
+        ]
+        titleLabel.attributedStringValue = NSAttributedString(string: title.uppercased(), attributes: attributes)
+    }
+}
+
 /// A visual browser for viewing installed screenpacks with thumbnails
 /// Shows active screenpack with visual indicator
 class ScreenpackBrowserView: NSView {
@@ -11,6 +59,8 @@ class ScreenpackBrowserView: NSView {
     private var collectionView: NSCollectionView!
     private var flowLayout: NSCollectionViewFlowLayout!
     private var screenpacks: [ScreenpackInfo] = []
+    private var activeScreenpacks: [ScreenpackInfo] = []
+    private var inactiveScreenpacks: [ScreenpackInfo] = []
     private var cancellables = Set<AnyCancellable>()
     
     // View mode
@@ -26,6 +76,7 @@ class ScreenpackBrowserView: NSView {
     private let listItemHeight = BrowserLayout.screenpackListItemHeight
     private let cardSpacing = BrowserLayout.cardSpacing
     private let sectionInset = BrowserLayout.sectionInset
+    private let sectionHeaderHeight: CGFloat = 40
     
     var onScreenpackSelected: ((ScreenpackInfo) -> Void)?
     var onScreenpackActivate: ((ScreenpackInfo) -> Void)?
@@ -84,6 +135,9 @@ class ScreenpackBrowserView: NSView {
         collectionView.register(ScreenpackGridItem.self, forItemWithIdentifier: ScreenpackGridItem.identifier)
         collectionView.register(ScreenpackListItem.self, forItemWithIdentifier: ScreenpackListItem.identifier)
         
+        // Register section header using standard flow layout header kind
+        collectionView.register(ScreenpackSectionHeader.self, forSupplementaryViewOfKind: NSCollectionView.elementKindSectionHeader, withIdentifier: ScreenpackSectionHeader.identifier)
+        
         scrollView.documentView = collectionView
         
         // Layout constraints
@@ -118,9 +172,15 @@ class ScreenpackBrowserView: NSView {
             
             flowLayout.minimumInteritemSpacing = spacing
             flowLayout.itemSize = NSSize(width: max(itemWidth, 100), height: max(itemHeight, 50))
+            flowLayout.sectionInset = NSEdgeInsets(top: sectionInset, left: sectionInset, bottom: sectionInset, right: sectionInset)
         } else {
-            flowLayout.minimumInteritemSpacing = 8
-            flowLayout.itemSize = NSSize(width: max(width, 100), height: max(itemHeight, 50))
+            // List view: minimal horizontal padding, items should be nearly full width
+            let horizontalPadding: CGFloat = 4
+            flowLayout.minimumInteritemSpacing = 4
+            flowLayout.minimumLineSpacing = 4
+            flowLayout.itemSize = NSSize(width: max(width - (horizontalPadding * 2), 100), height: max(itemHeight, 50))
+            // Smaller top inset since headers provide spacing, bottom inset for section gap
+            flowLayout.sectionInset = NSEdgeInsets(top: 8, left: horizontalPadding, bottom: 24, right: horizontalPadding)
         }
         
         flowLayout.invalidateLayout()
@@ -148,7 +208,15 @@ class ScreenpackBrowserView: NSView {
     }
     
     private func updateScreenpacks(_ newScreenpacks: [ScreenpackInfo]) {
-        // Sort: active first, then alphabetical
+        // Split into active and inactive sections
+        self.activeScreenpacks = newScreenpacks.filter { $0.isActive }.sorted {
+            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+        self.inactiveScreenpacks = newScreenpacks.filter { !$0.isActive }.sorted {
+            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+        
+        // Keep flat list for grid view
         self.screenpacks = newScreenpacks.sorted { 
             if $0.isActive != $1.isActive {
                 return $0.isActive
@@ -156,6 +224,22 @@ class ScreenpackBrowserView: NSView {
             return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending 
         }
         collectionView.reloadData()
+    }
+    
+    /// Get screenpack for a given index path (handles sections in list mode)
+    private func screenpack(at indexPath: IndexPath) -> ScreenpackInfo {
+        if viewMode == .list {
+            // Handle case where active section is empty
+            if activeScreenpacks.isEmpty {
+                return inactiveScreenpacks[indexPath.item]
+            } else if indexPath.section == 0 {
+                return activeScreenpacks[indexPath.item]
+            } else {
+                return inactiveScreenpacks[indexPath.item]
+            }
+        } else {
+            return screenpacks[indexPath.item]
+        }
     }
     
     // MARK: - Public Methods
@@ -170,15 +254,34 @@ class ScreenpackBrowserView: NSView {
 extension ScreenpackBrowserView: NSCollectionViewDataSource {
     
     func numberOfSections(in collectionView: NSCollectionView) -> Int {
+        // List view: 2 sections (Active, All Add-ons)
+        // Grid view: 1 section (flat list)
+        if viewMode == .list {
+            // Only show sections that have items
+            var count = 0
+            if !activeScreenpacks.isEmpty { count += 1 }
+            if !inactiveScreenpacks.isEmpty { count += 1 }
+            return max(1, count)  // At least 1 to avoid issues
+        }
         return 1
     }
     
     func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
+        if viewMode == .list {
+            // Determine which section this is based on available data
+            if activeScreenpacks.isEmpty {
+                return inactiveScreenpacks.count
+            } else if section == 0 {
+                return activeScreenpacks.count
+            } else {
+                return inactiveScreenpacks.count
+            }
+        }
         return screenpacks.count
     }
     
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
-        let screenpack = screenpacks[indexPath.item]
+        let screenpack = self.screenpack(at: indexPath)
         let rosterSize = IkemenBridge.shared.characters.count
         
         if viewMode == .grid {
@@ -197,6 +300,27 @@ extension ScreenpackBrowserView: NSCollectionViewDataSource {
             return item
         }
     }
+    
+    func collectionView(_ collectionView: NSCollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> NSView {
+        guard kind == NSCollectionView.elementKindSectionHeader else {
+            return NSView()
+        }
+        
+        let header = collectionView.makeSupplementaryView(ofKind: NSCollectionView.elementKindSectionHeader, withIdentifier: ScreenpackSectionHeader.identifier, for: indexPath) as! ScreenpackSectionHeader
+        
+        // Determine section title
+        let title: String
+        if activeScreenpacks.isEmpty {
+            title = "All Add-ons"
+        } else if indexPath.section == 0 {
+            title = "Active"
+        } else {
+            title = "All Add-ons"
+        }
+        
+        header.configure(title: title)
+        return header
+    }
 }
 
 // MARK: - NSCollectionViewDelegate
@@ -205,8 +329,21 @@ extension ScreenpackBrowserView: NSCollectionViewDelegate {
     
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
         guard let indexPath = indexPaths.first else { return }
-        let screenpack = screenpacks[indexPath.item]
+        let screenpack = self.screenpack(at: indexPath)
         onScreenpackSelected?(screenpack)
+    }
+}
+
+// MARK: - NSCollectionViewDelegateFlowLayout
+
+extension ScreenpackBrowserView: NSCollectionViewDelegateFlowLayout {
+    
+    func collectionView(_ collectionView: NSCollectionView, layout collectionViewLayout: NSCollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> NSSize {
+        // Only show headers in list mode
+        if viewMode == .list {
+            return NSSize(width: collectionView.bounds.width, height: sectionHeaderHeight)
+        }
+        return .zero
     }
 }
 

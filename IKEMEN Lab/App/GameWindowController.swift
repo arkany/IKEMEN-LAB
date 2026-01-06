@@ -908,7 +908,7 @@ class GameWindowController: NSWindowController {
         
         // Show/hide view mode toggle in header for content browsers
         // Note: stages is list-only so doesn't need toggle
-        let showToggle = selectedNavItem == .characters || selectedNavItem == .soundpacks
+        let showToggle = selectedNavItem == .characters || selectedNavItem == .addons
         contentHeaderView?.setViewModeToggleVisible(showToggle)
         
         // Sync toggle state with current view mode

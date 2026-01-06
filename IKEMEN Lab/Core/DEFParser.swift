@@ -101,6 +101,47 @@ public struct DEFParser {
     
     // MARK: - Content Type Detection
     
+    /// Check if a .def file is a storyboard (intro/ending scene)
+    /// Storyboards have [SceneDef] section and should not be treated as characters
+    public static func isStoryboardDefFile(_ url: URL) -> Bool {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        return content.lowercased().contains("[scenedef]")
+    }
+    
+    /// Check if a .def file is a valid character definition (not a storyboard, stage, font, etc.)
+    /// Used by EmulatorBridge to filter valid characters
+    public static func isValidCharacterDefFile(_ url: URL) -> Bool {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        let lowercased = content.lowercased()
+        
+        // Exclude storyboards (intros/endings) - they have [SceneDef] section
+        if lowercased.contains("[scenedef]") {
+            return false
+        }
+        
+        // Exclude font files - they have [Fnt] or [FNT v2] sections
+        if lowercased.contains("[fnt]") || lowercased.contains("[fnt v2]") {
+            return false
+        }
+        
+        // Exclude stages - they have [StageInfo] or [BGdef] but no [Files] with character files
+        if lowercased.contains("[stageinfo]") || lowercased.contains("[bgdef]") {
+            // Could be a stage, check if it has character files
+            if !(lowercased.contains("[files]") &&
+                 (lowercased.contains(".cmd") || lowercased.contains(".cns") || lowercased.contains(".air"))) {
+                return false
+            }
+        }
+        
+        // Valid characters have [Files] section with .cmd, .cns, or .air references
+        if lowercased.contains("[files]") &&
+           (lowercased.contains(".cmd") || lowercased.contains(".cns") || lowercased.contains(".air")) {
+            return true
+        }
+        
+        return false
+    }
+    
     /// Check if a .def file is actually a stage definition (not a character, storyboard, font, etc.)
     /// Used by both EmulatorBridge and MetadataStore to filter valid stages
     public static func isValidStageDefFile(_ url: URL) -> Bool {

@@ -505,6 +505,56 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
     }
 }
 
+// MARK: - Gradient Overlay View
+/// A view that displays a gradient from bottom (dark) to top (transparent)
+/// Properly manages its own CAGradientLayer
+class GradientOverlayView: NSView {
+    
+    private let gradientLayer = CAGradientLayer()
+    
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupGradient()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupGradient()
+    }
+    
+    private func setupGradient() {
+        wantsLayer = true
+        layer?.addSublayer(gradientLayer)
+        
+        // Gradient from bottom (dark) to top (transparent)
+        // Matches HTML: bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent
+        gradientLayer.colors = [
+            DesignColors.zinc950.cgColor,                              // bottom: zinc-950 (full)
+            DesignColors.zinc950.withAlphaComponent(0.2).cgColor,      // via: zinc-950/20
+            NSColor.clear.cgColor                                      // top: transparent
+        ]
+        gradientLayer.locations = [0.0, 0.5, 1.0]
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)  // bottom
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)    // top
+    }
+    
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        gradientLayer.frame = bounds
+        CATransaction.commit()
+    }
+    
+    override var wantsUpdateLayer: Bool {
+        return true
+    }
+    
+    override func updateLayer() {
+        gradientLayer.frame = bounds
+    }
+}
+
 // MARK: - Character Collection View Item (Grid Card)
 /// Matches HTML design: aspect-square card with gradient overlay, name/author at bottom-left
 /// States: default, hover, selected (active)
@@ -514,7 +564,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     
     private var containerView: NSView!
     private var portraitImageView: NSImageView!
-    private var gradientLayer: CAGradientLayer!
+    private var gradientOverlay: GradientOverlayView!
     private var nameLabel: NSTextField!
     private var authorLabel: NSTextField!
     private var statusDot: NSView!
@@ -527,7 +577,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     private let animationDuration: CGFloat = 0.2
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 160, height: 160))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 160, height: 180))
         view.wantsLayer = true
         setupViews()
     }
@@ -560,17 +610,11 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         placeholderLabel.alignment = .center
         containerView.addSubview(placeholderLabel)
         
-        // Gradient overlay - from-zinc-900/90 via-transparent to-transparent
-        gradientLayer = CAGradientLayer()
-        gradientLayer.colors = [
-            NSColor.clear.cgColor,
-            NSColor.clear.cgColor,
-            DesignColors.zinc900.withAlphaComponent(0.9).cgColor
-        ]
-        gradientLayer.locations = [0.0, 0.3, 1.0]
-        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
-        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
-        containerView.layer?.addSublayer(gradientLayer)
+        // Gradient overlay view - sits on top of image
+        // Uses dedicated GradientOverlayView that properly manages its CAGradientLayer
+        gradientOverlay = GradientOverlayView()
+        gradientOverlay.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(gradientOverlay)
         
         // Status dot (top-right) - emerald-500 for active
         statusDot = NSView()
@@ -618,6 +662,12 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
             placeholderLabel.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
             placeholderLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
             
+            // Gradient overlay fills container
+            gradientOverlay.topAnchor.constraint(equalTo: containerView.topAnchor),
+            gradientOverlay.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            gradientOverlay.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            gradientOverlay.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            
             statusDot.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 8),
             statusDot.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
             statusDot.widthAnchor.constraint(equalToConstant: 8),
@@ -635,7 +685,6 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     
     override func viewDidLayout() {
         super.viewDidLayout()
-        gradientLayer.frame = containerView.bounds
         setupTrackingArea()
     }
     
