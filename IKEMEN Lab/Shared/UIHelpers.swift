@@ -302,6 +302,7 @@ public struct BrowserLayout {
     // List view
     public static let listItemHeight: CGFloat = 52  // Character list rows
     public static let stageListItemHeight: CGFloat = 98  // Stage list rows (includes preview thumbnail)
+    public static let screenpackListItemHeight: CGFloat = 64  // Screenpack list rows (includes thumbnail + action button)
     
     // Spacing
     public static let cardSpacing: CGFloat = 16  // gap-4

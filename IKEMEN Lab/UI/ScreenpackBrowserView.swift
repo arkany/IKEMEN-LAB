@@ -23,7 +23,7 @@ class ScreenpackBrowserView: NSView {
     // Layout constants from shared design system
     private let gridItemWidth = BrowserLayout.stageGridItemWidth   // Same as stages - wide cards
     private let gridItemHeight = BrowserLayout.stageGridItemHeight
-    private let listItemHeight = BrowserLayout.listItemHeight
+    private let listItemHeight = BrowserLayout.screenpackListItemHeight
     private let cardSpacing = BrowserLayout.cardSpacing
     private let sectionInset = BrowserLayout.sectionInset
     
@@ -556,11 +556,17 @@ class ScreenpackListItem: NSCollectionViewItem {
     
     private var containerView: NSView!
     private var thumbnailView: NSImageView!
+    private var thumbnailOverlay: NSView!  // Emerald tint for active items
     private var placeholderLabel: NSTextField!
     private var nameLabel: NSTextField!
-    private var authorLabel: NSTextField!
+    private var activeBadge: NSView!
+    private var activeBadgeLabel: NSTextField!
+    private var typeLabel: NSTextField!
+    private var dotLabel: NSTextField!
+    private var descriptionLabel: NSTextField!
+    private var versionLabel: NSTextField!
     private var resolutionLabel: NSTextField!
-    private var statusDot: NSView!
+    private var actionButton: NSButton!
     private var warningBadge: NSView!
     private var warningLabel: NSTextField!
     
@@ -573,22 +579,23 @@ class ScreenpackListItem: NSCollectionViewItem {
     var onActivate: (() -> Void)?
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 56))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 60))
         view.wantsLayer = true
         setupViews()
     }
     
     private func setupViews() {
+        // Container with padding
         containerView = NSView(frame: view.bounds)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
         containerView.layer?.cornerRadius = 8
-        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.2).cgColor
         containerView.layer?.borderWidth = 1
         containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         view.addSubview(containerView)
         
-        // Thumbnail (small preview)
+        // Thumbnail (80x48 - matches HTML w-20 h-12)
         thumbnailView = NSImageView(frame: .zero)
         thumbnailView.translatesAutoresizingMaskIntoConstraints = false
         thumbnailView.imageScaling = .scaleProportionallyUpOrDown
@@ -596,17 +603,28 @@ class ScreenpackListItem: NSCollectionViewItem {
         thumbnailView.layer?.cornerRadius = 6
         thumbnailView.layer?.masksToBounds = true
         thumbnailView.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        thumbnailView.layer?.borderWidth = 1
+        thumbnailView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         containerView.addSubview(thumbnailView)
+        
+        // Thumbnail overlay for active items (emerald tint)
+        thumbnailOverlay = NSView()
+        thumbnailOverlay.translatesAutoresizingMaskIntoConstraints = false
+        thumbnailOverlay.wantsLayer = true
+        thumbnailOverlay.layer?.cornerRadius = 6
+        thumbnailOverlay.layer?.backgroundColor = DesignColors.positive.withAlphaComponent(0.1).cgColor
+        thumbnailOverlay.isHidden = true
+        containerView.addSubview(thumbnailOverlay)
         
         // Placeholder initial
         placeholderLabel = NSTextField(labelWithString: "")
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.font = DesignFonts.header(size: 18)
-        placeholderLabel.textColor = NSColor.white.withAlphaComponent(0.1)
+        placeholderLabel.textColor = NSColor.white.withAlphaComponent(0.15)
         placeholderLabel.alignment = .center
         containerView.addSubview(placeholderLabel)
         
-        // Name
+        // Name label
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = DesignFonts.body(size: 14)
@@ -614,36 +632,49 @@ class ScreenpackListItem: NSCollectionViewItem {
         nameLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(nameLabel)
         
-        // Author
-        authorLabel = NSTextField(labelWithString: "")
-        authorLabel.translatesAutoresizingMaskIntoConstraints = false
-        authorLabel.font = DesignFonts.caption(size: 12)
-        authorLabel.textColor = DesignColors.textTertiary
-        authorLabel.lineBreakMode = .byTruncatingTail
-        containerView.addSubview(authorLabel)
+        // Active badge (shows "Active" for current screenpack)
+        activeBadge = NSView()
+        activeBadge.translatesAutoresizingMaskIntoConstraints = false
+        activeBadge.wantsLayer = true
+        activeBadge.layer?.backgroundColor = DesignColors.positive.withAlphaComponent(0.1).cgColor
+        activeBadge.layer?.borderWidth = 1
+        activeBadge.layer?.borderColor = DesignColors.positive.withAlphaComponent(0.2).cgColor
+        activeBadge.layer?.cornerRadius = 3
+        activeBadge.isHidden = true
+        containerView.addSubview(activeBadge)
         
-        // Resolution (right side)
-        resolutionLabel = NSTextField(labelWithString: "")
-        resolutionLabel.translatesAutoresizingMaskIntoConstraints = false
-        resolutionLabel.font = DesignFonts.caption(size: 11)
-        resolutionLabel.textColor = DesignColors.textSecondary
-        resolutionLabel.alignment = .right
-        containerView.addSubview(resolutionLabel)
+        activeBadgeLabel = NSTextField(labelWithString: "Active")
+        activeBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        activeBadgeLabel.font = DesignFonts.caption(size: 10)
+        activeBadgeLabel.textColor = DesignColors.positive
+        activeBadgeLabel.isBordered = false
+        activeBadgeLabel.isEditable = false
+        activeBadgeLabel.drawsBackground = false
+        activeBadge.addSubview(activeBadgeLabel)
         
-        // Status dot (next to name for active)
-        statusDot = NSView()
-        statusDot.translatesAutoresizingMaskIntoConstraints = false
-        statusDot.wantsLayer = true
-        statusDot.layer?.cornerRadius = 4
-        statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
-        statusDot.layer?.shadowColor = DesignColors.positive.cgColor
-        statusDot.layer?.shadowOffset = .zero
-        statusDot.layer?.shadowRadius = 4
-        statusDot.layer?.shadowOpacity = 0.5
-        statusDot.isHidden = true
-        containerView.addSubview(statusDot)
+        // Type label (e.g., "Screenpack", "Lifebar")
+        typeLabel = NSTextField(labelWithString: "")
+        typeLabel.translatesAutoresizingMaskIntoConstraints = false
+        typeLabel.font = DesignFonts.caption(size: 12)
+        typeLabel.textColor = DesignColors.textSecondary
+        containerView.addSubview(typeLabel)
         
-        // Warning badge
+        // Dot separator
+        dotLabel = NSTextField(labelWithString: "•")
+        dotLabel.translatesAutoresizingMaskIntoConstraints = false
+        dotLabel.font = DesignFonts.caption(size: 10)
+        dotLabel.textColor = DesignColors.zinc600
+        containerView.addSubview(dotLabel)
+        
+        // Description label
+        descriptionLabel = NSTextField(labelWithString: "")
+        descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
+        descriptionLabel.font = DesignFonts.caption(size: 12)
+        descriptionLabel.textColor = DesignColors.textTertiary
+        descriptionLabel.lineBreakMode = .byTruncatingTail
+        containerView.addSubview(descriptionLabel)
+        
+        // Warning badge (between description and meta)
         warningBadge = NSView()
         warningBadge.translatesAutoresizingMaskIntoConstraints = false
         warningBadge.wantsLayer = true
@@ -661,51 +692,109 @@ class ScreenpackListItem: NSCollectionViewItem {
         warningLabel.drawsBackground = false
         warningBadge.addSubview(warningLabel)
         
+        // Version label (e.g., "v1.1", "Local")
+        versionLabel = NSTextField(labelWithString: "")
+        versionLabel.translatesAutoresizingMaskIntoConstraints = false
+        versionLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        versionLabel.textColor = DesignColors.textTertiary
+        versionLabel.alignment = .right
+        containerView.addSubview(versionLabel)
+        
+        // Resolution label (e.g., "1280x720")
+        resolutionLabel = NSTextField(labelWithString: "")
+        resolutionLabel.translatesAutoresizingMaskIntoConstraints = false
+        resolutionLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        resolutionLabel.textColor = DesignColors.zinc600
+        resolutionLabel.alignment = .right
+        containerView.addSubview(resolutionLabel)
+        
+        // Action button (Load/Settings)
+        actionButton = NSButton(title: "Load", target: self, action: #selector(actionButtonClicked))
+        actionButton.translatesAutoresizingMaskIntoConstraints = false
+        actionButton.bezelStyle = .inline
+        actionButton.isBordered = false
+        actionButton.wantsLayer = true
+        actionButton.font = DesignFonts.caption(size: 10)
+        (actionButton.cell as? NSButtonCell)?.backgroundColor = .clear
+        actionButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        actionButton.layer?.cornerRadius = 4
+        actionButton.layer?.borderWidth = 1
+        actionButton.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        actionButton.contentTintColor = DesignColors.textSecondary
+        containerView.addSubview(actionButton)
+        
         NSLayoutConstraint.activate([
-            containerView.topAnchor.constraint(equalTo: view.topAnchor, constant: 2),
+            containerView.topAnchor.constraint(equalTo: view.topAnchor, constant: 1),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -2),
+            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -1),
             
-            // Thumbnail on left (16:9 ratio, ~72x40)
-            thumbnailView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
+            // Thumbnail on left (80x48)
+            thumbnailView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
             thumbnailView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            thumbnailView.widthAnchor.constraint(equalToConstant: 72),
-            thumbnailView.heightAnchor.constraint(equalToConstant: 40),
+            thumbnailView.widthAnchor.constraint(equalToConstant: 80),
+            thumbnailView.heightAnchor.constraint(equalToConstant: 48),
+            
+            thumbnailOverlay.topAnchor.constraint(equalTo: thumbnailView.topAnchor),
+            thumbnailOverlay.leadingAnchor.constraint(equalTo: thumbnailView.leadingAnchor),
+            thumbnailOverlay.trailingAnchor.constraint(equalTo: thumbnailView.trailingAnchor),
+            thumbnailOverlay.bottomAnchor.constraint(equalTo: thumbnailView.bottomAnchor),
             
             placeholderLabel.centerXAnchor.constraint(equalTo: thumbnailView.centerXAnchor),
             placeholderLabel.centerYAnchor.constraint(equalTo: thumbnailView.centerYAnchor),
             
-            // Status dot next to name
-            statusDot.leadingAnchor.constraint(equalTo: thumbnailView.trailingAnchor, constant: 12),
-            statusDot.centerYAnchor.constraint(equalTo: nameLabel.centerYAnchor),
-            statusDot.widthAnchor.constraint(equalToConstant: 8),
-            statusDot.heightAnchor.constraint(equalToConstant: 8),
+            // Name row (with optional active badge)
+            nameLabel.leadingAnchor.constraint(equalTo: thumbnailView.trailingAnchor, constant: 16),
+            nameLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
             
-            // Name (after status dot if visible, otherwise after thumbnail)
-            nameLabel.leadingAnchor.constraint(equalTo: statusDot.trailingAnchor, constant: 8),
-            nameLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 10),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: warningBadge.leadingAnchor, constant: -12),
+            activeBadge.leadingAnchor.constraint(equalTo: nameLabel.trailingAnchor, constant: 8),
+            activeBadge.centerYAnchor.constraint(equalTo: nameLabel.centerYAnchor),
             
-            // Author below name
-            authorLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            authorLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
-            authorLabel.trailingAnchor.constraint(lessThanOrEqualTo: resolutionLabel.leadingAnchor, constant: -12),
+            activeBadgeLabel.topAnchor.constraint(equalTo: activeBadge.topAnchor, constant: 2),
+            activeBadgeLabel.bottomAnchor.constraint(equalTo: activeBadge.bottomAnchor, constant: -2),
+            activeBadgeLabel.leadingAnchor.constraint(equalTo: activeBadge.leadingAnchor, constant: 6),
+            activeBadgeLabel.trailingAnchor.constraint(equalTo: activeBadge.trailingAnchor, constant: -6),
             
-            // Warning badge (before resolution)
+            // Type/Description row
+            typeLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            typeLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 4),
+            
+            dotLabel.leadingAnchor.constraint(equalTo: typeLabel.trailingAnchor, constant: 6),
+            dotLabel.centerYAnchor.constraint(equalTo: typeLabel.centerYAnchor),
+            
+            descriptionLabel.leadingAnchor.constraint(equalTo: dotLabel.trailingAnchor, constant: 6),
+            descriptionLabel.centerYAnchor.constraint(equalTo: typeLabel.centerYAnchor),
+            descriptionLabel.trailingAnchor.constraint(lessThanOrEqualTo: warningBadge.leadingAnchor, constant: -12),
+            
+            // Warning badge
             warningBadge.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            warningBadge.trailingAnchor.constraint(equalTo: resolutionLabel.leadingAnchor, constant: -12),
+            warningBadge.trailingAnchor.constraint(equalTo: versionLabel.leadingAnchor, constant: -16),
             
             warningLabel.topAnchor.constraint(equalTo: warningBadge.topAnchor, constant: 3),
             warningLabel.bottomAnchor.constraint(equalTo: warningBadge.bottomAnchor, constant: -3),
             warningLabel.leadingAnchor.constraint(equalTo: warningBadge.leadingAnchor, constant: 6),
             warningLabel.trailingAnchor.constraint(equalTo: warningBadge.trailingAnchor, constant: -6),
             
-            // Resolution on right
-            resolutionLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            resolutionLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
-            resolutionLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 100),
+            // Meta info on right (version/resolution stacked)
+            versionLabel.trailingAnchor.constraint(equalTo: actionButton.leadingAnchor, constant: -24),
+            versionLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 14),
+            versionLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 50),
+            
+            resolutionLabel.trailingAnchor.constraint(equalTo: versionLabel.trailingAnchor),
+            resolutionLabel.topAnchor.constraint(equalTo: versionLabel.bottomAnchor, constant: 2),
+            
+            // Action button on far right
+            actionButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            actionButton.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            actionButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 50),
+            actionButton.heightAnchor.constraint(equalToConstant: 24),
         ])
+    }
+    
+    @objc private func actionButtonClicked() {
+        if !(currentScreenpack?.isActive ?? false) {
+            onActivate?()
+        }
     }
     
     override func viewDidLayout() {
@@ -752,29 +841,61 @@ class ScreenpackListItem: NSCollectionViewItem {
             
             if isSelected {
                 containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.4).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
                 containerView.layer?.shadowColor = NSColor.white.cgColor
                 containerView.layer?.shadowOffset = .zero
                 containerView.layer?.shadowRadius = 6
                 containerView.layer?.shadowOpacity = 0.1
             } else if isHovered {
                 containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.6).cgColor
                 containerView.layer?.shadowOpacity = 0
+                
+                // Hover button effect
+                actionButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.1).cgColor
+                actionButton.contentTintColor = .white
             } else if isActive {
+                // Active item: emerald border with subtle ring
                 containerView.animator().layer?.borderColor = DesignColors.positive.withAlphaComponent(0.2).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.15).cgColor
-                containerView.layer?.shadowOpacity = 0
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.4).cgColor
+                containerView.layer?.shadowColor = DesignColors.positive.cgColor
+                containerView.layer?.shadowOpacity = 0.05
+                containerView.layer?.shadowRadius = 4
+                
+                actionButton.layer?.backgroundColor = NSColor.clear.cgColor
+                actionButton.contentTintColor = DesignColors.textSecondary
             } else {
                 containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.2).cgColor
                 containerView.layer?.shadowOpacity = 0
+                
+                actionButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+                actionButton.contentTintColor = DesignColors.textSecondary
+            }
+        }
+        
+        // Update name color on hover
+        nameLabel.textColor = isHovered && isActive ? DesignColors.positive : (isHovered ? .white : (isActive ? DesignColors.positive : DesignColors.zinc300))
+        descriptionLabel.textColor = isHovered ? DesignColors.textTertiary : DesignColors.zinc600
+        
+        // Update image opacity/saturation on hover for inactive items
+        if !isActive {
+            thumbnailView.alphaValue = isHovered ? 0.7 : 0.4
+            if #available(macOS 10.15, *) {
+                // Apply desaturation effect
+                if !isHovered {
+                    thumbnailView.contentFilters = [CIFilter(name: "CIColorControls", parameters: ["inputSaturation": 0])].compactMap { $0 }
+                } else {
+                    thumbnailView.contentFilters = []
+                }
             }
         }
     }
     
     func configure(with screenpack: ScreenpackInfo, currentRosterSize: Int = 0) {
         currentScreenpack = screenpack
+        
+        // Name
         nameLabel.stringValue = screenpack.name
         
         // Placeholder initial
@@ -782,20 +903,29 @@ class ScreenpackListItem: NSCollectionViewItem {
             placeholderLabel.stringValue = firstChar
         }
         
-        // Show author and component summary
-        let componentSummary = screenpack.componentSummary
-        if componentSummary != "Standard Screenpack" {
-            authorLabel.stringValue = "\(screenpack.author) • \(componentSummary)"
+        // Active badge and overlay
+        let isActive = screenpack.isActive
+        activeBadge.isHidden = !isActive
+        thumbnailOverlay.isHidden = !isActive
+        
+        // Type and description
+        typeLabel.stringValue = screenpack.primaryType
+        descriptionLabel.stringValue = screenpack.shortDescription
+        
+        // Action button
+        if isActive {
+            actionButton.title = "⚙︎"  // Settings gear
+            actionButton.toolTip = "Configure active screenpack"
         } else {
-            authorLabel.stringValue = screenpack.author
+            actionButton.title = "Load"
+            actionButton.toolTip = "Set as active screenpack"
         }
         
-        // Show resolution and character limit
-        var info = screenpack.resolutionString
-        if screenpack.characterSlots > 0 {
-            info += " • \(screenpack.characterSlots) slots"
-        }
-        resolutionLabel.stringValue = info
+        // Version (show "Local" for local files, or version if available)
+        versionLabel.stringValue = "Local"
+        
+        // Resolution
+        resolutionLabel.stringValue = screenpack.resolutionString
         
         // Show warning if roster exceeds slots
         if screenpack.characterSlots > 0 && currentRosterSize > screenpack.characterSlots {
@@ -806,10 +936,7 @@ class ScreenpackListItem: NSCollectionViewItem {
             warningBadge.isHidden = true
         }
         
-        // Show status dot for active
-        statusDot.isHidden = !screenpack.isActive
-        
-        // Update appearance for active state
+        // Update initial appearance
         updateAppearance(animated: false)
         
         // Load thumbnail
@@ -835,14 +962,22 @@ class ScreenpackListItem: NSCollectionViewItem {
     override func prepareForReuse() {
         super.prepareForReuse()
         thumbnailView.image = nil
+        thumbnailView.alphaValue = 1.0
+        thumbnailView.contentFilters = []
+        thumbnailOverlay.isHidden = true
         placeholderLabel.stringValue = ""
         placeholderLabel.isHidden = false
         nameLabel.stringValue = ""
-        authorLabel.stringValue = ""
+        nameLabel.textColor = DesignColors.zinc300
+        typeLabel.stringValue = ""
+        descriptionLabel.stringValue = ""
+        descriptionLabel.textColor = DesignColors.zinc600
+        versionLabel.stringValue = ""
         resolutionLabel.stringValue = ""
-        statusDot.isHidden = true
+        activeBadge.isHidden = true
         warningLabel.stringValue = ""
         warningBadge.isHidden = true
+        actionButton.title = "Load"
         currentScreenpack = nil
         isHovered = false
         isSelected = false
@@ -850,7 +985,9 @@ class ScreenpackListItem: NSCollectionViewItem {
         
         // Reset appearance
         containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
-        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.2).cgColor
         containerView.layer?.shadowOpacity = 0
+        actionButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        actionButton.contentTintColor = DesignColors.textSecondary
     }
 }

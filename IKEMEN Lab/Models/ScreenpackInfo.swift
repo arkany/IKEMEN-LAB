@@ -88,6 +88,44 @@ public struct ScreenpackInfo: Identifiable, Hashable {
         return names.joined(separator: ", ")
     }
     
+    /// Primary type of this screenpack for categorization
+    /// Returns "Lifebar" if it only contains fight screen, "Storyboard" if primarily story content,
+    /// otherwise "Screenpack" for full/mixed packs
+    public var primaryType: String {
+        // If only lifebars (fight screen), categorize as Lifebar
+        if components == .fightScreen {
+            return "Lifebar"
+        }
+        // If primarily storyboard content
+        if components == .storyboard {
+            return "Storyboard"
+        }
+        // If has storyboard plus intro elements only
+        if components.isSubset(of: [.storyboard, .titleScreen]) && components.contains(.storyboard) {
+            return "Storyboard"
+        }
+        // Full or mixed screenpack
+        return "Screenpack"
+    }
+    
+    /// Short description for list view subtitle
+    public var shortDescription: String {
+        switch primaryType {
+        case "Lifebar":
+            if let coord = localcoord {
+                return coord.width >= 1280 ? "HD lifebar set" : "Classic lifebar set"
+            }
+            return "Custom lifebar set"
+        case "Storyboard":
+            return "Animated storyboard"
+        default:
+            if let coord = localcoord {
+                return coord.width >= 1280 ? "HD screenpack" : "Standard screenpack"
+            }
+            return "Custom screenpack"
+        }
+    }
+    
     public init(defFile: URL, isActive: Bool = false) {
         self.defFile = defFile
         self.isActive = isActive
