@@ -6,7 +6,10 @@
 	objectVersion = 56;
 	objects = {
 
-/* Begin PBXBuildFile section */
+$1
+		04A /* Collection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F36 /* Collection.swift */; };
+		51B /* CollectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05F /* CollectionStore.swift */; };
+		6AF /* SelectDefGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E6 /* SelectDefGenerator.swift */; };
 		001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 101 /* AppDelegate.swift */; };
 		002 /* GameWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 102 /* GameWindowController.swift */; };
 		003 /* MetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 103 /* MetalView.swift */; };
@@ -46,7 +49,10 @@
 		035 /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 136 /* DuplicatesView.swift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXFileReference section */
+$1
+		F36 /* Collection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Collection.swift; sourceTree = "<group>"; };
+		05F /* CollectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionStore.swift; sourceTree = "<group>"; };
+		0E6 /* SelectDefGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectDefGenerator.swift; sourceTree = "<group>"; };
 		101 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		102 /* GameWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameWindowController.swift; sourceTree = "<group>"; };
 		103 /* MetalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalView.swift; sourceTree = "<group>"; };
@@ -216,7 +222,8 @@
 		415 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				118 /* CharacterInfo.swift */,
+				$1
+				F36 /* Collection.swift */,
 				119 /* StageInfo.swift */,
 				124 /* ScreenpackInfo.swift */,
 			);
@@ -317,7 +324,10 @@
 				024 /* CharacterDetailsView.swift in Sources */,
 				014 /* StageBrowserView.swift in Sources */,
 				015 /* SFFParser.swift in Sources */,
-				016 /* CharacterInfo.swift in Sources */,
+				$1
+				04A /* Collection.swift in Sources */,
+				51B /* CollectionStore.swift in Sources */,
+				6AF /* SelectDefGenerator.swift in Sources */,
 				017 /* StageInfo.swift in Sources */,
 				018 /* UIHelpers.swift in Sources */,
 				019 /* DEFParser.swift in Sources */,
