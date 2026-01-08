@@ -49,7 +49,7 @@ class CollectionStore: ObservableObject {
     
     /// Create a new collection
     func createCollection(name: String, icon: String = "folder.fill") -> Collection {
-        var collection = Collection(name: name, icon: icon)
+        let collection = Collection(name: name, icon: icon)
         collections.append(collection)
         save(collection)
         return collection
@@ -157,12 +157,13 @@ class CollectionStore: ObservableObject {
         let fileManager = FileManager.default
         guard let files = try? fileManager.contentsOfDirectory(at: collectionsDirectory, includingPropertiesForKeys: nil) else { return }
         
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        
         collections = files
             .filter { $0.pathExtension == "json" }
             .compactMap { url -> Collection? in
                 guard let data = try? Data(contentsOf: url) else { return nil }
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
                 return try? decoder.decode(Collection.self, from: data)
             }
             .sorted { $0.createdAt < $1.createdAt }

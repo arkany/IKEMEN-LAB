@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Collection
 
 /// A collection represents a complete game profile (roster + stages + screenpack)
-struct Collection: Codable, Identifiable {
+struct Collection: Codable, Identifiable, Hashable {
     let id: UUID
     var name: String
     var icon: String                        // SF Symbol name (e.g., "folder.fill")
@@ -30,7 +30,7 @@ struct Collection: Codable, Identifiable {
 // MARK: - RosterEntry
 
 /// A single entry in the roster (character reference, randomselect, or empty slot)
-struct RosterEntry: Codable, Identifiable {
+struct RosterEntry: Codable, Identifiable, Hashable {
     let id: UUID
     var characterFolder: String?            // nil for randomselect/empty
     var defFile: String?                    // e.g., "Ryu.def" (for chars with multiple .defs)
@@ -80,7 +80,7 @@ struct RosterEntry: Codable, Identifiable {
 // MARK: - GridPosition
 
 /// Grid position for manual layout control
-struct GridPosition: Codable, Equatable {
+struct GridPosition: Codable, Hashable {
     var row: Int
     var column: Int
 }

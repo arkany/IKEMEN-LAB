@@ -84,6 +84,9 @@ class GameWindowController: NSWindowController {
     private var navLabels: [NavItem: NSTextField] = [:]  // For updating counts
     private var selectedNavItem: NavItem? = nil
     
+    // Collections sidebar section
+    private var collectionsSidebarSection: CollectionsSidebarSection!
+    
     // UI Elements - Main Area
     private var contentHeaderView: ContentHeaderView!
     private var dashboardView: DashboardView!
@@ -344,6 +347,21 @@ class GameWindowController: NSWindowController {
             navStack.addArrangedSubview(button)
         }
         
+        // === Collections Section ===
+        collectionsSidebarSection = CollectionsSidebarSection()
+        collectionsSidebarSection.translatesAutoresizingMaskIntoConstraints = false
+        sidebarView.addSubview(collectionsSidebarSection)
+        
+        // Handle collection selection
+        collectionsSidebarSection.onCollectionSelected = { [weak self] collection in
+            self?.handleCollectionSelected(collection)
+        }
+        
+        // Handle new collection request
+        collectionsSidebarSection.onNewCollectionClicked = { [weak self] in
+            self?.showNewCollectionDialog()
+        }
+        
         // === Bottom Section ===
         let bottomStack = NSStackView()
         bottomStack.translatesAutoresizingMaskIntoConstraints = false
@@ -448,6 +466,11 @@ class GameWindowController: NSWindowController {
             navStack.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 20),
             navStack.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
             navStack.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding),
+            
+            // Collections section
+            collectionsSidebarSection.topAnchor.constraint(equalTo: navStack.bottomAnchor, constant: 20),
+            collectionsSidebarSection.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
+            collectionsSidebarSection.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding),
             
             // Bottom stack
             bottomStack.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
@@ -1661,6 +1684,50 @@ class GameWindowController: NSWindowController {
         
         // Refresh the current view to reload images
         NotificationCenter.default.post(name: NSNotification.Name("ImageCacheCleared"), object: nil)
+    }
+    
+    // MARK: - Collections
+    
+    private func handleCollectionSelected(_ collection: Collection) {
+        // Deselect nav items when a collection is selected
+        selectNavItem(nil)
+        
+        // TODO: Show collection editor view in Phase 3
+        // For now, just activate the collection
+        CollectionStore.shared.setActive(collection)
+        
+        // Show toast notification
+        ToastManager.shared.showSuccess(title: "Activated collection: \(collection.name)")
+    }
+    
+    private func showNewCollectionDialog() {
+        let alert = NSAlert()
+        alert.messageText = "New Collection"
+        alert.informativeText = "Enter a name for the new collection:"
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+        
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
+        input.placeholderString = "Collection Name"
+        alert.accessoryView = input
+        
+        alert.beginSheetModal(for: window!) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            
+            let name = input.stringValue.trimmingCharacters(in: .whitespaces)
+            guard !name.isEmpty else {
+                self?.showAlert(title: "Invalid Name", message: "Please enter a collection name.")
+                return
+            }
+            
+            let collection = CollectionStore.shared.createCollection(name: name)
+            
+            ToastManager.shared.showSuccess(title: "Created collection: \(name)")
+            
+            // Select the new collection
+            self?.collectionsSidebarSection.selectCollection(collection)
+            self?.handleCollectionSelected(collection)
+        }
     }
     
     // MARK: - Stage Creation

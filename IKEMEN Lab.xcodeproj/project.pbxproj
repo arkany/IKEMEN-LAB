@@ -6,10 +6,11 @@
 	objectVersion = 56;
 	objects = {
 
-$1
-		04A /* Collection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F36 /* Collection.swift */; };
-		51B /* CollectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05F /* CollectionStore.swift */; };
-		6AF /* SelectDefGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E6 /* SelectDefGenerator.swift */; };
+/* Begin PBXBuildFile section */
+		036 /* Collection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 137 /* Collection.swift */; };
+		037 /* CollectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138 /* CollectionStore.swift */; };
+		038 /* SelectDefGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139 /* SelectDefGenerator.swift */; };
+		039 /* CollectionsSidebarSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140 /* CollectionsSidebarSection.swift */; };
 		001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 101 /* AppDelegate.swift */; };
 		002 /* GameWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 102 /* GameWindowController.swift */; };
 		003 /* MetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 103 /* MetalView.swift */; };
@@ -49,10 +50,7 @@ $1
 		035 /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 136 /* DuplicatesView.swift */; };
 /* End PBXBuildFile section */
 
-$1
-		F36 /* Collection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Collection.swift; sourceTree = "<group>"; };
-		05F /* CollectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionStore.swift; sourceTree = "<group>"; };
-		0E6 /* SelectDefGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectDefGenerator.swift; sourceTree = "<group>"; };
+/* Begin PBXFileReference section */
 		101 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		102 /* GameWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameWindowController.swift; sourceTree = "<group>"; };
 		103 /* MetalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalView.swift; sourceTree = "<group>"; };
@@ -89,6 +87,10 @@ $1
 		134 /* TagDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagDetector.swift; sourceTree = "<group>"; };
 		135 /* DuplicateDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateDetector.swift; sourceTree = "<group>"; };
 		136 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
+		137 /* Collection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Collection.swift; sourceTree = "<group>"; };
+		138 /* CollectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionStore.swift; sourceTree = "<group>"; };
+		139 /* SelectDefGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectDefGenerator.swift; sourceTree = "<group>"; };
+		140 /* CollectionsSidebarSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionsSidebarSection.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -173,8 +175,10 @@ $1
 		};
 		412 /* Core */ = {
 			isa = PBXGroup;
-			children = (
+				children = (
 				104 /* EmulatorBridge.swift */,
+				138 /* CollectionStore.swift */,
+				139 /* SelectDefGenerator.swift */,
 				117 /* SFFParser.swift */,
 				121 /* DEFParser.swift */,
 				122 /* ImageCache.swift */,
@@ -215,6 +219,7 @@ $1
 				10B1001E2F0114A500EC215A /* ToastNotification.swift */,
 				125 /* ScreenpackBrowserView.swift */,
 				136 /* DuplicatesView.swift */,
+				140 /* CollectionsSidebarSection.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -222,8 +227,8 @@ $1
 		415 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				$1
-				F36 /* Collection.swift */,
+				118 /* CharacterInfo.swift */,
+				137 /* Collection.swift */,
 				119 /* StageInfo.swift */,
 				124 /* ScreenpackInfo.swift */,
 			);
@@ -324,10 +329,7 @@ $1
 				024 /* CharacterDetailsView.swift in Sources */,
 				014 /* StageBrowserView.swift in Sources */,
 				015 /* SFFParser.swift in Sources */,
-				$1
-				04A /* Collection.swift in Sources */,
-				51B /* CollectionStore.swift in Sources */,
-				6AF /* SelectDefGenerator.swift in Sources */,
+				016 /* CharacterInfo.swift in Sources */,
 				017 /* StageInfo.swift in Sources */,
 				018 /* UIHelpers.swift in Sources */,
 				019 /* DEFParser.swift in Sources */,
@@ -347,6 +349,10 @@ $1
 				033 /* TagDetector.swift in Sources */,
 				034 /* DuplicateDetector.swift in Sources */,
 				035 /* DuplicatesView.swift in Sources */,
+				036 /* Collection.swift in Sources */,
+				037 /* CollectionStore.swift in Sources */,
+				038 /* SelectDefGenerator.swift in Sources */,
+				039 /* CollectionsSidebarSection.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

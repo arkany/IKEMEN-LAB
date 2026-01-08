@@ -178,13 +178,49 @@ class IkemenBridge: ObservableObject {
         if let enginePath = enginePath {
             print("Engine path: \(enginePath.path)")
         }
+        
+        // Listen for collection activation
+        setupCollectionObserver()
     }
     
     deinit {
         if let observer = terminationObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
+        NotificationCenter.default.removeObserver(self, name: .collectionActivated, object: nil)
         terminateEngine()
+    }
+    
+    // MARK: - Collection Observer
+    
+    private func setupCollectionObserver() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCollectionActivated(_:)),
+            name: .collectionActivated,
+            object: nil
+        )
+    }
+    
+    @objc private func handleCollectionActivated(_ notification: Notification) {
+        guard let collection = notification.object as? Collection,
+              let ikemenPath = engineWorkingDirectory else {
+            print("Cannot activate collection: missing collection or engine path")
+            return
+        }
+        
+        let result = SelectDefGenerator.writeSelectDef(for: collection, ikemenPath: ikemenPath)
+        
+        switch result {
+        case .success(let path):
+            print("Generated select.def at: \(path)")
+            
+        case .failure(let error):
+            print("Failed to generate select.def: \(error)")
+            DispatchQueue.main.async {
+                ToastManager.shared.showError(title: "Failed to activate collection", subtitle: error.localizedDescription)
+            }
+        }
     }
     
     // MARK: - Termination Observer
@@ -344,6 +380,9 @@ class IkemenBridge: ObservableObject {
         
         DispatchQueue.main.async {
             self.characters = sortedCharacters
+            
+            // Sync default collection with all characters
+            self.syncDefaultCollection(with: sortedCharacters)
         }
         
         print("Loaded \(foundCharacters.count) characters")
@@ -367,6 +406,24 @@ class IkemenBridge: ObservableObject {
         result.append(contentsOf: sortedRemaining)
         
         return result
+    }
+    
+    /// Sync the default "All Characters" collection with the full character library
+    private func syncDefaultCollection(with characters: [CharacterInfo]) {
+        guard var defaultCollection = CollectionStore.shared.collections.first(where: { $0.isDefault }) else {
+            return
+        }
+        
+        // Convert all characters to roster entries
+        defaultCollection.characters = characters.map { char in
+            RosterEntry.character(
+                folder: char.directory.lastPathComponent,
+                def: char.defFile.lastPathComponent
+            )
+        }
+        
+        CollectionStore.shared.update(defaultCollection)
+        print("Synced default collection with \(characters.count) characters")
     }
     
     /// Load all stages from the stages directory
