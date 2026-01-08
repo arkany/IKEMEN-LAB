@@ -86,6 +86,8 @@ class GameWindowController: NSWindowController {
     
     // Collections sidebar section
     private var collectionsSidebarSection: CollectionsSidebarSection!
+    private var collectionEditorView: CollectionEditorView!
+    private var editingCollection: Collection?
     
     // UI Elements - Main Area
     private var contentHeaderView: ContentHeaderView!
@@ -844,6 +846,25 @@ class GameWindowController: NSWindowController {
         }
         mainAreaView.addSubview(duplicatesView)
         
+        // Collection Editor View (hidden initially)
+        collectionEditorView = CollectionEditorView(frame: .zero)
+        collectionEditorView.translatesAutoresizingMaskIntoConstraints = false
+        collectionEditorView.isHidden = true
+        collectionEditorView.onBackClicked = { [weak self] in
+            self?.closeCollectionEditor()
+        }
+        collectionEditorView.onActivateClicked = { [weak self] collection in
+            CollectionStore.shared.setActive(collection)
+            ToastManager.shared.showSuccess(title: "Activated: \(collection.name)")
+        }
+        collectionEditorView.onAddCharactersClicked = { [weak self] collection in
+            self?.showCharacterPicker(for: collection)
+        }
+        collectionEditorView.onAddStagesClicked = { [weak self] collection in
+            self?.showStagePicker(for: collection)
+        }
+        mainAreaView.addSubview(collectionEditorView)
+        
         // Character details panel width constraint (420px per HTML design)
         characterDetailsWidthConstraint = characterDetailsView.widthAnchor.constraint(equalToConstant: 420)
         
@@ -898,6 +919,12 @@ class GameWindowController: NSWindowController {
             duplicatesView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             duplicatesView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             duplicatesView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
+            
+            // Collection editor fills main area (no header)
+            collectionEditorView.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 16),
+            collectionEditorView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor),
+            collectionEditorView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor),
+            collectionEditorView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor),
         ])
     }
     
@@ -1023,15 +1050,28 @@ class GameWindowController: NSWindowController {
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
             duplicatesView?.isHidden = true
+            collectionEditorView?.isHidden = true
             showSettingsContent()
         case nil:
-            // Empty state - show drop zone
+            // Empty state or collection editor
+            // If editing a collection, keep the editor visible
+            if editingCollection != nil {
+                // Collection editor is already shown, don't change
+                return
+            }
             dashboardView?.isHidden = true
             dropZoneView?.isHidden = false
             characterBrowserView?.isHidden = true
             stageBrowserView?.isHidden = true
             screenpackBrowserView?.isHidden = true
             duplicatesView?.isHidden = true
+            collectionEditorView?.isHidden = true
+        }
+        
+        // Always hide collection editor when a nav item is selected (except nil case handled above)
+        if selectedNavItem != nil {
+            collectionEditorView?.isHidden = true
+            editingCollection = nil
         }
     }
     
@@ -1692,12 +1732,53 @@ class GameWindowController: NSWindowController {
         // Deselect nav items when a collection is selected
         selectNavItem(nil)
         
-        // TODO: Show collection editor view in Phase 3
-        // For now, just activate the collection
-        CollectionStore.shared.setActive(collection)
+        // Show collection editor
+        editingCollection = collection
+        collectionEditorView.configure(with: collection)
+        showCollectionEditor()
+    }
+    
+    private func showCollectionEditor() {
+        // Hide all other views
+        dashboardView?.isHidden = true
+        dropZoneView?.isHidden = true
+        characterBrowserView?.isHidden = true
+        characterDetailsView?.isHidden = true
+        stageBrowserView?.isHidden = true
+        screenpackBrowserView?.isHidden = true
+        duplicatesView?.isHidden = true
+        contentHeaderView?.isHidden = true
+        createStageButton?.isHidden = true
         
-        // Show toast notification
-        ToastManager.shared.showSuccess(title: "Activated collection: \(collection.name)")
+        // Show collection editor
+        collectionEditorView?.isHidden = false
+    }
+    
+    private func closeCollectionEditor() {
+        editingCollection = nil
+        collectionEditorView?.isHidden = true
+        
+        // Return to dashboard
+        selectNavItem(.dashboard)
+    }
+    
+    private func showCharacterPicker(for collection: Collection) {
+        let picker = CharacterPickerSheet(collection: collection)
+        picker.onDismiss = { [weak self] in
+            // Refresh the editor with updated collection
+            if let updated = CollectionStore.shared.collection(withId: collection.id) {
+                self?.collectionEditorView.configure(with: updated)
+            }
+        }
+        
+        // Present as sheet
+        guard let window = window else { return }
+        window.contentViewController?.presentAsSheet(picker)
+    }
+    
+    private func showStagePicker(for collection: Collection) {
+        // TODO: Implement stage picker similar to character picker
+        ToastManager.shared.showInfo(title: "Stage picker coming soon")
     }
     
     private func showNewCollectionDialog() {
