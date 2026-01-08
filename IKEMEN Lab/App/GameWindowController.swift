@@ -920,8 +920,8 @@ class GameWindowController: NSWindowController {
             duplicatesView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             duplicatesView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
             
-            // Collection editor fills main area (no header)
-            collectionEditorView.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 16),
+            // Collection editor fills main area (has its own header)
+            collectionEditorView.topAnchor.constraint(equalTo: mainAreaView.topAnchor),
             collectionEditorView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor),
             collectionEditorView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor),
             collectionEditorView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor),
