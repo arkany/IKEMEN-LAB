@@ -863,6 +863,9 @@ class GameWindowController: NSWindowController {
         collectionEditorView.onAddStagesClicked = { [weak self] collection in
             self?.showStagePicker(for: collection)
         }
+        collectionEditorView.onChangeScreenpackClicked = { [weak self] collection in
+            self?.showScreenpackPicker(for: collection)
+        }
         mainAreaView.addSubview(collectionEditorView)
         
         // Character details panel width constraint (420px per HTML design)
@@ -1777,8 +1780,31 @@ class GameWindowController: NSWindowController {
     }
     
     private func showStagePicker(for collection: Collection) {
-        // TODO: Implement stage picker similar to character picker
-        ToastManager.shared.showInfo(title: "Stage picker coming soon")
+        let picker = StagePickerSheet(collection: collection)
+        picker.onDismiss = { [weak self] in
+            // Refresh the editor with updated collection
+            if let updated = CollectionStore.shared.collection(withId: collection.id) {
+                self?.collectionEditorView.configure(with: updated)
+            }
+        }
+        
+        // Present as sheet
+        guard let window = window else { return }
+        window.contentViewController?.presentAsSheet(picker)
+    }
+    
+    private func showScreenpackPicker(for collection: Collection) {
+        let picker = ScreenpackPickerSheet(collection: collection)
+        picker.onDismiss = { [weak self] in
+            // Refresh the editor with updated collection
+            if let updated = CollectionStore.shared.collection(withId: collection.id) {
+                self?.collectionEditorView.configure(with: updated)
+            }
+        }
+        
+        // Present as sheet
+        guard let window = window else { return }
+        window.contentViewController?.presentAsSheet(picker)
     }
     
     private func showNewCollectionDialog() {

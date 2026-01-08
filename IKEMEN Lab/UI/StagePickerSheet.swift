@@ -1,17 +1,17 @@
 import Cocoa
 import Combine
 
-// MARK: - CharacterPickerSheet
+// MARK: - StagePickerSheet
 
-/// Sheet for selecting characters to add to a collection
-class CharacterPickerSheet: NSViewController {
+/// Sheet for selecting stages to add to a collection
+class StagePickerSheet: NSViewController {
     
     // MARK: - Properties
     
     private var collection: Collection
-    private var allCharacters: [CharacterInfo] = []
-    private var filteredCharacters: [CharacterInfo] = []
-    private var selectedCharacterFolders: Set<String> = []
+    private var allStages: [StageInfo] = []
+    private var filteredStages: [StageInfo] = []
+    private var selectedStageFolders: Set<String> = []
     private var cancellables = Set<AnyCancellable>()
     
     var onDismiss: (() -> Void)?
@@ -31,8 +31,8 @@ class CharacterPickerSheet: NSViewController {
         self.collection = collection
         super.init(nibName: nil, bundle: nil)
         
-        // Initialize selected folders from existing collection
-        selectedCharacterFolders = Set(collection.characters.compactMap { $0.characterFolder })
+        // Initialize selected stages from existing collection
+        selectedStageFolders = Set(collection.stages)
     }
     
     required init?(coder: NSCoder) {
@@ -50,7 +50,7 @@ class CharacterPickerSheet: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        loadCharacters()
+        loadStages()
     }
     
     // MARK: - Setup
@@ -61,7 +61,7 @@ class CharacterPickerSheet: NSViewController {
         headerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headerView)
         
-        titleLabel = NSTextField(labelWithString: "Add Characters to Collection")
+        titleLabel = NSTextField(labelWithString: "Add Stages to Collection")
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = DesignFonts.header(size: 18)
         titleLabel.textColor = DesignColors.textPrimary
@@ -76,7 +76,7 @@ class CharacterPickerSheet: NSViewController {
         // Search field
         searchField = NSSearchField()
         searchField.translatesAutoresizingMaskIntoConstraints = false
-        searchField.placeholderString = "Search characters..."
+        searchField.placeholderString = "Search stages..."
         searchField.target = self
         searchField.action = #selector(searchChanged)
         searchField.sendsSearchStringImmediately = true
@@ -84,7 +84,7 @@ class CharacterPickerSheet: NSViewController {
         
         // Collection view
         let layout = NSCollectionViewFlowLayout()
-        layout.itemSize = NSSize(width: 120, height: 40)
+        layout.itemSize = NSSize(width: 180, height: 40)
         layout.minimumInteritemSpacing = 8
         layout.minimumLineSpacing = 8
         layout.sectionInset = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
@@ -96,7 +96,7 @@ class CharacterPickerSheet: NSViewController {
         collectionView.backgroundColors = [.clear]
         collectionView.isSelectable = true
         collectionView.allowsMultipleSelection = true
-        collectionView.register(CharacterPickerItem.self, forItemWithIdentifier: CharacterPickerItem.identifier)
+        collectionView.register(StagePickerItem.self, forItemWithIdentifier: StagePickerItem.identifier)
         
         scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -115,7 +115,7 @@ class CharacterPickerSheet: NSViewController {
         footerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(footerView)
         
-        selectionCountLabel = NSTextField(labelWithString: "Selected: 0 characters")
+        selectionCountLabel = NSTextField(labelWithString: "Selected: 0 stages")
         selectionCountLabel.translatesAutoresizingMaskIntoConstraints = false
         selectionCountLabel.font = DesignFonts.body(size: 13)
         selectionCountLabel.textColor = DesignColors.textSecondary
@@ -126,7 +126,7 @@ class CharacterPickerSheet: NSViewController {
         addAllButton.bezelStyle = .inline
         addAllButton.isBordered = false
         addAllButton.font = DesignFonts.body(size: 13)
-        addAllButton.contentTintColor = DesignColors.badgeCharacter
+        addAllButton.contentTintColor = DesignColors.badgeStage
         footerView.addSubview(addAllButton)
         
         // Layout
@@ -165,17 +165,17 @@ class CharacterPickerSheet: NSViewController {
         ])
     }
     
-    private func loadCharacters() {
-        // Use IkemenBridge to get cached characters
-        allCharacters = IkemenBridge.shared.characters.sorted { $0.displayName.lowercased() < $1.displayName.lowercased() }
-        filteredCharacters = allCharacters
+    private func loadStages() {
+        // Use IkemenBridge to get cached stages
+        allStages = IkemenBridge.shared.stages.sorted { $0.name.lowercased() < $1.name.lowercased() }
+        filteredStages = allStages
         
         collectionView.reloadData()
         updateSelectionCount()
     }
     
     private func updateSelectionCount() {
-        selectionCountLabel.stringValue = "Selected: \(selectedCharacterFolders.count) characters"
+        selectionCountLabel.stringValue = "Selected: \(selectedStageFolders.count) stages"
     }
     
     // MARK: - Actions
@@ -184,12 +184,12 @@ class CharacterPickerSheet: NSViewController {
         let query = searchField.stringValue.lowercased().trimmingCharacters(in: .whitespaces)
         
         if query.isEmpty {
-            filteredCharacters = allCharacters
+            filteredStages = allStages
         } else {
-            filteredCharacters = allCharacters.filter { character in
-                character.displayName.lowercased().contains(query) ||
-                character.directory.lastPathComponent.lowercased().contains(query) ||
-                character.author.lowercased().contains(query)
+            filteredStages = allStages.filter { stage in
+                stage.name.lowercased().contains(query) ||
+                stage.defFile.lastPathComponent.lowercased().contains(query) ||
+                stage.author.lowercased().contains(query)
             }
         }
         
@@ -197,9 +197,9 @@ class CharacterPickerSheet: NSViewController {
     }
     
     @objc private func addAllClicked() {
-        for character in filteredCharacters {
-            let folder = character.directory.lastPathComponent
-            selectedCharacterFolders.insert(folder)
+        for stage in filteredStages {
+            let folder = stageFolderName(for: stage)
+            selectedStageFolders.insert(folder)
         }
         
         syncToCollection()
@@ -213,67 +213,52 @@ class CharacterPickerSheet: NSViewController {
         dismiss(nil)
     }
     
+    private func stageFolderName(for stage: StageInfo) -> String {
+        // Stage folder is the parent directory of the def file
+        return stage.defFile.deletingLastPathComponent().lastPathComponent
+    }
+    
     private func syncToCollection() {
         // Get current collection
         guard var updatedCollection = CollectionStore.shared.collection(withId: collection.id) else { return }
         
-        // Build new character list
-        var newCharacters: [RosterEntry] = []
-        
-        // Keep existing non-character entries (randomselect, empty slots)
-        for entry in updatedCollection.characters {
-            if entry.entryType != .character {
-                newCharacters.append(entry)
-            }
-        }
-        
-        // Add selected characters
-        for folder in selectedCharacterFolders {
-            // Find the character info to get the def file
-            if let charInfo = allCharacters.first(where: { $0.directory.lastPathComponent == folder }) {
-                let def = charInfo.defFile.lastPathComponent
-                newCharacters.append(.character(folder: folder, def: def))
-            } else {
-                newCharacters.append(.character(folder: folder))
-            }
-        }
-        
-        updatedCollection.characters = newCharacters
+        // Update stages list
+        updatedCollection.stages = Array(selectedStageFolders)
         CollectionStore.shared.update(updatedCollection)
         
         // Update local reference
         collection = updatedCollection
     }
     
-    func toggleCharacter(_ folder: String) {
-        if selectedCharacterFolders.contains(folder) {
-            selectedCharacterFolders.remove(folder)
+    func toggleStage(_ folder: String) {
+        if selectedStageFolders.contains(folder) {
+            selectedStageFolders.remove(folder)
         } else {
-            selectedCharacterFolders.insert(folder)
+            selectedStageFolders.insert(folder)
         }
         updateSelectionCount()
     }
     
-    func isCharacterSelected(_ folder: String) -> Bool {
-        return selectedCharacterFolders.contains(folder)
+    func isStageSelected(_ folder: String) -> Bool {
+        return selectedStageFolders.contains(folder)
     }
 }
 
 // MARK: - NSCollectionViewDataSource
 
-extension CharacterPickerSheet: NSCollectionViewDataSource {
+extension StagePickerSheet: NSCollectionViewDataSource {
     func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
-        return filteredCharacters.count
+        return filteredStages.count
     }
     
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
-        let item = collectionView.makeItem(withIdentifier: CharacterPickerItem.identifier, for: indexPath) as! CharacterPickerItem
-        let character = filteredCharacters[indexPath.item]
-        let folder = character.directory.lastPathComponent
-        item.configure(with: character, isSelected: isCharacterSelected(folder))
+        let item = collectionView.makeItem(withIdentifier: StagePickerItem.identifier, for: indexPath) as! StagePickerItem
+        let stage = filteredStages[indexPath.item]
+        let folder = stageFolderName(for: stage)
+        item.configure(with: stage, isSelected: isStageSelected(folder))
         item.onToggle = { [weak self] in
-            self?.toggleCharacter(folder)
-            item.updateCheckmark(self?.isCharacterSelected(folder) ?? false)
+            self?.toggleStage(folder)
+            item.updateCheckmark(self?.isStageSelected(folder) ?? false)
         }
         return item
     }
@@ -281,17 +266,17 @@ extension CharacterPickerSheet: NSCollectionViewDataSource {
 
 // MARK: - NSCollectionViewDelegate
 
-extension CharacterPickerSheet: NSCollectionViewDelegate {
+extension StagePickerSheet: NSCollectionViewDelegate {
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
         // Selection handled by item click
         collectionView.deselectItems(at: indexPaths)
     }
 }
 
-// MARK: - CharacterPickerItem
+// MARK: - StagePickerItem
 
-class CharacterPickerItem: NSCollectionViewItem {
-    static let identifier = NSUserInterfaceItemIdentifier("CharacterPickerItem")
+class StagePickerItem: NSCollectionViewItem {
+    static let identifier = NSUserInterfaceItemIdentifier("StagePickerItem")
     
     private var containerView: NSView!
     private var checkmarkView: NSImageView!
@@ -300,7 +285,7 @@ class CharacterPickerItem: NSCollectionViewItem {
     var onToggle: (() -> Void)?
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 120, height: 40))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 180, height: 40))
         view.wantsLayer = true
         
         containerView = NSView()
@@ -359,8 +344,8 @@ class CharacterPickerItem: NSCollectionViewItem {
         containerView.addGestureRecognizer(clickGesture)
     }
     
-    func configure(with character: CharacterInfo, isSelected: Bool) {
-        nameLabel.stringValue = character.displayName
+    func configure(with stage: StageInfo, isSelected: Bool) {
+        nameLabel.stringValue = stage.name
         updateCheckmark(isSelected)
     }
     

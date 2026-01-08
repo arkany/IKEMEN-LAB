@@ -1,17 +1,18 @@
 import Cocoa
 import Combine
 
-// MARK: - CharacterPickerSheet
+// MARK: - ScreenpackPickerSheet
 
-/// Sheet for selecting characters to add to a collection
-class CharacterPickerSheet: NSViewController {
+/// Sheet for selecting a screenpack for a collection
+/// Unlike character/stage pickers, this is single-selection
+class ScreenpackPickerSheet: NSViewController {
     
     // MARK: - Properties
     
     private var collection: Collection
-    private var allCharacters: [CharacterInfo] = []
-    private var filteredCharacters: [CharacterInfo] = []
-    private var selectedCharacterFolders: Set<String> = []
+    private var allScreenpacks: [ScreenpackInfo] = []
+    private var filteredScreenpacks: [ScreenpackInfo] = []
+    private var selectedScreenpackPath: String?
     private var cancellables = Set<AnyCancellable>()
     
     var onDismiss: (() -> Void)?
@@ -21,8 +22,8 @@ class CharacterPickerSheet: NSViewController {
     private var searchField: NSSearchField!
     private var collectionView: NSCollectionView!
     private var scrollView: NSScrollView!
-    private var selectionCountLabel: NSTextField!
-    private var addAllButton: NSButton!
+    private var selectionLabel: NSTextField!
+    private var clearButton: NSButton!
     private var doneButton: NSButton!
     
     // MARK: - Initialization
@@ -31,8 +32,8 @@ class CharacterPickerSheet: NSViewController {
         self.collection = collection
         super.init(nibName: nil, bundle: nil)
         
-        // Initialize selected folders from existing collection
-        selectedCharacterFolders = Set(collection.characters.compactMap { $0.characterFolder })
+        // Initialize with current selection
+        selectedScreenpackPath = collection.screenpackPath
     }
     
     required init?(coder: NSCoder) {
@@ -50,7 +51,7 @@ class CharacterPickerSheet: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        loadCharacters()
+        loadScreenpacks()
     }
     
     // MARK: - Setup
@@ -61,7 +62,7 @@ class CharacterPickerSheet: NSViewController {
         headerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(headerView)
         
-        titleLabel = NSTextField(labelWithString: "Add Characters to Collection")
+        titleLabel = NSTextField(labelWithString: "Select Screenpack")
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = DesignFonts.header(size: 18)
         titleLabel.textColor = DesignColors.textPrimary
@@ -76,7 +77,7 @@ class CharacterPickerSheet: NSViewController {
         // Search field
         searchField = NSSearchField()
         searchField.translatesAutoresizingMaskIntoConstraints = false
-        searchField.placeholderString = "Search characters..."
+        searchField.placeholderString = "Search screenpacks..."
         searchField.target = self
         searchField.action = #selector(searchChanged)
         searchField.sendsSearchStringImmediately = true
@@ -84,7 +85,7 @@ class CharacterPickerSheet: NSViewController {
         
         // Collection view
         let layout = NSCollectionViewFlowLayout()
-        layout.itemSize = NSSize(width: 120, height: 40)
+        layout.itemSize = NSSize(width: 180, height: 60)
         layout.minimumInteritemSpacing = 8
         layout.minimumLineSpacing = 8
         layout.sectionInset = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
@@ -95,8 +96,8 @@ class CharacterPickerSheet: NSViewController {
         collectionView.dataSource = self
         collectionView.backgroundColors = [.clear]
         collectionView.isSelectable = true
-        collectionView.allowsMultipleSelection = true
-        collectionView.register(CharacterPickerItem.self, forItemWithIdentifier: CharacterPickerItem.identifier)
+        collectionView.allowsMultipleSelection = false
+        collectionView.register(ScreenpackPickerItem.self, forItemWithIdentifier: ScreenpackPickerItem.identifier)
         
         scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -115,19 +116,19 @@ class CharacterPickerSheet: NSViewController {
         footerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(footerView)
         
-        selectionCountLabel = NSTextField(labelWithString: "Selected: 0 characters")
-        selectionCountLabel.translatesAutoresizingMaskIntoConstraints = false
-        selectionCountLabel.font = DesignFonts.body(size: 13)
-        selectionCountLabel.textColor = DesignColors.textSecondary
-        footerView.addSubview(selectionCountLabel)
+        selectionLabel = NSTextField(labelWithString: "No screenpack selected (using default)")
+        selectionLabel.translatesAutoresizingMaskIntoConstraints = false
+        selectionLabel.font = DesignFonts.body(size: 13)
+        selectionLabel.textColor = DesignColors.textSecondary
+        footerView.addSubview(selectionLabel)
         
-        addAllButton = NSButton(title: "Add All Visible", target: self, action: #selector(addAllClicked))
-        addAllButton.translatesAutoresizingMaskIntoConstraints = false
-        addAllButton.bezelStyle = .inline
-        addAllButton.isBordered = false
-        addAllButton.font = DesignFonts.body(size: 13)
-        addAllButton.contentTintColor = DesignColors.badgeCharacter
-        footerView.addSubview(addAllButton)
+        clearButton = NSButton(title: "Use Default", target: self, action: #selector(clearClicked))
+        clearButton.translatesAutoresizingMaskIntoConstraints = false
+        clearButton.bezelStyle = .inline
+        clearButton.isBordered = false
+        clearButton.font = DesignFonts.body(size: 13)
+        clearButton.contentTintColor = DesignColors.textSecondary
+        footerView.addSubview(clearButton)
         
         // Layout
         NSLayoutConstraint.activate([
@@ -157,25 +158,30 @@ class CharacterPickerSheet: NSViewController {
             footerView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -16),
             footerView.heightAnchor.constraint(equalToConstant: 32),
             
-            selectionCountLabel.leadingAnchor.constraint(equalTo: footerView.leadingAnchor),
-            selectionCountLabel.centerYAnchor.constraint(equalTo: footerView.centerYAnchor),
+            selectionLabel.leadingAnchor.constraint(equalTo: footerView.leadingAnchor),
+            selectionLabel.centerYAnchor.constraint(equalTo: footerView.centerYAnchor),
             
-            addAllButton.trailingAnchor.constraint(equalTo: footerView.trailingAnchor),
-            addAllButton.centerYAnchor.constraint(equalTo: footerView.centerYAnchor),
+            clearButton.trailingAnchor.constraint(equalTo: footerView.trailingAnchor),
+            clearButton.centerYAnchor.constraint(equalTo: footerView.centerYAnchor),
         ])
     }
     
-    private func loadCharacters() {
-        // Use IkemenBridge to get cached characters
-        allCharacters = IkemenBridge.shared.characters.sorted { $0.displayName.lowercased() < $1.displayName.lowercased() }
-        filteredCharacters = allCharacters
+    private func loadScreenpacks() {
+        // Use IkemenBridge to get cached screenpacks
+        allScreenpacks = IkemenBridge.shared.screenpacks.sorted { $0.name.lowercased() < $1.name.lowercased() }
+        filteredScreenpacks = allScreenpacks
         
         collectionView.reloadData()
-        updateSelectionCount()
+        updateSelectionLabel()
     }
     
-    private func updateSelectionCount() {
-        selectionCountLabel.stringValue = "Selected: \(selectedCharacterFolders.count) characters"
+    private func updateSelectionLabel() {
+        if let path = selectedScreenpackPath,
+           let screenpack = allScreenpacks.first(where: { screenpackPath(for: $0) == path }) {
+            selectionLabel.stringValue = "Selected: \(screenpack.name)"
+        } else {
+            selectionLabel.stringValue = "No screenpack selected (using default)"
+        }
     }
     
     // MARK: - Actions
@@ -184,27 +190,21 @@ class CharacterPickerSheet: NSViewController {
         let query = searchField.stringValue.lowercased().trimmingCharacters(in: .whitespaces)
         
         if query.isEmpty {
-            filteredCharacters = allCharacters
+            filteredScreenpacks = allScreenpacks
         } else {
-            filteredCharacters = allCharacters.filter { character in
-                character.displayName.lowercased().contains(query) ||
-                character.directory.lastPathComponent.lowercased().contains(query) ||
-                character.author.lowercased().contains(query)
+            filteredScreenpacks = allScreenpacks.filter { screenpack in
+                screenpack.name.lowercased().contains(query) ||
+                screenpack.author.lowercased().contains(query)
             }
         }
         
         collectionView.reloadData()
     }
     
-    @objc private func addAllClicked() {
-        for character in filteredCharacters {
-            let folder = character.directory.lastPathComponent
-            selectedCharacterFolders.insert(folder)
-        }
-        
-        syncToCollection()
+    @objc private func clearClicked() {
+        selectedScreenpackPath = nil
         collectionView.reloadData()
-        updateSelectionCount()
+        updateSelectionLabel()
     }
     
     @objc private func doneClicked() {
@@ -213,67 +213,64 @@ class CharacterPickerSheet: NSViewController {
         dismiss(nil)
     }
     
+    private func screenpackPath(for screenpack: ScreenpackInfo) -> String {
+        // Return relative path from Ikemen GO root (e.g., "data/MvC2")
+        guard let workingDir = IkemenBridge.shared.workingDirectory else {
+            return screenpack.defFile.deletingLastPathComponent().lastPathComponent
+        }
+        
+        let screenpackDir = screenpack.defFile.deletingLastPathComponent()
+        if let relativePath = screenpackDir.path.replacingOccurrences(of: workingDir.path + "/", with: "").nilIfEmpty {
+            return relativePath
+        }
+        return screenpackDir.lastPathComponent
+    }
+    
     private func syncToCollection() {
         // Get current collection
         guard var updatedCollection = CollectionStore.shared.collection(withId: collection.id) else { return }
         
-        // Build new character list
-        var newCharacters: [RosterEntry] = []
-        
-        // Keep existing non-character entries (randomselect, empty slots)
-        for entry in updatedCollection.characters {
-            if entry.entryType != .character {
-                newCharacters.append(entry)
-            }
-        }
-        
-        // Add selected characters
-        for folder in selectedCharacterFolders {
-            // Find the character info to get the def file
-            if let charInfo = allCharacters.first(where: { $0.directory.lastPathComponent == folder }) {
-                let def = charInfo.defFile.lastPathComponent
-                newCharacters.append(.character(folder: folder, def: def))
-            } else {
-                newCharacters.append(.character(folder: folder))
-            }
-        }
-        
-        updatedCollection.characters = newCharacters
+        // Update screenpack
+        updatedCollection.screenpackPath = selectedScreenpackPath
         CollectionStore.shared.update(updatedCollection)
         
         // Update local reference
         collection = updatedCollection
     }
     
-    func toggleCharacter(_ folder: String) {
-        if selectedCharacterFolders.contains(folder) {
-            selectedCharacterFolders.remove(folder)
-        } else {
-            selectedCharacterFolders.insert(folder)
-        }
-        updateSelectionCount()
+    func selectScreenpack(_ path: String?) {
+        selectedScreenpackPath = path
+        collectionView.reloadData()
+        updateSelectionLabel()
     }
     
-    func isCharacterSelected(_ folder: String) -> Bool {
-        return selectedCharacterFolders.contains(folder)
+    func isScreenpackSelected(_ path: String) -> Bool {
+        return selectedScreenpackPath == path
+    }
+}
+
+// MARK: - String Extension
+
+fileprivate extension String {
+    var nilIfEmpty: String? {
+        return isEmpty ? nil : self
     }
 }
 
 // MARK: - NSCollectionViewDataSource
 
-extension CharacterPickerSheet: NSCollectionViewDataSource {
+extension ScreenpackPickerSheet: NSCollectionViewDataSource {
     func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
-        return filteredCharacters.count
+        return filteredScreenpacks.count
     }
     
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
-        let item = collectionView.makeItem(withIdentifier: CharacterPickerItem.identifier, for: indexPath) as! CharacterPickerItem
-        let character = filteredCharacters[indexPath.item]
-        let folder = character.directory.lastPathComponent
-        item.configure(with: character, isSelected: isCharacterSelected(folder))
-        item.onToggle = { [weak self] in
-            self?.toggleCharacter(folder)
-            item.updateCheckmark(self?.isCharacterSelected(folder) ?? false)
+        let item = collectionView.makeItem(withIdentifier: ScreenpackPickerItem.identifier, for: indexPath) as! ScreenpackPickerItem
+        let screenpack = filteredScreenpacks[indexPath.item]
+        let path = screenpackPath(for: screenpack)
+        item.configure(with: screenpack, isSelected: isScreenpackSelected(path))
+        item.onSelect = { [weak self] in
+            self?.selectScreenpack(path)
         }
         return item
     }
@@ -281,26 +278,27 @@ extension CharacterPickerSheet: NSCollectionViewDataSource {
 
 // MARK: - NSCollectionViewDelegate
 
-extension CharacterPickerSheet: NSCollectionViewDelegate {
+extension ScreenpackPickerSheet: NSCollectionViewDelegate {
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
         // Selection handled by item click
         collectionView.deselectItems(at: indexPaths)
     }
 }
 
-// MARK: - CharacterPickerItem
+// MARK: - ScreenpackPickerItem
 
-class CharacterPickerItem: NSCollectionViewItem {
-    static let identifier = NSUserInterfaceItemIdentifier("CharacterPickerItem")
+class ScreenpackPickerItem: NSCollectionViewItem {
+    static let identifier = NSUserInterfaceItemIdentifier("ScreenpackPickerItem")
     
     private var containerView: NSView!
-    private var checkmarkView: NSImageView!
+    private var radioView: NSImageView!
     private var nameLabel: NSTextField!
+    private var detailLabel: NSTextField!
     
-    var onToggle: (() -> Void)?
+    var onSelect: (() -> Void)?
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 120, height: 40))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 180, height: 60))
         view.wantsLayer = true
         
         containerView = NSView()
@@ -310,28 +308,26 @@ class CharacterPickerItem: NSCollectionViewItem {
         containerView.layer?.cornerRadius = 6
         view.addSubview(containerView)
         
-        // Checkmark
-        checkmarkView = NSImageView()
-        checkmarkView.translatesAutoresizingMaskIntoConstraints = false
-        checkmarkView.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
-        checkmarkView.contentTintColor = DesignColors.positive
-        checkmarkView.isHidden = true
-        containerView.addSubview(checkmarkView)
-        
-        // Empty circle (unselected)
-        let emptyCircle = NSImageView()
-        emptyCircle.translatesAutoresizingMaskIntoConstraints = false
-        emptyCircle.identifier = NSUserInterfaceItemIdentifier("emptyCircle")
-        emptyCircle.image = NSImage(systemSymbolName: "circle", accessibilityDescription: nil)
-        emptyCircle.contentTintColor = DesignColors.zinc500
-        containerView.addSubview(emptyCircle)
+        // Radio button indicator
+        radioView = NSImageView()
+        radioView.translatesAutoresizingMaskIntoConstraints = false
+        radioView.image = NSImage(systemSymbolName: "circle", accessibilityDescription: nil)
+        radioView.contentTintColor = DesignColors.zinc500
+        containerView.addSubview(radioView)
         
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.body(size: 12)
+        nameLabel.font = DesignFonts.body(size: 13)
         nameLabel.textColor = DesignColors.textPrimary
         nameLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(nameLabel)
+        
+        detailLabel = NSTextField(labelWithString: "")
+        detailLabel.translatesAutoresizingMaskIntoConstraints = false
+        detailLabel.font = DesignFonts.caption(size: 11)
+        detailLabel.textColor = DesignColors.textTertiary
+        detailLabel.lineBreakMode = .byTruncatingTail
+        containerView.addSubview(detailLabel)
         
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -339,19 +335,18 @@ class CharacterPickerItem: NSCollectionViewItem {
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             
-            checkmarkView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
-            checkmarkView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            checkmarkView.widthAnchor.constraint(equalToConstant: 18),
-            checkmarkView.heightAnchor.constraint(equalToConstant: 18),
+            radioView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
+            radioView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            radioView.widthAnchor.constraint(equalToConstant: 18),
+            radioView.heightAnchor.constraint(equalToConstant: 18),
             
-            emptyCircle.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
-            emptyCircle.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            emptyCircle.widthAnchor.constraint(equalToConstant: 18),
-            emptyCircle.heightAnchor.constraint(equalToConstant: 18),
+            nameLabel.leadingAnchor.constraint(equalTo: radioView.trailingAnchor, constant: 8),
+            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
+            nameLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
             
-            nameLabel.leadingAnchor.constraint(equalTo: checkmarkView.trailingAnchor, constant: 8),
-            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
-            nameLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            detailLabel.leadingAnchor.constraint(equalTo: radioView.trailingAnchor, constant: 8),
+            detailLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
+            detailLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
         ])
         
         // Add click gesture
@@ -359,24 +354,25 @@ class CharacterPickerItem: NSCollectionViewItem {
         containerView.addGestureRecognizer(clickGesture)
     }
     
-    func configure(with character: CharacterInfo, isSelected: Bool) {
-        nameLabel.stringValue = character.displayName
-        updateCheckmark(isSelected)
+    func configure(with screenpack: ScreenpackInfo, isSelected: Bool) {
+        nameLabel.stringValue = screenpack.name
+        detailLabel.stringValue = "\(screenpack.resolutionString) • \(screenpack.characterLimitString)"
+        updateSelection(isSelected)
     }
     
-    func updateCheckmark(_ selected: Bool) {
-        checkmarkView.isHidden = !selected
-        
-        // Find and update empty circle
-        if let emptyCircle = containerView.subviews.first(where: { $0.identifier?.rawValue == "emptyCircle" }) {
-            emptyCircle.isHidden = selected
+    func updateSelection(_ selected: Bool) {
+        if selected {
+            radioView.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
+            radioView.contentTintColor = DesignColors.positive
+            containerView.layer?.backgroundColor = DesignColors.zinc600.cgColor
+        } else {
+            radioView.image = NSImage(systemSymbolName: "circle", accessibilityDescription: nil)
+            radioView.contentTintColor = DesignColors.zinc500
+            containerView.layer?.backgroundColor = DesignColors.zinc700.cgColor
         }
-        
-        // Update background
-        containerView.layer?.backgroundColor = selected ? DesignColors.zinc600.cgColor : DesignColors.zinc700.cgColor
     }
     
     @objc private func itemClicked() {
-        onToggle?()
+        onSelect?()
     }
 }

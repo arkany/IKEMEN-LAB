@@ -22,6 +22,7 @@ class CollectionEditorView: NSView {
     var onActivateClicked: ((Collection) -> Void)?
     var onAddCharactersClicked: ((Collection) -> Void)?
     var onAddStagesClicked: ((Collection) -> Void)?
+    var onChangeScreenpackClicked: ((Collection) -> Void)?
     
     // UI Components
     private var scrollView: NSScrollView!
@@ -616,8 +617,8 @@ class CollectionEditorView: NSView {
     }
     
     @objc private func changeScreenpackClicked() {
-        // TODO: Implement screenpack picker
-        ToastManager.shared.showInfo(title: "Screenpack picker coming soon")
+        guard let collection = collection else { return }
+        onChangeScreenpackClicked?(collection)
     }
     
     // MARK: - Context Menu for Roster Items
