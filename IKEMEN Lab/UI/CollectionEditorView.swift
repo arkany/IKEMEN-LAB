@@ -33,6 +33,7 @@ class CollectionEditorView: NSView {
     private var titleLabel: NSTextField!
     private var activateButton: NSButton!
     private var menuButton: NSButton!
+    private var backButtonTrackingArea: NSTrackingArea?
     
     // Roster Section
     private var rosterHeaderView: NSView!
@@ -95,12 +96,12 @@ class CollectionEditorView: NSView {
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
         contentStack.spacing = 24
-        contentStack.edgeInsets = NSEdgeInsets(top: 0, left: 24, bottom: 24, right: 24)
+        contentStack.edgeInsets = NSEdgeInsets(top: 16, left: 24, bottom: 24, right: 24)
         
         scrollView.documentView = contentStack
         
+        // Note: scrollView.topAnchor will be constrained to headerView.bottomAnchor in setupHeader()
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -113,28 +114,46 @@ class CollectionEditorView: NSView {
     }
     
     private func setupHeader() {
+        // Header matches ContentHeaderView style: 64px height, bg-zinc-950/50, border-b border-white/5
         headerView = NSView()
         headerView.translatesAutoresizingMaskIntoConstraints = false
         headerView.wantsLayer = true
-        headerView.layer?.backgroundColor = DesignColors.zinc900.cgColor
-        headerView.layer?.cornerRadius = 8
+        headerView.layer?.backgroundColor = NSColor(white: 0.05, alpha: 0.5).cgColor
         
-        // Back button
-        backButton = NSButton(title: "", target: self, action: #selector(backClicked))
+        // Border at bottom
+        let borderLayer = CALayer()
+        borderLayer.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        borderLayer.frame = CGRect(x: 0, y: 0, width: 10000, height: 1)
+        headerView.layer?.addSublayer(borderLayer)
+        
+        // Left side: Back button styled as breadcrumb link
+        backButton = NSButton(frame: .zero)
         backButton.translatesAutoresizingMaskIntoConstraints = false
-        backButton.bezelStyle = .inline
         backButton.isBordered = false
-        backButton.image = NSImage(systemSymbolName: "chevron.left", accessibilityDescription: "Back")
-        backButton.imagePosition = .imageLeading
-        backButton.title = "Back"
-        backButton.font = DesignFonts.body(size: 13)
-        backButton.contentTintColor = DesignColors.textSecondary
+        backButton.target = self
+        backButton.action = #selector(backClicked)
+        backButton.setButtonType(.momentaryChange)
+        backButton.attributedTitle = NSAttributedString(
+            string: "Collections",
+            attributes: [
+                .font: DesignFonts.body(size: 13),
+                .foregroundColor: DesignColors.textSecondary
+            ]
+        )
         headerView.addSubview(backButton)
         
-        // Title label (editable)
+        // Chevron separator
+        let chevronImage = NSImageView()
+        chevronImage.translatesAutoresizingMaskIntoConstraints = false
+        chevronImage.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
+        chevronImage.contentTintColor = DesignColors.textSecondary
+        chevronImage.imageScaling = .scaleProportionallyDown
+        headerView.addSubview(chevronImage)
+        
+        // Title label (editable collection name)
         titleLabel = NSTextField(labelWithString: "Collection")
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.font = DesignFonts.header(size: 20)
+        titleLabel.font = DesignFonts.body(size: 13)
         titleLabel.textColor = DesignColors.textPrimary
         titleLabel.isEditable = true
         titleLabel.isBordered = false
@@ -143,14 +162,22 @@ class CollectionEditorView: NSView {
         titleLabel.delegate = self
         headerView.addSubview(titleLabel)
         
-        // Activate button
+        // Right side: Activate button (styled pill button)
         activateButton = NSButton(title: "Activate", target: self, action: #selector(activateClicked))
         activateButton.translatesAutoresizingMaskIntoConstraints = false
-        activateButton.bezelStyle = .rounded
+        activateButton.bezelStyle = .inline
+        activateButton.isBordered = false
         activateButton.wantsLayer = true
         activateButton.layer?.backgroundColor = DesignColors.positive.cgColor
         activateButton.layer?.cornerRadius = 6
-        activateButton.contentTintColor = .white
+        activateButton.font = DesignFonts.label(size: 12)
+        activateButton.attributedTitle = NSAttributedString(
+            string: "Activate",
+            attributes: [
+                .font: DesignFonts.label(size: 12),
+                .foregroundColor: NSColor.white
+            ]
+        )
         headerView.addSubview(activateButton)
         
         // Menu button (three dots)
@@ -162,28 +189,81 @@ class CollectionEditorView: NSView {
         menuButton.contentTintColor = DesignColors.textSecondary
         headerView.addSubview(menuButton)
         
-        contentStack.addArrangedSubview(headerView)
+        // Add header directly to the view (not to contentStack) so it stays fixed at top
+        addSubview(headerView)
         
         NSLayoutConstraint.activate([
-            headerView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
-            headerView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -24),
-            headerView.heightAnchor.constraint(equalToConstant: 60),
+            headerView.topAnchor.constraint(equalTo: topAnchor),
+            headerView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            headerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            headerView.heightAnchor.constraint(equalToConstant: 64),
             
-            backButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            // Left side - breadcrumb style: Collections > [Name]
+            backButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 32),
             backButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             
-            titleLabel.leadingAnchor.constraint(equalTo: backButton.trailingAnchor, constant: 16),
+            chevronImage.leadingAnchor.constraint(equalTo: backButton.trailingAnchor, constant: 8),
+            chevronImage.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            chevronImage.widthAnchor.constraint(equalToConstant: 12),
+            chevronImage.heightAnchor.constraint(equalToConstant: 12),
+            
+            titleLabel.leadingAnchor.constraint(equalTo: chevronImage.trailingAnchor, constant: 8),
             titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             titleLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 100),
             
-            menuButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            // Right side - activate + menu
+            menuButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -32),
             menuButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-            menuButton.widthAnchor.constraint(equalToConstant: 32),
+            menuButton.widthAnchor.constraint(equalToConstant: 28),
+            menuButton.heightAnchor.constraint(equalToConstant: 28),
             
-            activateButton.trailingAnchor.constraint(equalTo: menuButton.leadingAnchor, constant: -12),
+            activateButton.trailingAnchor.constraint(equalTo: menuButton.leadingAnchor, constant: -16),
             activateButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            activateButton.heightAnchor.constraint(equalToConstant: 28),
             activateButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 80),
+            
+            // Connect scrollView to header
+            scrollView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
         ])
+        
+        // Add tracking area for back button hover effect
+        backButtonTrackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: ["view": "backButton"]
+        )
+        backButton.addTrackingArea(backButtonTrackingArea!)
+    }
+    
+    // MARK: - Mouse Tracking for Header
+    
+    override func mouseEntered(with event: NSEvent) {
+        if let userInfo = event.trackingArea?.userInfo as? [String: String],
+           userInfo["view"] == "backButton" {
+            backButton.attributedTitle = NSAttributedString(
+                string: "Collections",
+                attributes: [
+                    .font: DesignFonts.body(size: 13),
+                    .foregroundColor: DesignColors.textPrimary
+                ]
+            )
+            NSCursor.pointingHand.set()
+        }
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        if let userInfo = event.trackingArea?.userInfo as? [String: String],
+           userInfo["view"] == "backButton" {
+            backButton.attributedTitle = NSAttributedString(
+                string: "Collections",
+                attributes: [
+                    .font: DesignFonts.body(size: 13),
+                    .foregroundColor: DesignColors.textSecondary
+                ]
+            )
+            NSCursor.arrow.set()
+        }
     }
     
     private func setupRosterSection() {
