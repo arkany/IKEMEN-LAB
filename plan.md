@@ -60,6 +60,13 @@ IKEMEN Lab must handle two distinct user scenarios:
   - [ ] "Missing" badge for select.def entries with deleted folders
 
 ### ✅ Recently Completed
+- [x] **Content Detection Step in FRE** — New step 4 in First Run Experience:
+  - Scans chars/, stages/, data/ folders after folder selection
+  - Shows scanning state with progress spinner
+  - Displays results in 3-column grid (characters, stages, screenpacks)
+  - Edge case messages: empty library ("Ready to build your library!"), large library (100+ chars)
+  - Background thread scanning with main thread UI updates
+  - Caches results for main app use
 - [x] **Screenpack Browser** — Match HTML reference design (add-ons.html):
   - List view with sections ("ACTIVE", "ALL ADD-ONS")
   - Section headers with uppercase labels
@@ -69,10 +76,12 @@ IKEMEN Lab must handle two distinct user scenarios:
   - `GradientOverlayView` reusable component with proper `CAGradientLayer` management
   - Bottom-to-top gradient: zinc-950 → zinc-950/20 → transparent
   - Handles cell reuse correctly via `layout()` and `updateLayer()` overrides
-- [x] **First Run Experience (FRE)** — 4-step onboarding wizard:
+- [x] **First Run Experience (FRE)** — 5-step onboarding wizard:
   - Welcome screen with app branding
   - IKEMEN GO installation check (existing/download)
   - Folder selection with drag-and-drop validation
+  - Content detection with scan results
+  - Success confirmation with feature tips
   - Success confirmation with feature tips
 - [x] **Character Browser UI Overhaul** — Match HTML reference design:
   - Grid view: Cards with gradient overlay, name/author at bottom, status dot, hover states (200ms)
@@ -217,7 +226,7 @@ IKEMEN Lab must handle two distinct user scenarios:
 | ├─ IKEMEN GO check | ✅ Done | "I already have it" or "Download" options |
 | ├─ Folder selection | ✅ Done | Drag-and-drop or browse, validates installation |
 | ├─ Version detection | ✅ Done | Auto-detect version from README.md |
-| ├─ **Content detection** | 📋 Todo | Scan for existing chars/stages, show summary |
+| ├─ **Content detection** | ✅ Done | Scan for existing chars/stages, show summary |
 | ├─ **Import mode choice** | 📋 Todo | "Index only" (read-only) vs "Full management" |
 | └─ Success confirmation | ✅ Done | Feature tips, "Open Dashboard" button |
 | **Collections system** | 📋 Todo | Game profiles that generate select.def files (see detailed spec below) |
