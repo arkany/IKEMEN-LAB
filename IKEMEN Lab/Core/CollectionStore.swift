@@ -1,4 +1,6 @@
 import Foundation
+import Combine
+import AppKit
 
 // MARK: - Notifications
 
@@ -85,6 +87,17 @@ class CollectionStore: ObservableObject {
     
     /// Set a collection as active (generates select.def)
     func setActive(_ collection: Collection) {
+        // Update all collections: mark this one as active, others as inactive
+        for i in 0..<collections.count {
+            let wasActive = collections[i].isActive
+            let shouldBeActive = (collections[i].id == collection.id)
+            
+            if wasActive != shouldBeActive {
+                collections[i].isActive = shouldBeActive
+                save(collections[i])
+            }
+        }
+        
         activeCollectionId = collection.id
         UserDefaults.standard.set(collection.id.uuidString, forKey: activeCollectionKey)
         
@@ -149,6 +162,21 @@ class CollectionStore: ObservableObject {
         guard var collection = collection(withId: collectionId) else { return }
         collection.stages.removeAll { $0 == folder }
         update(collection)
+    }
+    
+    // MARK: - Sync with Library
+    
+    /// Sync the default collection with current character library
+    /// Should be called when characters are loaded/changed
+    func syncDefaultCollectionWithCharacters(_ characters: [String]) {
+        guard var defaultCollection = collections.first(where: { $0.isDefault }) else { return }
+        
+        // Convert character folder names to RosterEntry objects
+        defaultCollection.characters = characters.map { folderName in
+            RosterEntry.character(folder: folderName, def: nil)
+        }
+        
+        update(defaultCollection)
     }
     
     // MARK: - Private

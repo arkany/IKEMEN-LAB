@@ -239,7 +239,7 @@ IKEMEN Lab must handle two distinct user scenarios:
 | ├─ Phase 1: Data model | ✅ Done | `Collection.swift`, `CollectionStore.swift`, `SelectDefGenerator.swift` |
 | ├─ Phase 2: Sidebar UI | ✅ Done | `CollectionsSidebarSection.swift` with create/rename/delete, status indicators |
 | ├─ Phase 3: Editor | ✅ Done | `CollectionEditorView.swift`, character/stage/screenpack pickers |
-| ├─ Phase 4: select.def gen | 📋 Todo | Activate → generate + backup |
+| ├─ Phase 4: select.def gen | ✅ Done | Activate → generate + backup |
 | ├─ Phase 5: Smart Collections | 📋 Todo | Tag-based auto-population |
 | └─ Phase 6: Export/Import | 📋 Todo | `.ikemencollection` format |
 | Auto-tagging (basic rules) | ✅ Done | Infer source game, style from filenames/metadata (TagDetector.swift) |

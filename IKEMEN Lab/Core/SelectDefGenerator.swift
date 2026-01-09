@@ -90,6 +90,30 @@ class SelectDefGenerator {
         }
     }
     
+    /// Validate that all characters in collection exist
+    /// - Parameters:
+    ///   - collection: Collection to validate
+    ///   - ikemenPath: Path to IKEMEN GO installation
+    /// - Returns: Array of missing character folder names
+    static func validateCollection(_ collection: Collection, ikemenPath: URL) -> [String] {
+        var missing: [String] = []
+        let fileManager = FileManager.default
+        
+        for entry in collection.characters {
+            guard entry.entryType == .character,
+                  let folder = entry.characterFolder else {
+                continue
+            }
+            
+            let charPath = ikemenPath.appendingPathComponent("chars/\(folder)")
+            if !fileManager.fileExists(atPath: charPath.path) {
+                missing.append(folder)
+            }
+        }
+        
+        return missing
+    }
+    
     // MARK: - Private Helpers
     
     private static func findDefFile(in characterFolder: String, ikemenPath: URL) -> String {

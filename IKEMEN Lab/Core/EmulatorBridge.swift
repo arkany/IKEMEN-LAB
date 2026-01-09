@@ -172,6 +172,7 @@ class IkemenBridge: ObservableObject {
         findEngine()
         loadContent()
         setupTerminationObserver()
+        setupCollectionObserver()
         
         print("IkemenBridge initialized")
         print("Content path: \(contentPath.path)")
@@ -251,6 +252,44 @@ class IkemenBridge: ObservableObject {
             print("Ikemen GO terminated: \(app.localizedName ?? "unknown")")
             launchedAppPID = nil
             engineState = .idle
+        }
+    }
+    
+    private func setupCollectionObserver() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCollectionActivated(_:)),
+            name: .collectionActivated,
+            object: nil
+        )
+    }
+    
+    @objc private func handleCollectionActivated(_ notification: Notification) {
+        guard let collection = notification.object as? Collection,
+              let engineDir = workingDirectory else {
+            return
+        }
+        
+        // Validate collection first
+        let missing = SelectDefGenerator.validateCollection(collection, ikemenPath: engineDir)
+        if !missing.isEmpty {
+            let message = "Collection includes \(missing.count) missing characters: \(missing.joined(separator: ", "))"
+            print("Activation Warning: \(message)")
+            // Future: Show alert to user? For now proceed but log it.
+        }
+        
+        // Generate select.def
+        let result = SelectDefGenerator.writeSelectDef(for: collection, ikemenPath: engineDir)
+        
+        switch result {
+        case .success(let url):
+            print("Successfully activated collection: \(collection.name)")
+            ToastNotification.show(message: "Collection activated: \(collection.name)", type: .success)
+            // If screenpack also changed, we might need to update config.json (not implemented yet)
+            
+        case .failure(let error):
+            print("Failed to activate collection: \(error)")
+            ToastNotification.show(message: "Failed to activate collection", type: .error)
         }
     }
     
@@ -381,8 +420,9 @@ class IkemenBridge: ObservableObject {
         DispatchQueue.main.async {
             self.characters = sortedCharacters
             
-            // Sync default collection with all characters
-            self.syncDefaultCollection(with: sortedCharacters)
+            // Sync the default collection with loaded characters
+            let characterFolders = sortedCharacters.map { $0.directory.lastPathComponent }
+            CollectionStore.shared.syncDefaultCollectionWithCharacters(characterFolders)
         }
         
         print("Loaded \(foundCharacters.count) characters")
@@ -406,24 +446,6 @@ class IkemenBridge: ObservableObject {
         result.append(contentsOf: sortedRemaining)
         
         return result
-    }
-    
-    /// Sync the default "All Characters" collection with the full character library
-    private func syncDefaultCollection(with characters: [CharacterInfo]) {
-        guard var defaultCollection = CollectionStore.shared.collections.first(where: { $0.isDefault }) else {
-            return
-        }
-        
-        // Convert all characters to roster entries
-        defaultCollection.characters = characters.map { char in
-            RosterEntry.character(
-                folder: char.directory.lastPathComponent,
-                def: char.defFile.lastPathComponent
-            )
-        }
-        
-        CollectionStore.shared.update(defaultCollection)
-        print("Synced default collection with \(characters.count) characters")
     }
     
     /// Load all stages from the stages directory
