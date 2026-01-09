@@ -928,3 +928,37 @@ struct SmartRule: Codable {
 6. **JSON storage location**: `~/Library/Application Support/IKEMEN Lab/collections/`
 
 7. **The default collection** should automatically stay in sync with the library — if a character is added via drag-and-drop, it should appear in "All Characters".
+
+---
+
+## Future Enhancement: Multi-Select Add to Collection
+
+### Overview
+
+Enable selecting multiple characters in the Character Browser grid and adding them all to a collection via right-click context menu.
+
+### Requirements
+
+1. **Enable multi-select in grid**
+   - Set `allowsMultipleSelection = true` on NSCollectionView
+   - Support Cmd+click for individual selection
+   - Support Shift+click for range selection
+
+2. **Update context menu for multi-select**
+   - When multiple characters selected, show "Add X Characters to Collection >"
+   - Submenu lists all user-created collections
+   - "New Collection…" creates collection and adds all selected characters
+
+3. **Batch operations**
+   - `CollectionStore.addCharacters(folders:defs:to:)` for efficient batch add
+   - Single toast notification: "Added X characters to [Collection Name]"
+
+4. **Visual feedback**
+   - Selection highlight on multiple cells
+   - Consider selection count badge
+
+### Implementation Notes
+
+- Start from existing single-select "Add to Collection" menu (already implemented)
+- Use `collectionView.selectionIndexPaths` to get all selected items
+- Handle edge case: some selected characters already in target collection

@@ -309,6 +309,13 @@ class CharacterBrowserView: NSView {
         
         let menu = NSMenu()
         
+        // Add to Collection submenu
+        let addToCollectionItem = NSMenuItem(title: "Add to Collection", action: nil, keyEquivalent: "")
+        addToCollectionItem.submenu = buildCollectionsSubmenu(for: character)
+        menu.addItem(addToCollectionItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
         // Enable/Disable toggle
         let disableItem = NSMenuItem()
         if character.isDisabled {
@@ -354,6 +361,92 @@ class CharacterBrowserView: NSView {
         menu.addItem(removeItem)
         
         return menu
+    }
+    
+    private func buildCollectionsSubmenu(for character: CharacterInfo) -> NSMenu {
+        let submenu = NSMenu()
+        
+        let collections = CollectionStore.shared.collections.filter { !$0.isDefault }
+        
+        if collections.isEmpty {
+            let emptyItem = NSMenuItem(title: "No collections", action: nil, keyEquivalent: "")
+            emptyItem.isEnabled = false
+            submenu.addItem(emptyItem)
+        } else {
+            for collection in collections {
+                let item = NSMenuItem(title: collection.name, action: #selector(addToCollectionAction(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = (character, collection)
+                
+                // Show checkmark if character is already in this collection
+                let isInCollection = collection.characters.contains { $0.characterFolder == character.directory.lastPathComponent }
+                if isInCollection {
+                    item.state = .on
+                }
+                
+                submenu.addItem(item)
+            }
+        }
+        
+        submenu.addItem(NSMenuItem.separator())
+        
+        // New Collection option
+        let newCollectionItem = NSMenuItem(title: "New Collection…", action: #selector(addToNewCollectionAction(_:)), keyEquivalent: "")
+        newCollectionItem.target = self
+        newCollectionItem.representedObject = character
+        submenu.addItem(newCollectionItem)
+        
+        return submenu
+    }
+    
+    @objc private func addToCollectionAction(_ sender: NSMenuItem) {
+        guard let (character, collection) = sender.representedObject as? (CharacterInfo, Collection) else { return }
+        
+        let folder = character.directory.lastPathComponent
+        let def = character.defFile.lastPathComponent
+        
+        // Check if already in collection
+        let isInCollection = collection.characters.contains { $0.characterFolder == folder }
+        
+        if isInCollection {
+            // Remove from collection
+            if let entry = collection.characters.first(where: { $0.characterFolder == folder }) {
+                CollectionStore.shared.removeCharacter(entryId: entry.id, from: collection.id)
+                ToastManager.shared.showInfo(title: "Removed from \(collection.name)")
+            }
+        } else {
+            // Add to collection
+            CollectionStore.shared.addCharacter(folder: folder, def: def, to: collection.id)
+            ToastManager.shared.showSuccess(title: "Added to \(collection.name)")
+        }
+    }
+    
+    @objc private func addToNewCollectionAction(_ sender: NSMenuItem) {
+        guard let character = sender.representedObject as? CharacterInfo else { return }
+        
+        let alert = NSAlert()
+        alert.messageText = "New Collection"
+        alert.informativeText = "Enter a name for the new collection:"
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+        
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
+        input.placeholderString = "Collection Name"
+        alert.accessoryView = input
+        
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else { return }
+        
+        let name = input.stringValue.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        
+        // Create collection and add character
+        let collection = CollectionStore.shared.createCollection(name: name)
+        let folder = character.directory.lastPathComponent
+        let def = character.defFile.lastPathComponent
+        CollectionStore.shared.addCharacter(folder: folder, def: def, to: collection.id)
+        
+        ToastManager.shared.showSuccess(title: "Created \(name) with \(character.displayName)")
     }
     
     @objc private func toggleDisableCharacter(_ sender: NSMenuItem) {
