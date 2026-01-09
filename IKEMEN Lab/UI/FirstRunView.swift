@@ -90,6 +90,14 @@ class FirstRunView: NSView {
     
     // Step 4 specific (Content Detection)
     private var scanningSpinner: NSProgressIndicator?
+    private var scanningLabel: NSTextField?
+    private var statsGrid: NSView?
+    private var messageLabel: NSTextField?
+    private var step4ContinueButton: NSButton?
+    private var charactersValueLabel: NSTextField?
+    private var stagesValueLabel: NSTextField?
+    private var screenpacksValueLabel: NSTextField?
+    
     private var detectionStats: (characters: Int, stages: Int, screenpacks: Int)?
     
     // Callbacks
@@ -774,12 +782,12 @@ class FirstRunView: NSView {
         container.addSubview(titleLabel)
         
         // Scanning state label
-        let scanningLabel = NSTextField(labelWithString: "Scanning your library...")
-        scanningLabel.translatesAutoresizingMaskIntoConstraints = false
-        scanningLabel.font = NSFont.systemFont(ofSize: 14, weight: .regular)
-        scanningLabel.textColor = DesignColors.zinc400
-        scanningLabel.tag = 200 // For updating later
-        container.addSubview(scanningLabel)
+        let label = NSTextField(labelWithString: "Scanning your library...")
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = NSFont.systemFont(ofSize: 14, weight: .regular)
+        label.textColor = DesignColors.zinc400
+        container.addSubview(label)
+        scanningLabel = label
         
         // Spinner
         let spinner = NSProgressIndicator()
@@ -787,44 +795,48 @@ class FirstRunView: NSView {
         spinner.style = .spinning
         spinner.controlSize = .small
         spinner.isDisplayedWhenStopped = false
-        spinner.tag = 201 // For updating later
         container.addSubview(spinner)
         scanningSpinner = spinner
         
         // Stats grid (initially hidden)
-        let statsGrid = NSView()
-        statsGrid.translatesAutoresizingMaskIntoConstraints = false
-        statsGrid.isHidden = true
-        statsGrid.tag = 202 // For showing later
-        container.addSubview(statsGrid)
+        let statsGridView = NSView()
+        statsGridView.translatesAutoresizingMaskIntoConstraints = false
+        statsGridView.isHidden = true
+        container.addSubview(statsGridView)
+        statsGrid = statsGridView
         
         // Create 3 stat cards
-        let charStatCard = createStatCard(icon: "person.fill", label: "Characters", value: "0")
-        let stageStatCard = createStatCard(icon: "mountain.2.fill", label: "Stages", value: "0")
-        let screenpackStatCard = createStatCard(icon: "paintbrush.fill", label: "Screenpacks", value: "0")
+        let charComponents = createStatCard(icon: "person.fill", label: "Characters", value: "0")
+        charactersValueLabel = charComponents.label
         
-        let statsStack = NSStackView(views: [charStatCard, stageStatCard, screenpackStatCard])
+        let stageComponents = createStatCard(icon: "mountain.2.fill", label: "Stages", value: "0")
+        stagesValueLabel = stageComponents.label
+        
+        let screenpackComponents = createStatCard(icon: "paintbrush.fill", label: "Screenpacks", value: "0")
+        screenpacksValueLabel = screenpackComponents.label
+        
+        let statsStack = NSStackView(views: [charComponents.view, stageComponents.view, screenpackComponents.view])
         statsStack.translatesAutoresizingMaskIntoConstraints = false
         statsStack.orientation = .horizontal
         statsStack.distribution = .fillEqually
         statsStack.spacing = 12
-        statsGrid.addSubview(statsStack)
+        statsGridView.addSubview(statsStack)
         
         // Message label (for edge cases)
-        let messageLabel = NSTextField(labelWithString: "")
-        messageLabel.translatesAutoresizingMaskIntoConstraints = false
-        messageLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
-        messageLabel.textColor = DesignColors.zinc400
-        messageLabel.alignment = .center
-        messageLabel.isHidden = true
-        messageLabel.tag = 203 // For updating with messages
-        container.addSubview(messageLabel)
+        let msgLabel = NSTextField(labelWithString: "")
+        msgLabel.translatesAutoresizingMaskIntoConstraints = false
+        msgLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        msgLabel.textColor = DesignColors.zinc400
+        msgLabel.alignment = .center
+        msgLabel.isHidden = true
+        container.addSubview(msgLabel)
+        messageLabel = msgLabel
         
         // Continue button
         let continueBtn = createPrimaryButton(title: "Continue", action: #selector(step4Continue))
         continueBtn.isEnabled = false
-        continueBtn.tag = 204 // For enabling later
         container.addSubview(continueBtn)
+        step4ContinueButton = continueBtn
         
         NSLayoutConstraint.activate([
             container.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 64),
@@ -843,24 +855,24 @@ class FirstRunView: NSView {
             titleLabel.topAnchor.constraint(equalTo: iconContainer.bottomAnchor, constant: 24),
             titleLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             
-            scanningLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            scanningLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            label.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             
-            spinner.topAnchor.constraint(equalTo: scanningLabel.bottomAnchor, constant: 16),
+            spinner.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 16),
             spinner.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             
-            statsGrid.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 32),
-            statsGrid.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            statsGrid.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            statsGridView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 32),
+            statsGridView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            statsGridView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             
-            statsStack.topAnchor.constraint(equalTo: statsGrid.topAnchor),
-            statsStack.leadingAnchor.constraint(equalTo: statsGrid.leadingAnchor),
-            statsStack.trailingAnchor.constraint(equalTo: statsGrid.trailingAnchor),
-            statsStack.bottomAnchor.constraint(equalTo: statsGrid.bottomAnchor),
+            statsStack.topAnchor.constraint(equalTo: statsGridView.topAnchor),
+            statsStack.leadingAnchor.constraint(equalTo: statsGridView.leadingAnchor),
+            statsStack.trailingAnchor.constraint(equalTo: statsGridView.trailingAnchor),
+            statsStack.bottomAnchor.constraint(equalTo: statsGridView.bottomAnchor),
             
-            messageLabel.topAnchor.constraint(equalTo: statsGrid.bottomAnchor, constant: 16),
-            messageLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            messageLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            msgLabel.topAnchor.constraint(equalTo: statsGridView.bottomAnchor, constant: 16),
+            msgLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            msgLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             
             continueBtn.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             continueBtn.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -869,7 +881,7 @@ class FirstRunView: NSView {
         ])
     }
     
-    private func createStatCard(icon: String, label: String, value: String) -> NSView {
+    private func createStatCard(icon: String, label: String, value: String) -> (view: NSView, label: NSTextField) {
         let card = NSView()
         card.translatesAutoresizingMaskIntoConstraints = false
         card.wantsLayer = true
@@ -891,7 +903,6 @@ class FirstRunView: NSView {
         valueLabel.font = DesignFonts.stat(size: 28)
         valueLabel.textColor = .white
         valueLabel.alignment = .center
-        valueLabel.tag = 100 // For updating value
         card.addSubview(valueLabel)
         
         let labelField = NSTextField(labelWithString: label)
@@ -918,7 +929,7 @@ class FirstRunView: NSView {
             labelField.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -8),
         ])
         
-        return card
+        return (card, valueLabel)
     }
     
     // MARK: - Step 5: Ready
@@ -1429,17 +1440,13 @@ class FirstRunView: NSView {
     // MARK: - Content Detection
     
     private func performContentScan(at url: URL) {
-        // Get the step 4 container
-        guard stepContainers.count > 3 else { return }
-        let container = stepContainers[3]
-        
         // Show scanning UI
-        if let scanningLabel = container.viewWithTag(200) as? NSTextField {
-            scanningLabel.stringValue = "Scanning your library..."
-        }
-        if let spinner = container.viewWithTag(201) as? NSProgressIndicator {
-            spinner.startAnimation(nil)
-        }
+        scanningLabel?.stringValue = "Scanning your library..."
+        scanningLabel?.isHidden = false
+        scanningSpinner?.isHidden = false
+        scanningSpinner?.startAnimation(nil)
+        
+        // Use properties instead of tags
         
         // Perform scan on background thread
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -1520,41 +1527,21 @@ class FirstRunView: NSView {
     }
     
     private func updateContentDetectionUI(characters: Int, stages: Int, screenpacks: Int) {
-        guard stepContainers.count > 3 else { return }
-        let container = stepContainers[3]
-        
         // Hide scanning UI
-        if let scanningLabel = container.viewWithTag(200) as? NSTextField {
-            scanningLabel.isHidden = true
-        }
-        if let spinner = container.viewWithTag(201) as? NSProgressIndicator {
-            spinner.stopAnimation(nil)
-            spinner.isHidden = true
-        }
+        scanningLabel?.isHidden = true
+        scanningSpinner?.stopAnimation(nil)
+        scanningSpinner?.isHidden = true
         
         // Show stats grid
-        if let statsGrid = container.viewWithTag(202) {
-            statsGrid.isHidden = false
-            
-            // Update stat values
-            if let charCard = statsGrid.subviews.first?.subviews.first(where: { $0.subviews.count > 0 }),
-               let valueLabel = charCard.viewWithTag(100) as? NSTextField {
-                valueLabel.stringValue = "\(characters)"
-            }
-            
-            if let stageCard = statsGrid.subviews.first?.subviews.dropFirst().first(where: { $0.subviews.count > 0 }),
-               let valueLabel = stageCard.viewWithTag(100) as? NSTextField {
-                valueLabel.stringValue = "\(stages)"
-            }
-            
-            if let screenpackCard = statsGrid.subviews.first?.subviews.dropFirst(2).first(where: { $0.subviews.count > 0 }),
-               let valueLabel = screenpackCard.viewWithTag(100) as? NSTextField {
-                valueLabel.stringValue = "\(screenpacks)"
-            }
-        }
+        statsGrid?.isHidden = false
+        
+        // Update stat values
+        charactersValueLabel?.stringValue = "\(characters)"
+        stagesValueLabel?.stringValue = "\(stages)"
+        screenpacksValueLabel?.stringValue = "\(screenpacks)"
         
         // Show appropriate message
-        if let messageLabel = container.viewWithTag(203) as? NSTextField {
+        if let messageLabel = messageLabel {
             messageLabel.isHidden = false
             
             if characters == 0 && stages == 0 {
@@ -1573,7 +1560,7 @@ class FirstRunView: NSView {
         }
         
         // Enable continue button
-        if let continueBtn = container.viewWithTag(204) as? NSButton {
+        if let continueBtn = step4ContinueButton {
             continueBtn.isEnabled = true
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.2
