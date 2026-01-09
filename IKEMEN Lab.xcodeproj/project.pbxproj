@@ -3,18 +3,10 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		036 /* Collection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 137 /* Collection.swift */; };
-		037 /* CollectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138 /* CollectionStore.swift */; };
-		038 /* SelectDefGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139 /* SelectDefGenerator.swift */; };
-		039 /* CollectionsSidebarSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140 /* CollectionsSidebarSection.swift */; };
-		040 /* CollectionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141 /* CollectionEditorView.swift */; };
-		041 /* CharacterPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142 /* CharacterPickerSheet.swift */; };
-		042 /* StagePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 143 /* StagePickerSheet.swift */; };
-		043 /* ScreenpackPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 144 /* ScreenpackPickerSheet.swift */; };
 		001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 101 /* AppDelegate.swift */; };
 		002 /* GameWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 102 /* GameWindowController.swift */; };
 		003 /* MetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 103 /* MetalView.swift */; };
@@ -45,14 +37,32 @@
 		028 /* MetadataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130 /* MetadataStore.swift */; };
 		029 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 900 /* GRDB */; };
 		030 /* ContentHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 131 /* ContentHeaderView.swift */; };
-		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
-		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
 		031 /* FirstRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 132 /* FirstRunView.swift */; };
 		032 /* ContentValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133 /* ContentValidator.swift */; };
 		033 /* TagDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134 /* TagDetector.swift */; };
 		034 /* DuplicateDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 135 /* DuplicateDetector.swift */; };
 		035 /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 136 /* DuplicatesView.swift */; };
+		036 /* Collection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 137 /* Collection.swift */; };
+		037 /* CollectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138 /* CollectionStore.swift */; };
+		038 /* SelectDefGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139 /* SelectDefGenerator.swift */; };
+		039 /* CollectionsSidebarSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140 /* CollectionsSidebarSection.swift */; };
+		040 /* CollectionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141 /* CollectionEditorView.swift */; };
+		041 /* CharacterPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142 /* CharacterPickerSheet.swift */; };
+		042 /* StagePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 143 /* StagePickerSheet.swift */; };
+		043 /* ScreenpackPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 144 /* ScreenpackPickerSheet.swift */; };
+		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
+		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		1071BF242F10ABCB00D9D1CA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 700 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 500;
+			remoteInfo = "IKEMEN Lab";
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		101 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -62,6 +72,7 @@
 		105 /* MainMenu.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MainMenu.xib; sourceTree = "<group>"; };
 		106 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		107 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1071BF202F10ABCB00D9D1CA /* IKEMEN Lab Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "IKEMEN Lab Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		108 /* IKEMEN Lab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "IKEMEN Lab.entitlements"; sourceTree = "<group>"; };
 		109 /* IKEMEN Lab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "IKEMEN Lab.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		10B1001B2F0114A400EC215A /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -105,7 +116,18 @@
 		204 /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameController.framework; path = System/Library/Frameworks/GameController.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		1071BF212F10ABCB00D9D1CA /* IKEMEN Lab Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "IKEMEN Lab Tests"; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
+		1071BF1D2F10ABCB00D9D1CA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		300 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -125,6 +147,7 @@
 			isa = PBXGroup;
 			children = (
 				401 /* IKEMEN Lab */,
+				1071BF212F10ABCB00D9D1CA /* IKEMEN Lab Tests */,
 				402 /* Frameworks */,
 				403 /* Products */,
 			);
@@ -160,6 +183,7 @@
 			isa = PBXGroup;
 			children = (
 				109 /* IKEMEN Lab.app */,
+				1071BF202F10ABCB00D9D1CA /* IKEMEN Lab Tests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -183,7 +207,7 @@
 		};
 		412 /* Core */ = {
 			isa = PBXGroup;
-				children = (
+			children = (
 				104 /* EmulatorBridge.swift */,
 				138 /* CollectionStore.swift */,
 				139 /* SelectDefGenerator.swift */,
@@ -258,6 +282,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		1071BF1F2F10ABCB00D9D1CA /* IKEMEN Lab Tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1071BF282F10ABCB00D9D1CA /* Build configuration list for PBXNativeTarget "IKEMEN Lab Tests" */;
+			buildPhases = (
+				1071BF1C2F10ABCB00D9D1CA /* Sources */,
+				1071BF1D2F10ABCB00D9D1CA /* Frameworks */,
+				1071BF1E2F10ABCB00D9D1CA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1071BF252F10ABCB00D9D1CA /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				1071BF212F10ABCB00D9D1CA /* IKEMEN Lab Tests */,
+			);
+			name = "IKEMEN Lab Tests";
+			packageProductDependencies = (
+			);
+			productName = "IKEMEN Lab Tests";
+			productReference = 1071BF202F10ABCB00D9D1CA /* IKEMEN Lab Tests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		500 /* IKEMEN Lab */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 600 /* Build configuration list for PBXNativeTarget "IKEMEN Lab" */;
@@ -285,9 +332,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1500;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
+					1071BF1F2F10ABCB00D9D1CA = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 500;
+					};
 					500 = {
 						CreatedOnToolsVersion = 15.0;
 					};
@@ -310,11 +361,19 @@
 			projectRoot = "";
 			targets = (
 				500 /* IKEMEN Lab */,
+				1071BF1F2F10ABCB00D9D1CA /* IKEMEN Lab Tests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		1071BF1E2F10ABCB00D9D1CA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		502 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -329,6 +388,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		1071BF1C2F10ABCB00D9D1CA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		501 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -374,7 +440,55 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		1071BF252F10ABCB00D9D1CA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 500 /* IKEMEN Lab */;
+			targetProxy = 1071BF242F10ABCB00D9D1CA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		1071BF262F10ABCB00D9D1CA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.ikemenlab.IKEMEN-Lab-Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IKEMEN Lab.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/IKEMEN Lab";
+			};
+			name = Debug;
+		};
+		1071BF272F10ABCB00D9D1CA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.ikemenlab.IKEMEN-Lab-Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IKEMEN Lab.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/IKEMEN Lab";
+			};
+			name = Release;
+		};
 		800 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -552,6 +666,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1071BF282F10ABCB00D9D1CA /* Build configuration list for PBXNativeTarget "IKEMEN Lab Tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1071BF262F10ABCB00D9D1CA /* Debug */,
+				1071BF272F10ABCB00D9D1CA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		600 /* Build configuration list for PBXNativeTarget "IKEMEN Lab" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
