@@ -52,14 +52,24 @@ IKEMEN Lab must handle two distinct user scenarios:
 
 ### 🔄 In Progress
 - [ ] Apply design system to remaining views (Stages, Settings)
-- [ ] **Collections** — User-created character/stage groupings
-  - [ ] Add support for empty/dead slots in select.def for grid layout control
 - [ ] **Unregistered Content Detection** — Show chars/stages in folders but not in select.def
   - [ ] "Unregistered" filter/tab in Character and Stage browsers
   - [ ] Batch "Register Selected" action (appends to select.def)
   - [ ] "Missing" badge for select.def entries with deleted folders
 
 ### ✅ Recently Completed
+- [x] **Collections System (Phases 1-3)** — Game profiles for custom rosters:
+  - Phase 1: `Collection.swift` model, `CollectionStore.swift` (JSON persistence), `SelectDefGenerator.swift`
+  - Phase 2: `CollectionsSidebarSection.swift` with create/rename/delete, status indicators, count badges
+  - Phase 3: `CollectionEditorView.swift` with character grid, drag-to-reorder
+  - Picker sheets: `CharacterPickerSheet`, `StagePickerSheet`, `ScreenpackPickerSheet`
+  - "Add to Collection" context menu in Character Browser
+  - Unit tests: `CollectionModelTests`, `CollectionStoreTests`, `SelectDefGeneratorTests`
+- [x] **Content Rename Tools** — Fix misnamed content in both IKEMEN Lab and IKEMEN GO:
+  - Character folder rename: Context menu detects when folder name (e.g., "Intro_8") doesn't match character name ("Frank Jr.") and offers to rename
+  - Stage rename dialog: Right-click → "Rename Stage…" edits the DEF file's name field directly
+  - Fixed 11 stage DEF files with single-letter names (O, P, Q, T, f, x, j, v, etc.) to show real names
+  - `DEFParser.extractStageName()` handles quirky DEF files with names in comments (e.g., `name = "T";"Temple Gardens"`)
 - [x] **Screenpack Browser** — Match HTML reference design (add-ons.html):
   - List view with sections ("ACTIVE", "ALL ADD-ONS")
   - Section headers with uppercase labels
@@ -87,6 +97,8 @@ IKEMEN Lab must handle two distinct user scenarios:
 - [x] ~~Folder rename breaks character loading~~ (fixed: `findCharacterDefEntry` now uses exact case matching; if folder name doesn't exactly match def filename, uses explicit path like `Bbhood/BBHood.def`)
 - [x] ~~Stage filename sanitization breaks IKEMEN GO~~ (fixed: disabled filename sanitization for stages; .def files reference .sff by exact name, renaming breaks references)
 - [x] ~~Storyboards installed as characters~~ (fixed: content detection now skips `[SceneDef]` files; `findCharacterDefEntry` also filters out storyboard .def files)
+- [x] ~~Misnamed character folders (Intro_X)~~ (fixed: added context menu "Rename Folder to X" option that renames folders to match actual character name from DEF file)
+- [x] ~~Single-letter stage names~~ (fixed: manually corrected DEF files + added "Rename Stage…" dialog to edit stage names in-app)
 - [ ] **Recently Installed shows invalid content types** — Storyboards (Intro, Ending), characters (Cyclops), and fonts appearing as "Stage" in Recently Installed list
   - **Root cause suspected:** Data not coming from `MetadataStore.recentlyInstalled()` as expected (database is 0 bytes)
   - **Attempted fixes:**
@@ -120,7 +132,9 @@ IKEMEN Lab must handle two distinct user scenarios:
 - [ ] Migrate to async/await from Combine publishers - DEFERRED: @Published properties work well with SwiftUI; async/await would require MainActor changes and doesn't provide clear benefit for current usage
 
 **Nice-to-Have:**
-- [ ] Unit tests for SFF parsing
+- [x] Unit tests for SFF parsing (`SFFParserTests.swift`)
+- [x] Unit tests for DEF parsing (`DEFParserTests.swift`)
+- [x] Unit tests for Collections (`CollectionModelTests`, `CollectionStoreTests`, `SelectDefGeneratorTests`)
 - [ ] SwiftUI migration path for new views
 - [ ] Dependency injection (replace singletons)
 
@@ -220,7 +234,14 @@ IKEMEN Lab must handle two distinct user scenarios:
 | ├─ **Content detection** | 📋 Todo | Scan for existing chars/stages, show summary |
 | ├─ **Import mode choice** | 📋 Todo | "Index only" (read-only) vs "Full management" |
 | └─ Success confirmation | ✅ Done | Feature tips, "Open Dashboard" button |
-| **Collections system** | 📋 Todo | Game profiles that generate select.def files (see detailed spec below) |
+| **Collections system** | � In Progress | Game profiles that generate select.def files |
+| ├─ Spec document | ✅ Done | Detailed design in `docs/collections-spec.md` |
+| ├─ Phase 1: Data model | ✅ Done | `Collection.swift`, `CollectionStore.swift`, `SelectDefGenerator.swift` |
+| ├─ Phase 2: Sidebar UI | ✅ Done | `CollectionsSidebarSection.swift` with create/rename/delete, status indicators |
+| ├─ Phase 3: Editor | ✅ Done | `CollectionEditorView.swift`, character/stage/screenpack pickers |
+| ├─ Phase 4: select.def gen | 📋 Todo | Activate → generate + backup |
+| ├─ Phase 5: Smart Collections | 📋 Todo | Tag-based auto-population |
+| └─ Phase 6: Export/Import | 📋 Todo | `.ikemencollection` format |
 | Auto-tagging (basic rules) | ✅ Done | Infer source game, style from filenames/metadata (TagDetector.swift) |
 | Detect duplicates + outdated versions | 🔄 In Progress | DuplicateDetector core done; needs pre-install warning + badge display |
 | Detect screenpack character limit | ✅ Done | Parse rows × columns from system.def; orange warning badge when roster exceeds slots |
