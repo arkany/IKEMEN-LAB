@@ -252,6 +252,15 @@ extension StageBrowserView {
         
         menu.addItem(NSMenuItem.separator())
         
+        // Rename Stage
+        let renameItem = NSMenuItem()
+        renameItem.title = "Rename Stage…"
+        renameItem.image = NSImage(systemSymbolName: "pencil", accessibilityDescription: nil)
+        renameItem.target = self
+        renameItem.action = #selector(renameStageAction(_:))
+        renameItem.representedObject = stage
+        menu.addItem(renameItem)
+        
         // Reveal in Finder
         let revealItem = NSMenuItem()
         revealItem.title = "Reveal in Finder"
@@ -278,6 +287,55 @@ extension StageBrowserView {
     @objc private func toggleDisableStage(_ sender: NSMenuItem) {
         guard let stage = sender.representedObject as? StageInfo else { return }
         onStageDisableToggle?(stage)
+    }
+    
+    @objc private func renameStageAction(_ sender: NSMenuItem) {
+        guard let stage = sender.representedObject as? StageInfo else { return }
+        showRenameDialog(for: stage)
+    }
+    
+    private func showRenameDialog(for stage: StageInfo) {
+        let alert = NSAlert()
+        alert.messageText = "Rename Stage"
+        alert.informativeText = "Enter a new name for this stage. This will update the DEF file."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Rename")
+        alert.addButton(withTitle: "Cancel")
+        
+        // Create text field with current name
+        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        textField.stringValue = stage.name
+        textField.placeholderString = "Stage name"
+        
+        // If current name is suspicious (single letter), suggest a better one
+        if ContentManager.shared.stageNeedsBetterName(stage) {
+            textField.stringValue = ContentManager.shared.suggestStageName(stage)
+        }
+        
+        alert.accessoryView = textField
+        alert.window.initialFirstResponder = textField
+        
+        let response = alert.runModal()
+        
+        if response == .alertFirstButtonReturn {
+            let newName = textField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            guard !newName.isEmpty else {
+                ToastManager.shared.showError(title: "Name cannot be empty")
+                return
+            }
+            
+            do {
+                try ContentManager.shared.renameStage(stage, to: newName)
+                IkemenBridge.shared.loadContent()
+                ToastManager.shared.showSuccess(title: "Renamed to \"\(newName)\"")
+            } catch {
+                ToastManager.shared.showError(
+                    title: "Failed to rename stage",
+                    subtitle: error.localizedDescription
+                )
+            }
+        }
     }
     
     @objc private func revealStageInFinder(_ sender: NSMenuItem) {

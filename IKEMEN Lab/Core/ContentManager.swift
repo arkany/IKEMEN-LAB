@@ -223,6 +223,194 @@ public final class ContentManager {
         return renamed
     }
     
+    // MARK: - Misnamed Folder Detection & Fixing
+    
+    /// Check if a character folder name doesn't match its actual character name
+    /// Returns the suggested name if mismatched, nil if OK
+    public func detectMismatchedCharacterFolder(_ folder: URL) -> String? {
+        // Find the character def file
+        guard let defFile = findCharacterDefFile(in: folder) else { return nil }
+        
+        // Parse the def file
+        guard let parsed = DEFParser.parse(url: defFile) else { return nil }
+        
+        // Get the character name from the def file
+        let characterName = parsed.name ?? parsed.displayName ?? defFile.deletingPathExtension().lastPathComponent
+        
+        // Sanitize it for use as a folder name
+        let idealFolderName = sanitizeFolderName(characterName)
+        let currentFolderName = folder.lastPathComponent
+        
+        // Check if they match (case-insensitive)
+        if currentFolderName.lowercased() == idealFolderName.lowercased() {
+            return nil  // Already matches
+        }
+        
+        // Check if current folder name looks like a generic/temporary name
+        let genericPatterns = ["intro", "ending", "temp", "new", "untitled", "character", "char"]
+        let lowerFolderName = currentFolderName.lowercased()
+        
+        // Check if folder starts with a generic pattern or is numbered (like Intro_2)
+        let isMisnamed = genericPatterns.contains { lowerFolderName.hasPrefix($0) } ||
+                        lowerFolderName.first?.isNumber == true
+        
+        if isMisnamed {
+            return idealFolderName
+        }
+        
+        return nil
+    }
+    
+    /// Find misnamed character folders in the chars directory
+    /// Returns array of (folder URL, suggested name)
+    public func findMisnamedCharacterFolders(in workingDir: URL) -> [(URL, String)] {
+        let charsDir = workingDir.appendingPathComponent("chars")
+        var misnamed: [(URL, String)] = []
+        
+        guard let folders = try? fileManager.contentsOfDirectory(at: charsDir, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return misnamed
+        }
+        
+        for folder in folders {
+            var isDir: ObjCBool = false
+            guard fileManager.fileExists(atPath: folder.path, isDirectory: &isDir), isDir.boolValue else {
+                continue
+            }
+            
+            if folder.lastPathComponent.hasPrefix(".") { continue }
+            
+            if let suggestedName = detectMismatchedCharacterFolder(folder) {
+                misnamed.append((folder, suggestedName))
+            }
+        }
+        
+        return misnamed
+    }
+    
+    /// Rename a character folder to match its character name
+    /// Returns the new folder URL if renamed, nil if failed
+    @discardableResult
+    public func fixMisnamedCharacterFolder(_ folder: URL, suggestedName: String, workingDir: URL) throws -> URL? {
+        let currentName = folder.lastPathComponent
+        var newName = suggestedName
+        let parentDir = folder.deletingLastPathComponent()
+        var newPath = parentDir.appendingPathComponent(newName)
+        
+        // Handle collisions
+        var counter = 2
+        while fileManager.fileExists(atPath: newPath.path) {
+            newName = "\(suggestedName)_\(counter)"
+            newPath = parentDir.appendingPathComponent(newName)
+            counter += 1
+        }
+        
+        // Rename the folder
+        try fileManager.moveItem(at: folder, to: newPath)
+        
+        // Update select.def
+        updateSelectDefEntry(from: currentName, to: newName, in: workingDir)
+        
+        // Clear image cache for old name
+        ImageCache.shared.clearCharacter(currentName)
+        
+        print("Renamed character folder: \(currentName) → \(newName)")
+        
+        return newPath
+    }
+    
+    /// Fix all misnamed character folders
+    /// Returns array of (oldName, newName) for renamed folders
+    public func fixAllMisnamedCharacterFolders(in workingDir: URL) throws -> [(String, String)] {
+        let misnamed = findMisnamedCharacterFolders(in: workingDir)
+        var renamed: [(String, String)] = []
+        
+        for (folder, suggestedName) in misnamed {
+            let oldName = folder.lastPathComponent
+            if let newPath = try fixMisnamedCharacterFolder(folder, suggestedName: suggestedName, workingDir: workingDir) {
+                renamed.append((oldName, newPath.lastPathComponent))
+            }
+        }
+        
+        return renamed
+    }
+    
+    /// Find the valid character def file in a folder (skips storyboards, fonts, stages)
+    private func findCharacterDefFile(in folder: URL) -> URL? {
+        // First check for def file matching folder name
+        let folderName = folder.lastPathComponent
+        let matchingDef = folder.appendingPathComponent("\(folderName).def")
+        
+        if fileManager.fileExists(atPath: matchingDef.path) && DEFParser.isValidCharacterDefFile(matchingDef) {
+            return matchingDef
+        }
+        
+        // Fall back to finding any valid character def
+        guard let contents = try? fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) else {
+            return nil
+        }
+        
+        let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
+        let validDefFiles = defFiles.filter { DEFParser.isValidCharacterDefFile($0) }
+        
+        // Prefer def file that matches folder name pattern, otherwise take first
+        return validDefFiles.first { file in
+            file.deletingPathExtension().lastPathComponent.lowercased() == folderName.lowercased()
+        } ?? validDefFiles.first
+    }
+    
+    // MARK: - Stage Name Editing
+    
+    /// Rename a stage by editing its DEF file's name field
+    /// This changes the display name in both IKEMEN GO and IKEMEN Lab
+    public func renameStage(_ stage: StageInfo, to newName: String) throws {
+        let defFile = stage.defFile
+        
+        guard fileManager.fileExists(atPath: defFile.path) else {
+            throw NSError(domain: "ContentManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Stage DEF file not found"])
+        }
+        
+        // Read the current content
+        var content = try String(contentsOf: defFile, encoding: .utf8)
+        
+        // Find and replace the name line
+        // Handles various formats:
+        // name = "Old Name"
+        // name= "Old Name"
+        // name = "X";"Real Name"
+        let namePattern = #"(?m)^(name\s*=\s*).*$"#
+        
+        if let regex = try? NSRegularExpression(pattern: namePattern, options: .caseInsensitive) {
+            let range = NSRange(content.startIndex..., in: content)
+            let replacement = "$1\"\(newName)\""
+            content = regex.stringByReplacingMatches(in: content, options: [], range: range, withTemplate: replacement)
+        }
+        
+        // Write back
+        try content.write(to: defFile, atomically: true, encoding: .utf8)
+        
+        print("Renamed stage: \(stage.name) → \(newName)")
+    }
+    
+    /// Check if a stage has a suspicious name (single letter, etc.)
+    public func stageNeedsBetterName(_ stage: StageInfo) -> Bool {
+        let name = stage.name
+        // Suspicious if: single char, all caps 1-2 chars, or matches common placeholder patterns
+        return name.count <= 2 || 
+               (name.count <= 3 && name == name.uppercased() && !name.contains(" "))
+    }
+    
+    /// Suggest a better name for a stage based on its filename
+    public func suggestStageName(_ stage: StageInfo) -> String {
+        let filename = stage.defFile.deletingPathExtension().lastPathComponent
+        // Clean up filename: replace underscores with spaces, title case
+        return filename
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .split(separator: " ")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
+            .joined(separator: " ")
+    }
+    
     // MARK: - Content Installation
     
     /// Install content from an archive file (zip, rar, 7z - auto-detects character or stage)

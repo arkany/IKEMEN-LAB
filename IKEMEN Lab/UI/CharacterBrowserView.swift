@@ -325,6 +325,20 @@ class CharacterBrowserView: NSView {
         
         menu.addItem(NSMenuItem.separator())
         
+        // Check if folder name is mismatched with character name
+        if let suggestedName = ContentManager.shared.detectMismatchedCharacterFolder(character.directory) {
+            let renameItem = NSMenuItem(
+                title: "Rename Folder to \"\(suggestedName)\"",
+                action: #selector(renameCharacterFolder(_:)),
+                keyEquivalent: ""
+            )
+            renameItem.image = NSImage(systemSymbolName: "folder.badge.questionmark", accessibilityDescription: nil)
+            renameItem.representedObject = (character, suggestedName)
+            renameItem.target = self
+            menu.addItem(renameItem)
+            menu.addItem(NSMenuItem.separator())
+        }
+        
         // Reveal in Finder
         let revealItem = NSMenuItem(title: "Reveal in Finder", action: #selector(revealInFinderAction(_:)), keyEquivalent: "")
         revealItem.representedObject = character
@@ -345,6 +359,30 @@ class CharacterBrowserView: NSView {
     @objc private func toggleDisableCharacter(_ sender: NSMenuItem) {
         guard let character = sender.representedObject as? CharacterInfo else { return }
         onCharacterDisableToggle?(character)
+    }
+    
+    @objc private func renameCharacterFolder(_ sender: NSMenuItem) {
+        guard let (character, suggestedName) = sender.representedObject as? (CharacterInfo, String),
+              let workingDir = IkemenBridge.shared.workingDirectory else { return }
+        
+        do {
+            try ContentManager.shared.fixMisnamedCharacterFolder(
+                character.directory,
+                suggestedName: suggestedName,
+                workingDir: workingDir
+            )
+            
+            // Refresh the character list
+            IkemenBridge.shared.loadContent()
+            
+            // Show success toast
+            ToastManager.shared.showSuccess(title: "Renamed to \(suggestedName)")
+        } catch {
+            ToastManager.shared.showError(
+                title: "Failed to rename folder",
+                subtitle: error.localizedDescription
+            )
+        }
     }
     
     @objc private func revealInFinderAction(_ sender: NSMenuItem) {

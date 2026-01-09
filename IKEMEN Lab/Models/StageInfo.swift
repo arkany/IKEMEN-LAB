@@ -69,10 +69,21 @@ public struct StageInfo: Identifiable, Hashable {
         // Parse .def file using shared parser
         let parsed = DEFParser.parse(url: defFile)
         
-        // Get name - prefer displayname for stages
-        let parsedName = parsed?.displayName ?? parsed?.name ?? defFile.deletingPathExtension().lastPathComponent
+        // Get name - use special extractor that handles commented names
+        // Some stage files have format: name = "O";"Avalon" where real name is in comment
+        let extractedName = DEFParser.extractStageName(from: defFile)
+        let fallbackName = defFile.deletingPathExtension().lastPathComponent
         
-        self.name = parsedName
+        // Use extracted name if valid, otherwise fall back to filename
+        if let name = extractedName, !name.isEmpty, name.count > 2 {
+            self.name = name
+        } else {
+            // Name is too short or missing - use cleaned-up filename
+            self.name = fallbackName
+                .replacingOccurrences(of: "_", with: " ")
+                .replacingOccurrences(of: "-", with: " ")
+        }
+        
         self.author = parsed?.author ?? "Unknown"
         
         // Get camera bounds from [Camera] section

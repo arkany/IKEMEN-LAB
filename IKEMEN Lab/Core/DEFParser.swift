@@ -45,6 +45,58 @@ public struct DEFParser {
         return parse(content: content)
     }
     
+    /// Extract the stage name, handling quirky files where real name is in a comment
+    /// e.g., name = "O";"Avalon" -> returns "Avalon"
+    public static func extractStageName(from url: URL) -> String? {
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+            return nil
+        }
+        
+        let lines = content.components(separatedBy: .newlines)
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            // Skip comments and empty lines
+            if trimmed.isEmpty || trimmed.hasPrefix(";") { continue }
+            
+            // Look for name = ...
+            guard let equalsIndex = trimmed.firstIndex(of: "=") else { continue }
+            let key = String(trimmed[..<equalsIndex]).trimmingCharacters(in: .whitespaces).lowercased()
+            
+            if key == "name" || key == "displayname" {
+                let valueAndComment = String(trimmed[trimmed.index(after: equalsIndex)...]).trimmingCharacters(in: .whitespaces)
+                
+                // Check if there's a semicolon with a better name after it
+                // Pattern: "X";"Real Name" or "X" ; "Real Name"
+                if let semicolonIndex = valueAndComment.firstIndex(of: ";") {
+                    let beforeSemicolon = String(valueAndComment[..<semicolonIndex])
+                        .trimmingCharacters(in: .whitespaces)
+                        .replacingOccurrences(of: "\"", with: "")
+                    
+                    let afterSemicolon = String(valueAndComment[valueAndComment.index(after: semicolonIndex)...])
+                        .trimmingCharacters(in: .whitespaces)
+                        .replacingOccurrences(of: "\"", with: "")
+                    
+                    // If before semicolon is very short (1-2 chars) and after is longer,
+                    // the real name is probably in the comment
+                    if beforeSemicolon.count <= 2 && afterSemicolon.count > beforeSemicolon.count {
+                        return afterSemicolon
+                    }
+                    
+                    // Otherwise use the value before semicolon
+                    return beforeSemicolon.isEmpty ? nil : beforeSemicolon
+                }
+                
+                // No semicolon, just return the cleaned value
+                let cleanValue = valueAndComment.replacingOccurrences(of: "\"", with: "")
+                return cleanValue.isEmpty ? nil : cleanValue
+            }
+        }
+        
+        return nil
+    }
+    
     /// Parse DEF file content string
     public static func parse(content: String) -> ParseResult {
         var values: [String: String] = [:]
