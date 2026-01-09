@@ -251,12 +251,16 @@ class IkemenBridge: ObservableObject {
         switch result {
         case .success(let url):
             print("Successfully activated collection: \(collection.name)")
-            ToastNotification.show(message: "Collection activated: \(collection.name)", type: .success)
+            DispatchQueue.main.async {
+                ToastManager.shared.showSuccess(title: "Collection activated", subtitle: collection.name)
+            }
             // If screenpack also changed, we might need to update config.json (not implemented yet)
             
         case .failure(let error):
             print("Failed to activate collection: \(error)")
-            ToastNotification.show(message: "Failed to activate collection", type: .error)
+            DispatchQueue.main.async {
+                ToastManager.shared.showError(title: "Failed to activate collection", subtitle: error.localizedDescription)
+            }
         }
     }
     
