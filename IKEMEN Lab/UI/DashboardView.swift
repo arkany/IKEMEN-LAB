@@ -139,7 +139,7 @@ class DashboardView: NSView {
         
         if isRunning {
             launchTitleLabel.stringValue = "Stop Game"
-            launchIconView.image = NSImage(systemSymbolName: "skull.fill", accessibilityDescription: nil)
+            launchIconView.image = NSImage(systemSymbolName: "gamecontroller.fill", accessibilityDescription: nil)
             lastPlayedLabel.stringValue = "Game is running"
             lastPlayedLabel.textColor = NSColor.systemGreen
         } else {

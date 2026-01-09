@@ -2306,7 +2306,7 @@ class GameWindowController: NSWindowController {
         }
     }
     
-    private func installFromArchive(_ url: URL) {
+    private func installFromArchive(_ url: URL, overwrite: Bool = false) {
         statusLabel.stringValue = "Installing..."
         statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
         
@@ -2314,7 +2314,7 @@ class GameWindowController: NSWindowController {
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
-                let result = try self?.ikemenBridge.installContent(from: url)
+                let result = try self?.ikemenBridge.installContent(from: url, overwrite: overwrite)
                 DispatchQueue.main.async {
                     self?.statusLabel.stringValue = result ?? "Installed!"
                     self?.statusLabel.textColor = DesignColors.positive
@@ -2328,6 +2328,31 @@ class GameWindowController: NSWindowController {
                     
                     // Refresh dashboard stats
                     self?.dashboardView.refreshStats()
+                }
+            } catch let error as IkemenError {
+                if case .duplicateContent(let name) = error {
+                    DispatchQueue.main.async {
+                        self?.promptToOverwrite(name: name) { shouldOverwrite in
+                            if shouldOverwrite {
+                                self?.installFromArchive(url, overwrite: true)
+                            } else {
+                                self?.statusLabel.stringValue = "Cancelled"
+                                self?.statusLabel.textColor = DesignColors.textTertiary
+                            }
+                        }
+                    }
+                    return
+                }
+                
+                DispatchQueue.main.async {
+                    self?.statusLabel.stringValue = "Failed"
+                    self?.statusLabel.textColor = DesignColors.redAccent
+                    
+                    // Show error toast
+                    ToastManager.shared.showError(
+                        title: "Installation failed",
+                        subtitle: error.localizedDescription
+                    )
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -2344,7 +2369,7 @@ class GameWindowController: NSWindowController {
         }
     }
     
-    private func installFromFolder(_ url: URL) {
+    private func installFromFolder(_ url: URL, overwrite: Bool = false) {
         statusLabel.stringValue = "Installing..."
         statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
         
@@ -2352,7 +2377,7 @@ class GameWindowController: NSWindowController {
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
-                let result = try self?.ikemenBridge.installContentFolder(from: url)
+                let result = try self?.ikemenBridge.installContentFolder(from: url, overwrite: overwrite)
                 DispatchQueue.main.async {
                     self?.statusLabel.stringValue = result ?? "Installed!"
                     self?.statusLabel.textColor = DesignColors.positive
@@ -2367,6 +2392,31 @@ class GameWindowController: NSWindowController {
                     // Refresh dashboard stats
                     self?.dashboardView.refreshStats()
                 }
+            } catch let error as IkemenError {
+                if case .duplicateContent(let name) = error {
+                    DispatchQueue.main.async {
+                        self?.promptToOverwrite(name: name) { shouldOverwrite in
+                            if shouldOverwrite {
+                                self?.installFromFolder(url, overwrite: true)
+                            } else {
+                                self?.statusLabel.stringValue = "Cancelled"
+                                self?.statusLabel.textColor = DesignColors.textTertiary
+                            }
+                        }
+                    }
+                    return
+                }
+                
+                DispatchQueue.main.async {
+                    self?.statusLabel.stringValue = "Failed"
+                    self?.statusLabel.textColor = DesignColors.redAccent
+                    
+                    // Show error toast
+                    ToastManager.shared.showError(
+                        title: "Installation failed",
+                        subtitle: error.localizedDescription
+                    )
+                }
             } catch {
                 DispatchQueue.main.async {
                     self?.statusLabel.stringValue = "Failed"
@@ -2379,6 +2429,21 @@ class GameWindowController: NSWindowController {
                     )
                 }
             }
+        }
+    }
+    
+    private func promptToOverwrite(name: String, completion: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = "Duplicate Content"
+        alert.informativeText = "'\(name)' is already installed. Do you want to overwrite it?"
+        alert.addButton(withTitle: "Overwrite")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .warning
+        
+        // This is necessary because the installation happens on a background thread
+        // but the alert must be on the main thread
+        alert.beginSheetModal(for: self.window!) { response in
+            completion(response == .alertFirstButtonReturn)
         }
     }
     

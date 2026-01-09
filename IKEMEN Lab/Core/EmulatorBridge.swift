@@ -18,6 +18,7 @@ enum IkemenError: LocalizedError {
     case contentNotFound(String)
     case installFailed(String)
     case invalidContent(String)
+    case duplicateContent(String)
     
     var errorDescription: String? {
         switch self {
@@ -31,6 +32,8 @@ enum IkemenError: LocalizedError {
             return "Failed to install content: \(reason)"
         case .invalidContent(let reason):
             return "Invalid content: \(reason)"
+        case .duplicateContent(let name):
+            return "Content already exists: \(name)"
         }
     }
     
@@ -46,6 +49,8 @@ enum IkemenError: LocalizedError {
             return "Make sure you have write permissions and enough disk space."
         case .invalidContent:
             return "The content file may be corrupted or in an unsupported format."
+        case .duplicateContent:
+            return "Do you want to replace the existing content?"
         }
     }
 }
@@ -416,10 +421,11 @@ class IkemenBridge: ObservableObject {
             CollectionStore.shared.syncDefaultCollectionCharacters(charData)
             
             // If the default collection is active, regenerate select.def with the new content
-            if let active = CollectionStore.shared.activeCollection, active.isDefault {
+            if let active = CollectionStore.shared.activeCollection, active.isDefault,
+               let workingDir = self.engineWorkingDirectory {
                 print("Default collection updated with new characters, regenerating select.def...")
-                // Re-activating ensures the file is written to disk
-                CollectionStore.shared.setActive(active)
+                // Regenerate directly to avoid "Collection Activated" notification
+                _ = SelectDefGenerator.writeSelectDef(for: active, ikemenPath: workingDir)
             }
         }
         
@@ -521,10 +527,11 @@ class IkemenBridge: ObservableObject {
             CollectionStore.shared.syncDefaultCollectionStages(stagePaths)
             
             // If the default collection is active, regenerate select.def with the new content
-            if let active = CollectionStore.shared.activeCollection, active.isDefault {
+            if let active = CollectionStore.shared.activeCollection, active.isDefault,
+               let workingDir = self.engineWorkingDirectory {
                 print("Default collection updated with new stages, regenerating select.def...")
-                // Re-activating ensures the file is written to disk
-                CollectionStore.shared.setActive(active)
+                // Regenerate directly to avoid "Collection Activated" notification
+                _ = SelectDefGenerator.writeSelectDef(for: active, ikemenPath: workingDir)
             }
         }
         
@@ -769,12 +776,12 @@ class IkemenBridge: ObservableObject {
     // MARK: - Content Installation
     
     /// Install content from an archive file (zip, rar, 7z - auto-detects character or stage)
-    func installContent(from archiveURL: URL) throws -> String {
+    func installContent(from archiveURL: URL, overwrite: Bool = false) throws -> String {
         guard let workingDir = engineWorkingDirectory else {
             throw IkemenError.installFailed("Engine directory not found")
         }
         
-        let result = try ContentManager.shared.installContent(from: archiveURL, to: workingDir)
+        let result = try ContentManager.shared.installContent(from: archiveURL, to: workingDir, overwrite: overwrite)
         
         // Reload content after installation
         loadCharacters()
@@ -785,12 +792,12 @@ class IkemenBridge: ObservableObject {
     }
     
     /// Install content from a folder (auto-detects character or stage)
-    func installContentFolder(from folderURL: URL) throws -> String {
+    func installContentFolder(from folderURL: URL, overwrite: Bool = false) throws -> String {
         guard let workingDir = engineWorkingDirectory else {
             throw IkemenError.installFailed("Engine directory not found")
         }
         
-        let result = try ContentManager.shared.installContentFolder(from: folderURL, to: workingDir)
+        let result = try ContentManager.shared.installContentFolder(from: folderURL, to: workingDir, overwrite: overwrite)
         
         // Reload content after installation
         loadCharacters()

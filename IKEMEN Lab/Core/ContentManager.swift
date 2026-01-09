@@ -414,7 +414,7 @@ public final class ContentManager {
     // MARK: - Content Installation
     
     /// Install content from an archive file (zip, rar, 7z - auto-detects character or stage)
-    public func installContent(from archiveURL: URL, to workingDir: URL) throws -> String {
+    public func installContent(from archiveURL: URL, to workingDir: URL, overwrite: Bool = false) throws -> String {
         let tempDir = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         
         defer {
@@ -451,7 +451,7 @@ public final class ContentManager {
             contentFolder = tempDir
         }
         
-        return try installContentFolder(from: contentFolder, to: workingDir)
+        return try installContentFolder(from: contentFolder, to: workingDir, overwrite: overwrite)
     }
     
     /// Extract archive to destination
@@ -495,7 +495,7 @@ public final class ContentManager {
     }
     
     /// Install content from a folder (auto-detects character, stage, or screenpack)
-    public func installContentFolder(from folderURL: URL, to workingDir: URL) throws -> String {
+    public func installContentFolder(from folderURL: URL, to workingDir: URL, overwrite: Bool = false) throws -> String {
         // Scan the folder to determine content type
         let contents = try fileManager.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
         let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
@@ -514,7 +514,7 @@ public final class ContentManager {
                                        defContent.contains("[option info]")
             
             if hasScreenpackFiles || hasScreenpackSections {
-                return try installScreenpack(from: folderURL, to: workingDir)
+                return try installScreenpack(from: folderURL, to: workingDir, overwrite: overwrite)
             }
         }
         
@@ -553,11 +553,11 @@ public final class ContentManager {
         
         // Install based on what we found (character takes priority over stage)
         if characterDefFile != nil {
-            return try installCharacter(from: folderURL, to: workingDir)
+            return try installCharacter(from: folderURL, to: workingDir, overwrite: overwrite)
         }
         
         if stageDefFile != nil {
-            return try installStage(from: folderURL, to: workingDir)
+            return try installStage(from: folderURL, to: workingDir, overwrite: overwrite)
         }
         
         // Fallback: check for character-specific files
@@ -567,10 +567,10 @@ public final class ContentManager {
         }
         
         if hasCharacterFiles {
-            return try installCharacter(from: folderURL, to: workingDir)
+            return try installCharacter(from: folderURL, to: workingDir, overwrite: overwrite)
         } else if !defFiles.isEmpty {
             // Default to stage if only has .def and .sff
-            return try installStage(from: folderURL, to: workingDir)
+            return try installStage(from: folderURL, to: workingDir, overwrite: overwrite)
         }
         
         throw IkemenError.invalidContent("Could not determine content type. Ensure the folder contains character files (.def, .sff, .air, .cmd, .cns) or stage files (.def, .sff).")
@@ -579,7 +579,7 @@ public final class ContentManager {
     // MARK: - Screenpack Installation
     
     /// Install a screenpack from a folder (copy to data/ directory)
-    public func installScreenpack(from source: URL, to workingDir: URL) throws -> String {
+    public func installScreenpack(from source: URL, to workingDir: URL, overwrite: Bool = false) throws -> String {
         let dataDir = workingDir.appendingPathComponent("data")
         let screenpackName = source.lastPathComponent
         let destPath = dataDir.appendingPathComponent(screenpackName)
@@ -594,6 +594,9 @@ public final class ContentManager {
         // Check if screenpack already exists
         let isUpdate = fileManager.fileExists(atPath: destPath.path)
         if isUpdate {
+            if !overwrite {
+                throw IkemenError.duplicateContent(displayName)
+            }
             // Remove old version
             try fileManager.removeItem(at: destPath)
         }
@@ -723,7 +726,7 @@ public final class ContentManager {
     // MARK: - Character Installation
     
     /// Install a character from a folder
-    public func installCharacter(from source: URL, to workingDir: URL) throws -> String {
+    public func installCharacter(from source: URL, to workingDir: URL, overwrite: Bool = false) throws -> String {
         let charsDir = workingDir.appendingPathComponent("chars")
         
         // Find the .def file to get the proper character name
@@ -762,6 +765,11 @@ public final class ContentManager {
             }
             
             if isSameCharacter {
+                // Duplicate detected!
+                if !overwrite {
+                    throw IkemenError.duplicateContent(displayName)
+                }
+                
                 // True update - replace existing
                 isUpdate = true
                 try fileManager.removeItem(at: destPath)
@@ -871,11 +879,27 @@ public final class ContentManager {
     // MARK: - Stage Installation
     
     /// Install a stage from a folder
-    public func installStage(from source: URL, to workingDir: URL) throws -> String {
+    public func installStage(from source: URL, to workingDir: URL, overwrite: Bool = false) throws -> String {
         let stagesDir = workingDir.appendingPathComponent("stages")
         
         let contents = try fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
         var installedStages: [String] = []
+        
+        // Filter relevant files
+        let relevantFiles = contents.filter { 
+            let ext = $0.pathExtension.lowercased()
+            return ["def", "sff", "mp3", "ogg", "wav"].contains(ext)
+        }
+        
+        // Check for duplicates before installing
+        if !overwrite {
+            for file in relevantFiles {
+                let destPath = stagesDir.appendingPathComponent(file.lastPathComponent)
+                if fileManager.fileExists(atPath: destPath.path) {
+                    throw IkemenError.duplicateContent(file.lastPathComponent)
+                }
+            }
+        }
         
         for file in contents {
             let ext = file.pathExtension.lowercased()
@@ -885,7 +909,14 @@ public final class ContentManager {
             // Renaming breaks these references and causes IKEMEN GO to crash.
             // Example: Green_Might_Hulk.def references "stages/Green_Might_(Hulk).sff"
             // If we rename the .sff, the .def can't find it.
-            let destFileName = file.lastPathComponent
+            var destFileName = file.lastPathComponent
+            
+            // Sanitize DEF files to avoid select.def parsing issues (commas are separators)
+            // We only sanitize the .def file itself, not resources (sff/snd) which are referenced by exact name
+            if ext == "def" {
+                destFileName = destFileName.replacingOccurrences(of: ",", with: "_")
+            }
+            
             let destPath = stagesDir.appendingPathComponent(destFileName)
             
             // Check for collision with existing file - if exists, replace it (update)
@@ -896,7 +927,7 @@ public final class ContentManager {
             try fileManager.copyItem(at: file, to: destPath)
             
             if ext == "def" {
-                let stageName = file.deletingPathExtension().lastPathComponent
+                let stageName = (destFileName as NSString).deletingPathExtension
                 installedStages.append(stageName)
                 // Clear cached images
                 ImageCache.shared.clearStage(stageName)

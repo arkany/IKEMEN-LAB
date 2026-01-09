@@ -1,8 +1,10 @@
 # IKEMEN Lab
 
-A **Mac-native content manager** for [IKEMEN GO](https://github.com/ikemen-engine/Ikemen-GO) — the open-source fighting game engine compatible with MUGEN content.
+A **Mac-native Content Management System (CMS)** for the MUGEN community.
 
-IKEMEN Lab makes it easy to install, organize, and manage your characters, stages, and screenpacks without touching config files.
+IKEMEN Lab transforms how you interact with [IKEMEN GO](https://github.com/ikemen-engine/Ikemen-GO), the open-source fighting game engine. Instead of manually editing text files like `select.def`, IKEMEN Lab provides a visual, searchable database for your characters, stages, and screenpacks.
+
+Use it to build, organize, and curate your fighting game roster with the ease of a modern photo or music library.
 
 ![macOS](https://img.shields.io/badge/macOS-12.0+-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
@@ -14,26 +16,28 @@ IKEMEN Lab makes it easy to install, organize, and manage your characters, stage
 
 ## ✨ Features
 
-### Content Management
-- **Drag-and-drop installation** — Drop ZIP, RAR, 7z, or folders to install characters and stages
-- **Visual browser** — Grid and list views with thumbnails extracted from SFF sprite files
-- **Search & filter** — Find content by name or author
-- **Enable/disable toggle** — Temporarily disable characters or stages without removing them
+### Library Organization
+- **Visual Database** — Browse your collection with rich thumbnails extracted directly from sprite files (SFF)
+- **Collections System** — Create curations like "Marvel vs. Capcom 2" or "Street Fighter III" and switch between them instantly
+- **Smart Filtering** — Instantly find content by name, author, or status
+- **Toggle Content** — Enable or disable characters/stages without deleting files
 
-### Character Tools
-- **Details panel** — View author, version, palette count, and more
-- **Move list viewer** — Parsed command notation (↓↘→ + LP)
-- **Roster arrangement** — Drag to reorder characters in select.def
-- **Portrait extraction** — SFF v1 and v2 support
+### Content Ingestion
+- **Drag-and-Drop Import** — Install characters (ZIP/RAR/7z) and stages by dragging them onto the app
+- **Duplicate Detection** — Automatically identifies duplicate content and prompts for resolution
+- **Auto-Sanitization** — Cleans filenames to ensure compatibility with the engine
+- **Format Support** — Handles standard MUGEN/IKEMEN folder structures automatically
 
-### Stage Browser
-- **Preview thumbnails** — Extracted from stage sprite files
-- **Size indicators** — See stage width categories (Standard/Wide/Extra Wide)
+### Asset Management
+- **Metadata Inspector** — View detailed stats: author, version date, palette count, and local file paths
+- **Move List Viewer** — Native parsing of `.cmd` files to display move lists (↓↘→ + LP)
+- **Select Screen Editor** — Drag and drop to rearrange your roster order visually
+- **Stage Size Indicators** — Automatically detects Standard, Wide, or Extra Wide stages
 
 ### Dashboard
-- **Quick stats** — Character count, stage count, storage used
-- **Drop zone** — Install content right from the dashboard
-- **Launch button** — Start IKEMEN GO with one click
+- **Asset Overview** — Track library growth with beautiful statistics graphs
+- **Storage Monitoring** — Keep an eye on VRAM keys and disk usage
+- **One-Click Launch** — Boot IKEMEN GO directly from the CMS with your active configuration
 
 ---
 
@@ -65,18 +69,18 @@ IKEMEN Lab makes it easy to install, organize, and manage your characters, stage
 
 ## 🎮 Usage
 
-### Installing Content
-1. Download characters/stages from sites like [MUGEN Archive](https://mugenarchive.com)
-2. Drag the ZIP/RAR file onto IKEMEN Lab
-3. Content is automatically extracted, validated, and added to select.def
+### Importing Assets
+1. Download characters/stages from communities like [MUGEN Archive](https://mugenarchive.com)
+2. Drag the ZIP/RAR file directly onto IKEMEN Lab
+3. The CMS extracts, validates, and indexes the content into your library
 
-### Managing Content
-- **Grid/List toggle** — Switch views with the toolbar button
-- **Right-click menu** — Reveal in Finder, Enable/Disable, Remove
-- **Details panel** — Click a character to see metadata and move list
+### Curating your Roster
+- **Grid/List View** — Toggle between visual grid or detailed list layouts
+- **Context Actions** — Right-click any asset to Reveal in Finder, Toggle Status, or Uninstall
+- **Collections** — Use the sidebar to create new game profiles (rosters)
 
-### Launching the Game
-- Click **Launch Game** on the Dashboard or use ⌘L
+### Launching
+- Click **Launch Game** on the Dashboard or use ⌘L to start the engine with your currently active collection.
 
 ---
 
@@ -84,11 +88,10 @@ IKEMEN Lab makes it easy to install, organize, and manage your characters, stage
 You can help us decide! Add your request in Issues or Discussions.
 
 ### Upcoming Features
-- 📁 **Collections** — Group characters (e.g., "Marvel", "SNK Bosses")
-- 🔍 **Duplicate detection** — Find and manage duplicates
-- 🎬 **Animated previews** — See idle stance animations
-- 🏷️ **Auto-tagging** — Detect source game, style, resolution
-- 🌐 **Browser extension** — One-click install from MUGEN Archive
+- 🎬 **Animated Previews** — View idle animations directly in the browser
+- 🏷️ **Auto-tagging** — Detect source game (e.g. "CvS2", "MvC") and fighting style
+- 🌐 **Web Import** — Browser extension for one-click installation
+- 📡 **Remote Management** — Manage headless IKEMEN instances
 
 **Vote on features!** Head to [Discussions](../../discussions) to upvote the features you want most.
 
@@ -102,7 +105,7 @@ git clone https://github.com/yourname/ikemen-lab.git
 cd ikemen-lab
 
 # Open in Xcode
-open MacMAME.xcodeproj
+open "IKEMEN Lab.xcodeproj"
 
 # Build and run (⌘R)
 ```
