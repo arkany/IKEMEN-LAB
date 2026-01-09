@@ -166,15 +166,22 @@ class CollectionStore: ObservableObject {
     
     // MARK: - Sync with Library
     
-    /// Sync the default collection with current character library
-    /// Should be called when characters are loaded/changed
-    func syncDefaultCollectionWithCharacters(_ characters: [String]) {
+    /// Sync the default collection's characters with library
+    func syncDefaultCollectionCharacters(_ characters: [(folder: String, def: String?)]) {
         guard var defaultCollection = collections.first(where: { $0.isDefault }) else { return }
         
-        // Convert character folder names to RosterEntry objects
-        defaultCollection.characters = characters.map { folderName in
-            RosterEntry.character(folder: folderName, def: nil)
+        defaultCollection.characters = characters.map { item in
+            RosterEntry.character(folder: item.folder, def: item.def)
         }
+        
+        update(defaultCollection)
+    }
+    
+    /// Sync the default collection's stages with library
+    func syncDefaultCollectionStages(_ stages: [String]) {
+        guard var defaultCollection = collections.first(where: { $0.isDefault }) else { return }
+        
+        defaultCollection.stages = stages
         
         update(defaultCollection)
     }

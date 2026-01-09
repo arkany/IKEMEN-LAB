@@ -392,8 +392,8 @@ class IkemenBridge: ObservableObject {
             self.characters = sortedCharacters
             
             // Sync the default collection with loaded characters
-            let characterFolders = sortedCharacters.map { $0.directory.lastPathComponent }
-            CollectionStore.shared.syncDefaultCollectionWithCharacters(characterFolders)
+            let charData = sortedCharacters.map { (folder: $0.directory.lastPathComponent, def: $0.defFile.lastPathComponent) }
+            CollectionStore.shared.syncDefaultCollectionCharacters(charData)
         }
         
         print("Loaded \(foundCharacters.count) characters")
@@ -458,7 +458,21 @@ class IkemenBridge: ObservableObject {
         }
         
         DispatchQueue.main.async {
-            self.stages = foundStages.sorted { $0.name.lowercased() < $1.name.lowercased() }
+            let sortedStages = foundStages.sorted { $0.name.lowercased() < $1.name.lowercased() }
+            self.stages = sortedStages
+            
+            // Sync default collection
+            let stagePaths = sortedStages.map { stage -> String in
+                let path = stage.defFile
+                // If parent is "stages", return just filename (e.g. "my_stage.def")
+                // If parent is subfolder, return subfolder name (e.g. "MyStage")
+                if path.deletingLastPathComponent().lastPathComponent == "stages" {
+                    return path.lastPathComponent
+                } else {
+                    return path.deletingLastPathComponent().lastPathComponent
+                }
+            }
+            CollectionStore.shared.syncDefaultCollectionStages(stagePaths)
         }
         
         print("Loaded \(foundStages.count) stages")

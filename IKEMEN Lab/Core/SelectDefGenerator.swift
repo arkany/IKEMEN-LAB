@@ -50,8 +50,14 @@ class SelectDefGenerator {
         lines.append("[ExtraStages]")
         
         for stageFolder in collection.stages {
-            let defFile = findStageDefFile(in: stageFolder, ikemenPath: ikemenPath)
-            lines.append("stages/\(stageFolder)/\(defFile)")
+            if stageFolder.lowercased().hasSuffix(".def") {
+                // It's a direct file reference (e.g. "my_stage.def")
+                lines.append("stages/\(stageFolder)")
+            } else {
+                // It's a folder, find the def file inside
+                let defFile = findStageDefFile(in: stageFolder, ikemenPath: ikemenPath)
+                lines.append("stages/\(stageFolder)/\(defFile)")
+            }
         }
         
         lines.append("")
