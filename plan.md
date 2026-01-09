@@ -96,17 +96,7 @@ IKEMEN Lab must handle two distinct user scenarios:
 - [x] ~~Folder rename breaks character loading~~ (fixed: `findCharacterDefEntry` now uses exact case matching; if folder name doesn't exactly match def filename, uses explicit path like `Bbhood/BBHood.def`)
 - [x] ~~Stage filename sanitization breaks IKEMEN GO~~ (fixed: disabled filename sanitization for stages; .def files reference .sff by exact name, renaming breaks references)
 - [x] ~~Storyboards installed as characters~~ (fixed: content detection now skips `[SceneDef]` files; `findCharacterDefEntry` also filters out storyboard .def files)
-- [ ] **Recently Installed shows invalid content types** — Storyboards (Intro, Ending), characters (Cyclops), and fonts appearing as "Stage" in Recently Installed list
-  - **Root cause suspected:** Data not coming from `MetadataStore.recentlyInstalled()` as expected (database is 0 bytes)
-  - **Attempted fixes:**
-    1. Added `DEFParser.isValidStageDefFile()` to filter non-stages (storyboards, characters, fonts)
-    2. Updated `MetadataStore.reindexStages()` to use this filter
-    3. Cleared database to force re-index
-  - **To investigate:**
-    - Where is "Recently Installed" actually getting its data? (not from empty SQLite)
-    - Is there a different data source or fallback populating the UI?
-    - Check `DashboardView.refreshRecentlyInstalled()` and trace the full data flow
-    - Check if there's in-memory caching or a different database path
+- [x] **Recently Installed shows invalid content types** (fixed: hooked up `MetadataStore` initialization and indexing in `GameWindowController.handleFREComplete` to ensure database is populated immediately after First Run Experience)
 
 ### 🛠️ Technical Debt / Refactoring
 **Critical:**

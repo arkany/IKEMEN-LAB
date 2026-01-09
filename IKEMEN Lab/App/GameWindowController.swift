@@ -248,6 +248,9 @@ class GameWindowController: NSWindowController {
         // Update the bridge to use the new path
         ikemenBridge.setWorkingDirectory(path)
         
+        // Initialize the metadata store (database)
+        initializeMetadataStore(at: path)
+        
         // Refresh content
         ikemenBridge.loadContent()
         
@@ -1872,20 +1875,26 @@ class GameWindowController: NSWindowController {
     
     // MARK: - Bridge Setup
     
+    private func initializeMetadataStore(at workingDir: URL) {
+        do {
+            try MetadataStore.shared.initialize(workingDir: workingDir)
+            // Do initial reindex if database is empty or if we specifically want to ensure consistency
+            // For now, we rely on the count check to avoid re-indexing on every launch
+            if try MetadataStore.shared.characterCount() == 0 {
+                print("Database empty. Performing initial content index...")
+                try MetadataStore.shared.reindexAll(from: workingDir)
+            }
+        } catch {
+            print("Failed to initialize MetadataStore: \(error)")
+        }
+    }
+    
     private func setupBridge() {
         ikemenBridge = IkemenBridge.shared
         
         // Initialize metadata database
         if let workingDir = ikemenBridge.workingDirectory {
-            do {
-                try MetadataStore.shared.initialize(workingDir: workingDir)
-                // Do initial reindex if database is empty
-                if try MetadataStore.shared.characterCount() == 0 {
-                    try MetadataStore.shared.reindexAll(from: workingDir)
-                }
-            } catch {
-                print("Failed to initialize MetadataStore: \(error)")
-            }
+            initializeMetadataStore(at: workingDir)
         }
         
         // Observe state changes
