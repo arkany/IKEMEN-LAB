@@ -88,6 +88,18 @@ class FirstRunView: NSView {
     private var dropZoneContainer: NSView!
     private var dropZoneHeightConstraint: NSLayoutConstraint!
     
+    // Step 4 specific (Content Detection)
+    private var scanningSpinner: NSProgressIndicator?
+    private var scanningLabel: NSTextField?
+    private var statsGrid: NSView?
+    private var messageLabel: NSTextField?
+    private var step4ContinueButton: NSButton?
+    private var charactersValueLabel: NSTextField?
+    private var stagesValueLabel: NSTextField?
+    private var screenpacksValueLabel: NSTextField?
+    
+    private var detectionStats: (characters: Int, stages: Int, screenpacks: Int)?
+    
     // Callbacks
     var onComplete: ((URL) -> Void)?
     var onSkip: (() -> Void)?
@@ -176,7 +188,7 @@ class FirstRunView: NSView {
         dotsStack.spacing = 8
         headerView.addSubview(dotsStack)
         
-        for i in 1...4 {
+        for i in 1...5 {
             let dot = NSView()
             dot.translatesAutoresizingMaskIntoConstraints = false
             dot.wantsLayer = true
@@ -220,6 +232,7 @@ class FirstRunView: NSView {
         setupStep2()
         setupStep3()
         setupStep4()
+        setupStep5()
     }
     
     // MARK: - Step 1: Welcome
@@ -735,9 +748,193 @@ class FirstRunView: NSView {
         return state
     }
     
-    // MARK: - Step 4: Ready
+    // MARK: - Step 4: Content Detection
     
     private func setupStep4() {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.isHidden = true
+        cardView.addSubview(container)
+        stepContainers.append(container)
+        
+        // Icon
+        let iconContainer = NSView()
+        iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.wantsLayer = true
+        iconContainer.layer?.cornerRadius = 24
+        iconContainer.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        container.addSubview(iconContainer)
+        
+        let iconView = NSImageView()
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        if let magnifyImage = NSImage(systemSymbolName: "magnifyingglass.circle.fill", accessibilityDescription: nil) {
+            let config = NSImage.SymbolConfiguration(pointSize: 32, weight: .light)
+            iconView.image = magnifyImage.withSymbolConfiguration(config)
+        }
+        iconView.contentTintColor = DesignColors.zinc400
+        iconContainer.addSubview(iconView)
+        
+        // Title
+        let titleLabel = NSTextField(labelWithString: "Library Detected")
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = DesignFonts.header(size: 20)
+        titleLabel.textColor = .white
+        container.addSubview(titleLabel)
+        
+        // Scanning state label
+        let label = NSTextField(labelWithString: "Scanning your library...")
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = NSFont.systemFont(ofSize: 14, weight: .regular)
+        label.textColor = DesignColors.zinc400
+        container.addSubview(label)
+        scanningLabel = label
+        
+        // Spinner
+        let spinner = NSProgressIndicator()
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        spinner.style = .spinning
+        spinner.controlSize = .small
+        spinner.isDisplayedWhenStopped = false
+        container.addSubview(spinner)
+        scanningSpinner = spinner
+        
+        // Stats grid (initially hidden)
+        let statsGridView = NSView()
+        statsGridView.translatesAutoresizingMaskIntoConstraints = false
+        statsGridView.isHidden = true
+        container.addSubview(statsGridView)
+        statsGrid = statsGridView
+        
+        // Create 3 stat cards
+        let charComponents = createStatCard(icon: "person.fill", label: "Characters", value: "0")
+        charactersValueLabel = charComponents.label
+        
+        let stageComponents = createStatCard(icon: "mountain.2.fill", label: "Stages", value: "0")
+        stagesValueLabel = stageComponents.label
+        
+        let screenpackComponents = createStatCard(icon: "paintbrush.fill", label: "Screenpacks", value: "0")
+        screenpacksValueLabel = screenpackComponents.label
+        
+        let statsStack = NSStackView(views: [charComponents.view, stageComponents.view, screenpackComponents.view])
+        statsStack.translatesAutoresizingMaskIntoConstraints = false
+        statsStack.orientation = .horizontal
+        statsStack.distribution = .fillEqually
+        statsStack.spacing = 12
+        statsGridView.addSubview(statsStack)
+        
+        // Message label (for edge cases)
+        let msgLabel = NSTextField(labelWithString: "")
+        msgLabel.translatesAutoresizingMaskIntoConstraints = false
+        msgLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        msgLabel.textColor = DesignColors.zinc400
+        msgLabel.alignment = .center
+        msgLabel.isHidden = true
+        container.addSubview(msgLabel)
+        messageLabel = msgLabel
+        
+        // Continue button
+        let continueBtn = createPrimaryButton(title: "Continue", action: #selector(step4Continue))
+        continueBtn.isEnabled = false
+        container.addSubview(continueBtn)
+        step4ContinueButton = continueBtn
+        
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 64),
+            container.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 32),
+            container.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -32),
+            container.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -40),
+            
+            iconContainer.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
+            iconContainer.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            iconContainer.widthAnchor.constraint(equalToConstant: 64),
+            iconContainer.heightAnchor.constraint(equalToConstant: 64),
+            
+            iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+            
+            titleLabel.topAnchor.constraint(equalTo: iconContainer.bottomAnchor, constant: 24),
+            titleLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            
+            label.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            
+            spinner.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 16),
+            spinner.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            
+            statsGridView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 32),
+            statsGridView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            statsGridView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            
+            statsStack.topAnchor.constraint(equalTo: statsGridView.topAnchor),
+            statsStack.leadingAnchor.constraint(equalTo: statsGridView.leadingAnchor),
+            statsStack.trailingAnchor.constraint(equalTo: statsGridView.trailingAnchor),
+            statsStack.bottomAnchor.constraint(equalTo: statsGridView.bottomAnchor),
+            
+            msgLabel.topAnchor.constraint(equalTo: statsGridView.bottomAnchor, constant: 16),
+            msgLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            msgLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            
+            continueBtn.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            continueBtn.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            continueBtn.heightAnchor.constraint(equalToConstant: 40),
+            continueBtn.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+    }
+    
+    private func createStatCard(icon: String, label: String, value: String) -> (view: NSView, label: NSTextField) {
+        let card = NSView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.wantsLayer = true
+        card.layer?.cornerRadius = 12
+        card.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
+        card.layer?.borderWidth = 1
+        card.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        
+        let iconView = NSImageView()
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        if let image = NSImage(systemSymbolName: icon, accessibilityDescription: nil) {
+            iconView.image = image
+        }
+        iconView.contentTintColor = DesignColors.zinc500
+        card.addSubview(iconView)
+        
+        let valueLabel = NSTextField(labelWithString: value)
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        valueLabel.font = DesignFonts.stat(size: 28)
+        valueLabel.textColor = .white
+        valueLabel.alignment = .center
+        card.addSubview(valueLabel)
+        
+        let labelField = NSTextField(labelWithString: label)
+        labelField.translatesAutoresizingMaskIntoConstraints = false
+        labelField.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        labelField.textColor = DesignColors.zinc400
+        labelField.alignment = .center
+        card.addSubview(labelField)
+        
+        NSLayoutConstraint.activate([
+            card.heightAnchor.constraint(equalToConstant: 120),
+            
+            iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
+            iconView.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 20),
+            iconView.heightAnchor.constraint(equalToConstant: 20),
+            
+            valueLabel.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 12),
+            valueLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 8),
+            valueLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -8),
+            
+            labelField.topAnchor.constraint(equalTo: valueLabel.bottomAnchor, constant: 4),
+            labelField.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 8),
+            labelField.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -8),
+        ])
+        
+        return (card, valueLabel)
+    }
+    
+    // MARK: - Step 5: Ready
+    
+    private func setupStep5() {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.isHidden = true
@@ -1145,6 +1342,13 @@ class FirstRunView: NSView {
     @objc private func step3Continue() {
         guard isValidated, let folderPath = selectedFolderPath else { return }
         showStep(4, animated: true)
+        
+        // Start content detection scan
+        performContentScan(at: folderPath)
+    }
+    
+    @objc private func step4Continue() {
+        showStep(5, animated: true)
     }
     
     @objc private func completeFRE() {
@@ -1231,6 +1435,139 @@ class FirstRunView: NSView {
         }
         
         return "v0.99.x"
+    }
+    
+    // MARK: - Content Detection
+    
+    private func performContentScan(at url: URL) {
+        // Show scanning UI
+        scanningLabel?.stringValue = "Scanning your library..."
+        scanningLabel?.isHidden = false
+        scanningSpinner?.isHidden = false
+        scanningSpinner?.startAnimation(nil)
+        
+        // Use properties instead of tags
+        
+        // Perform scan on background thread
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            let fm = FileManager.default
+            var characterCount = 0
+            var stageCount = 0
+            var screenpackCount = 0
+            
+            // Scan characters
+            let charsPath = url.appendingPathComponent("chars")
+            if let charDirs = try? fm.contentsOfDirectory(at: charsPath, includingPropertiesForKeys: [.isDirectoryKey]) {
+                for charDir in charDirs {
+                    var isDirectory: ObjCBool = false
+                    if fm.fileExists(atPath: charDir.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                        // Check for .def file
+                        if let contents = try? fm.contentsOfDirectory(at: charDir, includingPropertiesForKeys: nil) {
+                            let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
+                            if !defFiles.isEmpty {
+                                characterCount += 1
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Scan stages
+            let stagesPath = url.appendingPathComponent("stages")
+            if let stageItems = try? fm.contentsOfDirectory(at: stagesPath, includingPropertiesForKeys: [.isDirectoryKey]) {
+                for item in stageItems {
+                    // Check if it's a .def file at top level
+                    if item.pathExtension.lowercased() == "def" {
+                        stageCount += 1
+                    }
+                    
+                    // Check if it's a directory - look for .def files inside
+                    var isDirectory: ObjCBool = false
+                    if fm.fileExists(atPath: item.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                        if let subItems = try? fm.contentsOfDirectory(at: item, includingPropertiesForKeys: nil) {
+                            for subItem in subItems where subItem.pathExtension.lowercased() == "def" {
+                                stageCount += 1
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Scan screenpacks
+            let dataPath = url.appendingPathComponent("data")
+            if let dataDirs = try? fm.contentsOfDirectory(at: dataPath, includingPropertiesForKeys: [.isDirectoryKey]) {
+                for dir in dataDirs {
+                    var isDirectory: ObjCBool = false
+                    if fm.fileExists(atPath: dir.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                        // Look for system.def in the directory
+                        let systemDef = dir.appendingPathComponent("system.def")
+                        if fm.fileExists(atPath: systemDef.path) {
+                            screenpackCount += 1
+                        }
+                    }
+                }
+                
+                // Also check for system.def directly in data/ (default screenpack)
+                let defaultSystemDef = dataPath.appendingPathComponent("system.def")
+                if fm.fileExists(atPath: defaultSystemDef.path) {
+                    screenpackCount += 1
+                }
+            }
+            
+            // Store results
+            self.detectionStats = (characterCount, stageCount, screenpackCount)
+            
+            // Update UI on main thread
+            DispatchQueue.main.async {
+                self.updateContentDetectionUI(characters: characterCount, stages: stageCount, screenpacks: screenpackCount)
+            }
+        }
+    }
+    
+    private func updateContentDetectionUI(characters: Int, stages: Int, screenpacks: Int) {
+        // Hide scanning UI
+        scanningLabel?.isHidden = true
+        scanningSpinner?.stopAnimation(nil)
+        scanningSpinner?.isHidden = true
+        
+        // Show stats grid
+        statsGrid?.isHidden = false
+        
+        // Update stat values
+        charactersValueLabel?.stringValue = "\(characters)"
+        stagesValueLabel?.stringValue = "\(stages)"
+        screenpacksValueLabel?.stringValue = "\(screenpacks)"
+        
+        // Show appropriate message
+        if let messageLabel = messageLabel {
+            messageLabel.isHidden = false
+            
+            if characters == 0 && stages == 0 {
+                // Empty installation
+                messageLabel.stringValue = "Ready to build your library!"
+                messageLabel.textColor = DesignColors.zinc400
+            } else if characters >= 100 {
+                // Large library
+                messageLabel.stringValue = "Nice collection! IKEMEN Lab will index everything."
+                messageLabel.textColor = DesignColors.positive
+            } else {
+                // Normal case - show summary
+                messageLabel.stringValue = "Found \(characters) character\(characters == 1 ? "" : "s"), \(stages) stage\(stages == 1 ? "" : "s"), \(screenpacks) screenpack\(screenpacks == 1 ? "" : "s")"
+                messageLabel.textColor = DesignColors.zinc400
+            }
+        }
+        
+        // Enable continue button
+        if let continueBtn = step4ContinueButton {
+            continueBtn.isEnabled = true
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                continueBtn.layer?.backgroundColor = NSColor.white.cgColor
+                continueBtn.contentTintColor = NSColor.black
+            }
+        }
     }
     
     // MARK: - Animation

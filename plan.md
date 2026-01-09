@@ -70,6 +70,13 @@ IKEMEN Lab must handle two distinct user scenarios:
   - Stage rename dialog: Right-click → "Rename Stage…" edits the DEF file's name field directly
   - Fixed 11 stage DEF files with single-letter names (O, P, Q, T, f, x, j, v, etc.) to show real names
   - `DEFParser.extractStageName()` handles quirky DEF files with names in comments (e.g., `name = "T";"Temple Gardens"`)
+- [x] **Content Detection Step in FRE** — New step 4 in First Run Experience:
+  - Scans chars/, stages/, data/ folders after folder selection
+  - Shows scanning state with progress spinner
+  - Displays results in 3-column grid (characters, stages, screenpacks)
+  - Edge case messages: empty library ("Ready to build your library!"), large library (100+ chars)
+  - Background thread scanning with main thread UI updates
+  - Caches results for main app use
 - [x] **Screenpack Browser** — Match HTML reference design (add-ons.html):
   - List view with sections ("ACTIVE", "ALL ADD-ONS")
   - Section headers with uppercase labels
@@ -79,10 +86,12 @@ IKEMEN Lab must handle two distinct user scenarios:
   - `GradientOverlayView` reusable component with proper `CAGradientLayer` management
   - Bottom-to-top gradient: zinc-950 → zinc-950/20 → transparent
   - Handles cell reuse correctly via `layout()` and `updateLayer()` overrides
-- [x] **First Run Experience (FRE)** — 4-step onboarding wizard:
+- [x] **First Run Experience (FRE)** — 5-step onboarding wizard:
   - Welcome screen with app branding
   - IKEMEN GO installation check (existing/download)
   - Folder selection with drag-and-drop validation
+  - Content detection with scan results
+  - Success confirmation with feature tips
   - Success confirmation with feature tips
 - [x] **Character Browser UI Overhaul** — Match HTML reference design:
   - Grid view: Cards with gradient overlay, name/author at bottom, status dot, hover states (200ms)
@@ -99,17 +108,7 @@ IKEMEN Lab must handle two distinct user scenarios:
 - [x] ~~Storyboards installed as characters~~ (fixed: content detection now skips `[SceneDef]` files; `findCharacterDefEntry` also filters out storyboard .def files)
 - [x] ~~Misnamed character folders (Intro_X)~~ (fixed: added context menu "Rename Folder to X" option that renames folders to match actual character name from DEF file)
 - [x] ~~Single-letter stage names~~ (fixed: manually corrected DEF files + added "Rename Stage…" dialog to edit stage names in-app)
-- [ ] **Recently Installed shows invalid content types** — Storyboards (Intro, Ending), characters (Cyclops), and fonts appearing as "Stage" in Recently Installed list
-  - **Root cause suspected:** Data not coming from `MetadataStore.recentlyInstalled()` as expected (database is 0 bytes)
-  - **Attempted fixes:**
-    1. Added `DEFParser.isValidStageDefFile()` to filter non-stages (storyboards, characters, fonts)
-    2. Updated `MetadataStore.reindexStages()` to use this filter
-    3. Cleared database to force re-index
-  - **To investigate:**
-    - Where is "Recently Installed" actually getting its data? (not from empty SQLite)
-    - Is there a different data source or fallback populating the UI?
-    - Check `DashboardView.refreshRecentlyInstalled()` and trace the full data flow
-    - Check if there's in-memory caching or a different database path
+- [x] **Recently Installed shows invalid content types** (fixed: hooked up `MetadataStore` initialization and indexing in `GameWindowController.handleFREComplete` to ensure database is populated immediately after First Run Experience)
 
 ### 🛠️ Technical Debt / Refactoring
 **Critical:**
@@ -231,7 +230,7 @@ IKEMEN Lab must handle two distinct user scenarios:
 | ├─ IKEMEN GO check | ✅ Done | "I already have it" or "Download" options |
 | ├─ Folder selection | ✅ Done | Drag-and-drop or browse, validates installation |
 | ├─ Version detection | ✅ Done | Auto-detect version from README.md |
-| ├─ **Content detection** | 📋 Todo | Scan for existing chars/stages, show summary |
+| ├─ **Content detection** | ✅ Done | Scan for existing chars/stages, show summary |
 | ├─ **Import mode choice** | 📋 Todo | "Index only" (read-only) vs "Full management" |
 | └─ Success confirmation | ✅ Done | Feature tips, "Open Dashboard" button |
 | **Collections system** | � In Progress | Game profiles that generate select.def files |
