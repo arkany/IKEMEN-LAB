@@ -739,6 +739,9 @@ class GameWindowController: NSWindowController {
         dashboardView.onValidateContent = { [weak self] in
             self?.runContentValidation()
         }
+        dashboardView.onInstallContent = { [weak self] in
+            self?.showInstallDialog()
+        }
         mainAreaView.addSubview(dashboardView)
         
         // Drop Zone (visible in empty state - legacy, kept for other views)
@@ -2271,6 +2274,21 @@ class GameWindowController: NSWindowController {
     
     private let supportedArchiveExtensions = ["zip", "rar", "7z"]
     
+    private func showInstallDialog() {
+        let openPanel = NSOpenPanel()
+        openPanel.title = "Install Content"
+        openPanel.prompt = "Install"
+        openPanel.message = "Select ZIP archives or folders containing characters, stages, or screenpacks."
+        openPanel.allowsMultipleSelection = true
+        openPanel.canChooseDirectories = true
+        openPanel.canChooseFiles = true
+        
+        openPanel.beginSheetModal(for: window!) { [weak self] response in
+            guard response == .OK else { return }
+            self?.handleDroppedFiles(openPanel.urls)
+        }
+    }
+
     private func handleDroppedFiles(_ urls: [URL]) {
         for url in urls {
             let ext = url.pathExtension.lowercased()

@@ -12,9 +12,14 @@ public struct StageInfo: Identifiable, Hashable {
     public let sffFile: URL?       // Sprite file for preview extraction
     public let boundLeft: Int      // Camera left bound (negative = wider stage)
     public let boundRight: Int     // Camera right bound (positive = wider stage)
-    public var isDisabled: Bool    // Whether stage is commented out in select.def
+    public var status: ContentStatus
     public let hasBGM: Bool        // Whether stage has background music defined
     public let modificationDate: Date?  // File modification date
+    
+    // Backward compatibility
+    public var isDisabled: Bool {
+        return status == .disabled
+    }
     
     /// The .def filename for display
     public var defFileName: String {
@@ -53,10 +58,10 @@ public struct StageInfo: Identifiable, Hashable {
         return TagDetector.shared.detectTags(for: self)
     }
     
-    public init(defFile: URL, isDisabled: Bool = false) {
+    public init(defFile: URL, status: ContentStatus = .active) {
         self.defFile = defFile
         self.id = defFile.deletingPathExtension().lastPathComponent
-        self.isDisabled = isDisabled
+        self.status = status
         
         // Get file modification date
         if let attrs = try? FileManager.default.attributesOfItem(atPath: defFile.path),

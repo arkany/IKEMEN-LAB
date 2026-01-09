@@ -134,6 +134,7 @@ IKEMEN Lab must handle two distinct user scenarios:
 - [x] Unit tests for SFF parsing (`SFFParserTests.swift`)
 - [x] Unit tests for DEF parsing (`DEFParserTests.swift`)
 - [x] Unit tests for Collections (`CollectionModelTests`, `CollectionStoreTests`, `SelectDefGeneratorTests`)
+- [ ] Visualizing "unregistered" content in the UI (files found on disk but missing from select.def)
 - [ ] SwiftUI migration path for new views
 - [ ] Dependency injection (replace singletons)
 

@@ -1317,6 +1317,8 @@ public final class ContentManager {
             try fileManager.trashItem(at: stageDir, resultingItemURL: nil)
             print("Moved stage directory to Trash: \(stageDir.lastPathComponent)")
         }
+        
+        NotificationCenter.default.post(name: .contentChanged, object: nil)
     }
     
     /// Remove a stage entry from select.def

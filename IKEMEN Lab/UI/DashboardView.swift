@@ -16,6 +16,7 @@ class DashboardView: NSView {
     var onNavigateToCharacters: (() -> Void)?
     var onNavigateToStages: (() -> Void)?
     var onValidateContent: (() -> Void)?
+    var onInstallContent: (() -> Void)?
     
     // MARK: - UI Elements
     private var scrollView: NSScrollView!
@@ -26,6 +27,8 @@ class DashboardView: NSView {
     private var stagesCountLabel: NSTextField!
     private var storageLabel: NSTextField!
     private var lastPlayedLabel: NSTextField!
+    private var launchIconView: NSImageView!
+    private var launchTitleLabel: NSTextField!
     
     // Drop zone
     private var dropZoneView: DashboardDropZone!
@@ -96,6 +99,8 @@ class DashboardView: NSView {
         setupHeader()
         setupStatsCards()
         setupTwoColumnLayout()
+        setupObservers()
+        updateLaunchCardUI() // Initial state
         
         // Layout
         NSLayoutConstraint.activate([
@@ -112,6 +117,37 @@ class DashboardView: NSView {
             
             documentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
         ])
+    }
+    
+    private func setupObservers() {
+        NotificationCenter.default.addObserver(forName: .contentChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.refresh()
+        }
+        
+        NotificationCenter.default.addObserver(forName: .gameStatusChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.updateLaunchCardUI()
+        }
+    }
+    
+    private func updateLaunchCardUI() {
+        let isRunning: Bool
+        if case .running = IkemenBridge.shared.engineState {
+            isRunning = true
+        } else {
+            isRunning = false
+        }
+        
+        if isRunning {
+            launchTitleLabel.stringValue = "Stop Game"
+            launchIconView.image = NSImage(systemSymbolName: "skull.fill", accessibilityDescription: nil)
+            lastPlayedLabel.stringValue = "Game is running"
+            lastPlayedLabel.textColor = NSColor.systemGreen
+        } else {
+            launchTitleLabel.stringValue = "Launch Game"
+            launchIconView.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: nil)
+            lastPlayedLabel.stringValue = "Ready to play"
+            lastPlayedLabel.textColor = DesignColors.textTertiary
+        }
     }
     
     // MARK: - Header
@@ -288,6 +324,7 @@ class DashboardView: NSView {
         iconView.contentTintColor = DesignColors.background  // zinc-950
         iconView.symbolConfiguration = .init(pointSize: 14, weight: .regular)
         iconContainer.addSubview(iconView)
+        self.launchIconView = iconView
         
         NSLayoutConstraint.activate([
             iconContainer.widthAnchor.constraint(equalToConstant: 32),
@@ -307,6 +344,7 @@ class DashboardView: NSView {
         titleLabel.font = DesignFonts.body(size: 16)
         titleLabel.textColor = DesignColors.textPrimary
         stack.addArrangedSubview(titleLabel)
+        self.launchTitleLabel = titleLabel
         
         // Last played - text-xs text-zinc-500
         lastPlayedLabel = NSTextField(labelWithString: "Ready to play")
@@ -394,6 +432,9 @@ class DashboardView: NSView {
         dropZoneView.translatesAutoresizingMaskIntoConstraints = false
         dropZoneView.onFilesDropped = { [weak self] urls in
             self?.onFilesDropped?(urls)
+        }
+        dropZoneView.onClick = { [weak self] in
+            self?.onInstallContent?()
         }
         
         NSLayoutConstraint.activate([
@@ -694,7 +735,11 @@ class DashboardView: NSView {
     // MARK: - Actions
     
     @objc private func launchButtonClicked() {
-        onLaunchGame?()
+        if case .running = IkemenBridge.shared.engineState {
+            IkemenBridge.shared.terminateEngine()
+        } else {
+            onLaunchGame?()
+        }
     }
     
     @objc private func settingToggled(_ sender: NSSwitch) {
@@ -1271,6 +1316,7 @@ class DashboardView: NSView {
 class DashboardDropZone: NSView {
     
     var onFilesDropped: (([URL]) -> Void)?
+    var onClick: (() -> Void)?
     
     private var isDragging = false {
         didSet {
@@ -1290,6 +1336,14 @@ class DashboardDropZone: NSView {
     private var iconView: NSImageView!
     private var label: NSTextField!
     private var subLabel: NSTextField!
+
+    override func mouseDown(with event: NSEvent) {
+        if let onClick = onClick {
+            onClick()
+        } else {
+            super.mouseDown(with: event)
+        }
+    }
     
     // Design colors from HTML: zinc-800 (#27272a), zinc-900 (#18181b), zinc-700 (#3f3f46)
     private let borderDefault = NSColor(red: 0x27/255.0, green: 0x27/255.0, blue: 0x2a/255.0, alpha: 1.0)  // zinc-800

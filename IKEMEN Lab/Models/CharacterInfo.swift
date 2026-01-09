@@ -1,6 +1,29 @@
 import Foundation
 import AppKit
 
+// MARK: - Content Status
+
+/// Status of content item derived from comparing filesystem vs select.def
+public enum ContentStatus: String, Codable, Hashable, Sendable {
+    /// Content is in select.def, folder exists, and is valid
+    case active = "active"
+    
+    /// Folder exists but is NOT in select.def
+    case unregistered = "unregistered"
+    
+    /// In select.def but folder/files are missing
+    case missing = "missing"
+    
+    /// In select.def and folder exists, but files are invalid (.def missing)
+    case broken = "broken"
+    
+    /// Same character exists in multiple locations
+    case duplicate = "duplicate"
+    
+    /// In select.def but explicitly commented out
+    case disabled = "disabled"
+}
+
 // MARK: - Character Info
 
 /// Character metadata parsed from .def files
@@ -13,7 +36,12 @@ public struct CharacterInfo: Identifiable, Hashable {
     public let spriteFile: String?
     public let directory: URL
     public let defFile: URL
-    public var isDisabled: Bool  // Whether character is commented out in select.def
+    public var status: ContentStatus
+    
+    // Backward compatibility
+    public var isDisabled: Bool {
+        return status == .disabled
+    }
     
     /// Alias for directory - the character's root folder
     public var path: URL { directory }
@@ -23,11 +51,11 @@ public struct CharacterInfo: Identifiable, Hashable {
         return TagDetector.shared.detectTags(for: self)
     }
     
-    public init(directory: URL, defFile: URL, isDisabled: Bool = false) {
+    public init(directory: URL, defFile: URL, status: ContentStatus = .active) {
         self.directory = directory
         self.defFile = defFile
         self.id = directory.lastPathComponent
-        self.isDisabled = isDisabled
+        self.status = status
         
         // Parse .def file using shared parser
         let parsed = DEFParser.parse(url: defFile)

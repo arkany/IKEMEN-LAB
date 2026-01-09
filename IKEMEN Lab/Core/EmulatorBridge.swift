@@ -2,6 +2,13 @@ import Foundation
 import Combine
 import AppKit
 
+// MARK: - Notifications
+
+extension Notification.Name {
+    static let contentChanged = Notification.Name("ContentChanged")
+    static let gameStatusChanged = Notification.Name("GameStatusChanged")
+}
+
 // MARK: - Errors
 
 /// Error types for Ikemen GO operations
@@ -213,12 +220,14 @@ class IkemenBridge: ObservableObject {
             print("Ikemen GO terminated (PID: \(launchedPID))")
             launchedAppPID = nil
             engineState = .idle
+            NotificationCenter.default.post(name: .gameStatusChanged, object: nil)
         } else if let executableURL = app.executableURL,
                   executableURL.lastPathComponent.contains("Ikemen") {
             // Fallback check by name
             print("Ikemen GO terminated: \(app.localizedName ?? "unknown")")
             launchedAppPID = nil
             engineState = .idle
+            NotificationCenter.default.post(name: .gameStatusChanged, object: nil)
         }
     }
     
@@ -341,6 +350,9 @@ class IkemenBridge: ObservableObject {
         guard let workingDir = engineWorkingDirectory else { return }
         let engineCharsPath = workingDir.appendingPathComponent("chars")
         
+        // Parse select.def status
+        let (activeSet, disabledSet, selectDefOrder) = parseSelectDefStatus(in: workingDir)
+        
         guard let charDirs = try? fileManager.contentsOfDirectory(at: engineCharsPath, includingPropertiesForKeys: [.isDirectoryKey]) else {
             return
         }
@@ -351,21 +363,18 @@ class IkemenBridge: ObservableObject {
                 continue
             }
             
-            // Look for .def file with same name as directory
-            let defFile = charDir.appendingPathComponent(charDir.lastPathComponent + ".def")
-            if fileManager.fileExists(atPath: defFile.path) && DEFParser.isValidCharacterDefFile(defFile) {
-                // Check if character is disabled in select.def
-                let tempChar = CharacterInfo(directory: charDir, defFile: defFile, isDisabled: false)
-                let isDisabled = ContentManager.shared.isCharacterDisabled(tempChar, in: workingDir)
-                let charInfo = CharacterInfo(directory: charDir, defFile: defFile, isDisabled: isDisabled)
-                foundCharacters.append(charInfo)
+            // Look for .def file
+            let defName = charDir.lastPathComponent + ".def"
+            let directDefFile = charDir.appendingPathComponent(defName)
+            var targetDefFile: URL?
+
+            if fileManager.fileExists(atPath: directDefFile.path) && DEFParser.isValidCharacterDefFile(directDefFile) {
+                targetDefFile = directDefFile
             } else {
                 // Try to find a suitable .def file in the directory
-                // Skip storyboard files (intro/ending) which aren't character definitions
                 if let contents = try? fileManager.contentsOfDirectory(at: charDir, includingPropertiesForKeys: nil) {
                     let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
-                    
-                    // Filter to only valid character def files (not storyboards, fonts, stages)
+                    // Filter to only valid character def files
                     let characterDefFiles = defFiles.filter { DEFParser.isValidCharacterDefFile($0) }
                     
                     // Prefer def file matching folder name, otherwise take first valid one
@@ -374,18 +383,29 @@ class IkemenBridge: ObservableObject {
                         file.deletingPathExtension().lastPathComponent.lowercased() == folderName
                     } ?? characterDefFiles.first
                     
-                    if let file = preferredDef {
-                        let tempChar = CharacterInfo(directory: charDir, defFile: file, isDisabled: false)
-                        let isDisabled = ContentManager.shared.isCharacterDisabled(tempChar, in: workingDir)
-                        let charInfo = CharacterInfo(directory: charDir, defFile: file, isDisabled: isDisabled)
-                        foundCharacters.append(charInfo)
-                    }
+                    targetDefFile = preferredDef
                 }
+            }
+            
+            if let defFile = targetDefFile {
+                // determine status
+                let folderName = charDir.lastPathComponent
+                let fileDefName = defFile.lastPathComponent
+                let relativePath = "\(folderName)/\(fileDefName)".lowercased()
+                
+                var status: ContentStatus = .unregistered
+                if activeSet.contains(relativePath) {
+                    status = .active
+                } else if disabledSet.contains(relativePath) {
+                    status = .disabled
+                }
+                
+                let charInfo = CharacterInfo(directory: charDir, defFile: defFile, status: status)
+                foundCharacters.append(charInfo)
             }
         }
         
         // Sort characters according to select.def order
-        let selectDefOrder = ContentManager.shared.readCharacterOrder(from: workingDir)
         let sortedCharacters = sortCharactersBy(selectDefOrder: selectDefOrder, characters: foundCharacters)
         
         DispatchQueue.main.async {
@@ -433,6 +453,25 @@ class IkemenBridge: ObservableObject {
         
         guard let workingDir = engineWorkingDirectory else { return }
         let engineStagesPath = workingDir.appendingPathComponent("stages")
+
+        // Parse select.def for stage status
+        let (activeSet, disabledSet) = parseSelectDefStageStatus(in: workingDir)
+        
+        // Helper to determine status
+        func getStatus(for defURL: URL) -> ContentStatus {
+             let path = defURL.path
+             let root = workingDir.path
+             
+             if path.hasPrefix(root) {
+                 var relative = String(path.dropFirst(root.count))
+                 if relative.hasPrefix("/") { relative = String(relative.dropFirst()) }
+                 let key = relative.replacingOccurrences(of: "\\", with: "/").lowercased()
+                 
+                 if activeSet.contains(key) { return .active }
+                 if disabledSet.contains(key) { return .disabled }
+             }
+             return .unregistered
+        }
         
         // Search for .def files at top level and one level deep (in subdirectories)
         guard let stageItems = try? fileManager.contentsOfDirectory(at: engineStagesPath, includingPropertiesForKeys: [.isDirectoryKey]) else {
@@ -443,8 +482,8 @@ class IkemenBridge: ObservableObject {
             // Check if it's a .def file at top level
             if item.pathExtension.lowercased() == "def" {
                 if DEFParser.isValidStageDefFile(item) {
-                    let isDisabled = ContentManager.shared.isStageDisabled(StageInfo(defFile: item), in: workingDir)
-                    let stageInfo = StageInfo(defFile: item, isDisabled: isDisabled)
+                    let status = getStatus(for: item)
+                    let stageInfo = StageInfo(defFile: item, status: status)
                     foundStages.append(stageInfo)
                 }
             }
@@ -455,8 +494,8 @@ class IkemenBridge: ObservableObject {
                 if let subItems = try? fileManager.contentsOfDirectory(at: item, includingPropertiesForKeys: nil) {
                     for subItem in subItems where subItem.pathExtension.lowercased() == "def" {
                         if DEFParser.isValidStageDefFile(subItem) {
-                            let isDisabled = ContentManager.shared.isStageDisabled(StageInfo(defFile: subItem), in: workingDir)
-                            let stageInfo = StageInfo(defFile: subItem, isDisabled: isDisabled)
+                            let status = getStatus(for: subItem)
+                            let stageInfo = StageInfo(defFile: subItem, status: status)
                             foundStages.append(stageInfo)
                         }
                     }
@@ -667,11 +706,14 @@ class IkemenBridge: ObservableObject {
                 DispatchQueue.main.async {
                     self?.engineState = .error(error)
                     self?.launchedAppPID = nil
+                    NotificationCenter.default.post(name: .gameStatusChanged, object: nil)
                 }
             } else if let app = runningApp {
                 print("Ikemen GO launched successfully: \(app.localizedName ?? "unknown") (PID: \(app.processIdentifier))")
                 DispatchQueue.main.async {
                     self?.launchedAppPID = app.processIdentifier
+                    self?.engineState = .running
+                    NotificationCenter.default.post(name: .gameStatusChanged, object: nil)
                 }
             }
         }
@@ -794,5 +836,105 @@ class IkemenBridge: ObservableObject {
         case .font: return fontPath
         case .sound: return soundPath
         }
+    }
+}
+
+// MARK: - Select.def Parsing Helper
+private extension IkemenBridge {
+    func parseSelectDefStatus(in workingDir: URL) -> (active: Set<String>, disabled: Set<String>, order: [String]) {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        var active = Set<String>()
+        var disabled = Set<String>()
+        var order: [String] = []
+        
+        guard let content = try? String(contentsOf: selectDefPath, encoding: .utf8) else {
+            return (active, disabled, order)
+        }
+        
+        var inChars = false
+        for line in content.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { continue }
+            
+            if trimmed.lowercased().hasPrefix("[characters]") {
+                inChars = true
+                continue
+            } else if trimmed.hasPrefix("[") && !trimmed.lowercased().hasPrefix("[characters]") {
+                inChars = false
+            }
+            
+            if inChars {
+                let isCommented = trimmed.hasPrefix(";")
+                let cleanLine = isCommented ? String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces) : trimmed
+                let components = cleanLine.components(separatedBy: ",")
+                guard let rawName = components.first?.trimmingCharacters(in: .whitespaces), 
+                      !rawName.isEmpty, 
+                      rawName.lowercased() != "empty",
+                      rawName.lowercased() != "random",
+                      rawName.lowercased() != "randomselect" else { continue }
+                
+                // Normalize to "folder/file.def"
+                var normalized: String
+                if rawName.contains("/") {
+                    normalized = rawName.lowercased()
+                } else {
+                    normalized = "\(rawName.lowercased())/\(rawName.lowercased()).def"
+                }
+
+                // Append .def if missing
+                if !normalized.hasSuffix(".def") {
+                     normalized += ".def"
+                }
+                
+                if isCommented {
+                    disabled.insert(normalized)
+                } else {
+                    active.insert(normalized)
+                    order.append(rawName)
+                }
+            }
+        }
+        return (active, disabled, order)
+    }
+
+    func parseSelectDefStageStatus(in workingDir: URL) -> (active: Set<String>, disabled: Set<String>) {
+        let selectDefPath = workingDir.appendingPathComponent("data/select.def")
+        var active = Set<String>()
+        var disabled = Set<String>()
+        
+        guard let content = try? String(contentsOf: selectDefPath, encoding: .utf8) else {
+            return (active, disabled)
+        }
+        
+        var inStages = false
+        for line in content.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { continue }
+            
+            if trimmed.lowercased().hasPrefix("[extrastages]") {
+                inStages = true
+                continue
+            } else if trimmed.hasPrefix("[") && !trimmed.lowercased().hasPrefix("[extrastages]") {
+                inStages = false
+            }
+            
+            if inStages {
+                let isCommented = trimmed.hasPrefix(";")
+                let cleanLine = isCommented ? String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces) : trimmed
+                
+                let components = cleanLine.components(separatedBy: ",")
+                guard let rawPath = components.first?.trimmingCharacters(in: .whitespaces), 
+                      !rawPath.isEmpty else { continue }
+                
+                let normalized = rawPath.replacingOccurrences(of: "\\", with: "/").lowercased()
+                
+                if isCommented {
+                    disabled.insert(normalized)
+                } else {
+                    active.insert(normalized)
+                }
+            }
+        }
+        return (active, disabled)
     }
 }
