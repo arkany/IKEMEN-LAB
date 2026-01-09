@@ -181,7 +181,6 @@ class IkemenBridge: ObservableObject {
         }
         
         // Listen for collection activation
-        setupCollectionObserver()
     }
     
     deinit {
@@ -190,38 +189,6 @@ class IkemenBridge: ObservableObject {
         }
         NotificationCenter.default.removeObserver(self, name: .collectionActivated, object: nil)
         terminateEngine()
-    }
-    
-    // MARK: - Collection Observer
-    
-    private func setupCollectionObserver() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleCollectionActivated(_:)),
-            name: .collectionActivated,
-            object: nil
-        )
-    }
-    
-    @objc private func handleCollectionActivated(_ notification: Notification) {
-        guard let collection = notification.object as? Collection,
-              let ikemenPath = engineWorkingDirectory else {
-            print("Cannot activate collection: missing collection or engine path")
-            return
-        }
-        
-        let result = SelectDefGenerator.writeSelectDef(for: collection, ikemenPath: ikemenPath)
-        
-        switch result {
-        case .success(let path):
-            print("Generated select.def at: \(path)")
-            
-        case .failure(let error):
-            print("Failed to generate select.def: \(error)")
-            DispatchQueue.main.async {
-                ToastManager.shared.showError(title: "Failed to activate collection", subtitle: error.localizedDescription)
-            }
-        }
     }
     
     // MARK: - Termination Observer

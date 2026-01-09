@@ -610,7 +610,7 @@ public final class ContentManager {
     
     /// Modify a screenpack's system.def to use the global select.def
     /// This ensures all screenpacks share the same character roster
-    private func redirectScreenpackToGlobalSelectDef(screenpackPath: URL) {
+    public func redirectScreenpackToGlobalSelectDef(screenpackPath: URL) {
         let systemDefPath = screenpackPath.appendingPathComponent("system.def")
         
         guard fileManager.fileExists(atPath: systemDefPath.path),

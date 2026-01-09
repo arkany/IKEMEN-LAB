@@ -824,10 +824,9 @@ class GameWindowController: NSWindowController {
             // Sync characters to this screenpack's select.def before activating
             // defFile is system.def, so its parent directory contains select.def
             let screenpackDir = screenpack.defFile.deletingLastPathComponent()
-            let selectDefPath = screenpackDir.appendingPathComponent("select.def")
-            if FileManager.default.fileExists(atPath: selectDefPath.path) {
-                ContentManager.shared.syncCharactersToScreenpack(selectDefPath: selectDefPath, workingDir: workingDir)
-            }
+            
+            // Redirect screenpack to use global select.def
+            ContentManager.shared.redirectScreenpackToGlobalSelectDef(screenpackPath: screenpackDir)
             
             bridge.setActiveScreenpack(screenpack)
             self?.statusLabel.stringValue = "Activated: \(screenpack.name)"
