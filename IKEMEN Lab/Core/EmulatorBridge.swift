@@ -394,6 +394,13 @@ class IkemenBridge: ObservableObject {
             // Sync the default collection with loaded characters
             let charData = sortedCharacters.map { (folder: $0.directory.lastPathComponent, def: $0.defFile.lastPathComponent) }
             CollectionStore.shared.syncDefaultCollectionCharacters(charData)
+            
+            // If the default collection is active, regenerate select.def with the new content
+            if let active = CollectionStore.shared.activeCollection, active.isDefault {
+                print("Default collection updated with new characters, regenerating select.def...")
+                // Re-activating ensures the file is written to disk
+                CollectionStore.shared.setActive(active)
+            }
         }
         
         print("Loaded \(foundCharacters.count) characters")
@@ -473,6 +480,13 @@ class IkemenBridge: ObservableObject {
                 }
             }
             CollectionStore.shared.syncDefaultCollectionStages(stagePaths)
+            
+            // If the default collection is active, regenerate select.def with the new content
+            if let active = CollectionStore.shared.activeCollection, active.isDefault {
+                print("Default collection updated with new stages, regenerating select.def...")
+                // Re-activating ensures the file is written to disk
+                CollectionStore.shared.setActive(active)
+            }
         }
         
         print("Loaded \(foundStages.count) stages")
