@@ -74,6 +74,9 @@ public struct DesignColors {
     /// Input/control backgrounds - zinc-900/50
     public static let inputBackground = zinc900.withAlphaComponent(0.5)
     
+    /// Header background - matches primary theme (zinc-950)
+    public static let headerBackground = zinc950
+    
     // MARK: - Text Colors
     
     /// Primary text - white

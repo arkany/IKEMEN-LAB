@@ -115,11 +115,11 @@ class CollectionEditorView: NSView {
     }
     
     private func setupHeader() {
-        // Header matches ContentHeaderView style: 64px height, bg-zinc-950/50, border-b border-white/5
+        // Header matches ContentHeaderView style: 64px height, matches primary theme, border-b border-white/5
         headerView = NSView()
         headerView.translatesAutoresizingMaskIntoConstraints = false
         headerView.wantsLayer = true
-        headerView.layer?.backgroundColor = NSColor(white: 0.05, alpha: 0.5).cgColor
+        headerView.layer?.backgroundColor = DesignColors.headerBackground.cgColor
         
         // Border at bottom
         let borderLayer = CALayer()

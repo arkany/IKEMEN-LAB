@@ -463,8 +463,8 @@ class ContentHeaderView: NSView {
     private func setup() {
         wantsLayer = true
         
-        // Header background - matches HTML: bg-zinc-950/50 backdrop-blur-sm border-b border-white/5
-        layer?.backgroundColor = NSColor(white: 0.05, alpha: 0.5).cgColor
+        // Header background - matches primary theme color
+        layer?.backgroundColor = DesignColors.headerBackground.cgColor
         
         // Border at bottom
         let borderLayer = CALayer()
