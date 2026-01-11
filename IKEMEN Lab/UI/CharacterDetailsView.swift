@@ -666,22 +666,31 @@ class CharacterDetailsView: NSView {
         
         // Add +N if more palettes
         if count > 6 {
+            let moreContainer = NSView()
+            moreContainer.translatesAutoresizingMaskIntoConstraints = false
+            moreContainer.wantsLayer = true
+            moreContainer.layer?.cornerRadius = 12
+            moreContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+            moreContainer.layer?.borderWidth = 1
+            moreContainer.layer?.borderColor = DesignColors.zinc700.cgColor
+            
             let moreLabel = NSTextField(labelWithString: "+\(count - 6)")
+            moreLabel.translatesAutoresizingMaskIntoConstraints = false
             moreLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
             moreLabel.textColor = DesignColors.zinc500
-            moreLabel.wantsLayer = true
-            moreLabel.layer?.cornerRadius = 12
-            moreLabel.layer?.backgroundColor = DesignColors.zinc900.cgColor
-            moreLabel.layer?.borderWidth = 1
-            moreLabel.layer?.borderColor = DesignColors.zinc700.cgColor
+            moreLabel.isBordered = false
+            moreLabel.drawsBackground = false
             moreLabel.alignment = .center
+            moreContainer.addSubview(moreLabel)
             
             NSLayoutConstraint.activate([
-                moreLabel.widthAnchor.constraint(equalToConstant: 24),
-                moreLabel.heightAnchor.constraint(equalToConstant: 24),
+                moreContainer.widthAnchor.constraint(equalToConstant: 24),
+                moreContainer.heightAnchor.constraint(equalToConstant: 24),
+                moreLabel.centerXAnchor.constraint(equalTo: moreContainer.centerXAnchor),
+                moreLabel.centerYAnchor.constraint(equalTo: moreContainer.centerYAnchor),
             ])
             
-            paletteStackView.addArrangedSubview(moreLabel)
+            paletteStackView.addArrangedSubview(moreContainer)
         }
     }
     

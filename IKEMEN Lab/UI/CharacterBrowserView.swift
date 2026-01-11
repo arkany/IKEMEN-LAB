@@ -1264,7 +1264,6 @@ class CharacterListItem: NSCollectionViewItem {
         // Check if we need to hide columns
         let allColumnsMinWidth = nameMinWidth + 16 + authorMinWidth + 16 + 16 + versionMinWidth + 16 + dateMinWidth
         let noVersionMinWidth = nameMinWidth + 16 + authorMinWidth + 16 + 16 + dateMinWidth
-        let noDateVersionMinWidth = nameMinWidth + 16 + authorMinWidth + 16
         
         let shouldHideVersion = availableForFlexColumns < allColumnsMinWidth
         let shouldHideDate = availableForFlexColumns < noVersionMinWidth

@@ -332,7 +332,6 @@ class CollectionsSidebarSection: NSView {
               let collectionId = UUID(uuidString: collectionIdString) else { return }
         
         let isSelected = selectedCollectionId == collectionId
-        let isActive = collectionStore.activeCollectionId == collectionId
         
         if isSelected {
             container.layer?.backgroundColor = DesignColors.selectedBackground.cgColor
@@ -383,7 +382,7 @@ class CollectionsSidebarSection: NSView {
         selectedCollectionId = collectionId
         
         // Update all button appearances
-        for (id, button) in collectionButtons {
+        for (_, button) in collectionButtons {
             updateButtonAppearance(button, isHovered: false)
         }
         updateButtonAppearance(sender, isHovered: false)
@@ -450,7 +449,7 @@ class CollectionsSidebarSection: NSView {
     
     func selectCollection(_ collection: Collection) {
         selectedCollectionId = collection.id
-        for (id, button) in collectionButtons {
+        for (_, button) in collectionButtons {
             updateButtonAppearance(button, isHovered: false)
         }
     }

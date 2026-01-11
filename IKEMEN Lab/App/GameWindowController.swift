@@ -829,7 +829,7 @@ class GameWindowController: NSWindowController {
         }
         screenpackBrowserView.onScreenpackActivate = { [weak self] screenpack in
             let bridge = IkemenBridge.shared
-            guard let workingDir = bridge.workingDirectory else { return }
+            guard bridge.workingDirectory != nil else { return }
             
             // Sync characters to this screenpack's select.def before activating
             // defFile is system.def, so its parent directory contains select.def
@@ -862,7 +862,7 @@ class GameWindowController: NSWindowController {
         collectionEditorView.onBackClicked = { [weak self] in
             self?.closeCollectionEditor()
         }
-        collectionEditorView.onActivateClicked = { [weak self] collection in
+        collectionEditorView.onActivateClicked = { collection in
             CollectionStore.shared.setActive(collection)
             ToastManager.shared.showSuccess(title: "Activated: \(collection.name)")
         }

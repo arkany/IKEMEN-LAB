@@ -700,6 +700,7 @@ public final class ContentManager {
     }
     
     /// Sync all characters to all screenpack select.def files
+    @available(*, deprecated, message: "Use redirectAllScreenpacksToGlobalSelectDef instead")
     public func syncAllScreenpacks(in workingDir: URL) -> Int {
         let dataDir = workingDir.appendingPathComponent("data")
         var syncedCount = 0
@@ -711,15 +712,16 @@ public final class ContentManager {
         for item in contents {
             var isDir: ObjCBool = false
             if fileManager.fileExists(atPath: item.path, isDirectory: &isDir), isDir.boolValue {
-                let screenpackSelectDef = item.appendingPathComponent("select.def")
-                if fileManager.fileExists(atPath: screenpackSelectDef.path) {
-                    syncCharactersToScreenpack(selectDefPath: screenpackSelectDef, workingDir: workingDir)
+                let screenpackDir = item
+                let systemDef = screenpackDir.appendingPathComponent("system.def")
+                if fileManager.fileExists(atPath: systemDef.path) {
+                    redirectScreenpackToGlobalSelectDef(screenpackPath: screenpackDir)
                     syncedCount += 1
                 }
             }
         }
         
-        print("Synced characters to \(syncedCount) screenpack(s)")
+        print("Redirected \(syncedCount) screenpack(s) to global select.def")
         return syncedCount
     }
     
@@ -1214,7 +1216,6 @@ public final class ContentManager {
         var content = try String(contentsOf: selectDefPath, encoding: .utf8)
         
         // Build possible paths for this stage
-        let stageDefPath = stage.defFile.path
         let possiblePaths = buildStagePaths(for: stage, in: workingDir)
         
         var modified = false
@@ -1331,7 +1332,6 @@ public final class ContentManager {
         
         // Then move the stage files to Trash
         let stageDir = stage.defFile.deletingLastPathComponent()
-        let stageParentDir = stageDir.deletingLastPathComponent()
         
         // Check if the stage is in its own subdirectory or at root of stages/
         let stagesDir = workingDir.appendingPathComponent("stages")
@@ -1367,16 +1367,16 @@ public final class ContentManager {
         var newLines: [String] = []
         
         for line in lines {
-            var trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            var matchLine = line.trimmingCharacters(in: .whitespaces)
             
             // Remove comment prefix for matching
-            if trimmedLine.hasPrefix(";") {
-                trimmedLine = String(trimmedLine.dropFirst()).trimmingCharacters(in: .whitespaces)
+            if matchLine.hasPrefix(";") {
+                matchLine = String(matchLine.dropFirst()).trimmingCharacters(in: .whitespaces)
             }
             
             var isOurStage = false
             for path in possiblePaths {
-                if trimmedLine.lowercased().hasPrefix(path.lowercased()) {
+                if matchLine.lowercased().hasPrefix(path.lowercased()) {
                     isOurStage = true
                     break
                 }
@@ -1385,7 +1385,7 @@ public final class ContentManager {
             if !isOurStage {
                 newLines.append(line)
             } else {
-                print("Removed stage from select.def: \(trimmedLine)")
+                print("Removed stage from select.def: \(matchLine)")
             }
         }
         
@@ -1668,7 +1668,7 @@ public final class ContentManager {
         var inCharactersSection = false
         
         for line in lines {
-            var trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
             
             // Track section
             if trimmedLine.lowercased().hasPrefix("[characters]") {

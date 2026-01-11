@@ -263,7 +263,7 @@ class IkemenBridge: ObservableObject {
         let result = SelectDefGenerator.writeSelectDef(for: collection, ikemenPath: engineDir)
         
         switch result {
-        case .success(let url):
+        case .success:
             print("Successfully activated collection: \(collection.name)")
             DispatchQueue.main.async {
                 ToastManager.shared.showSuccess(title: "Collection activated", subtitle: collection.name)
@@ -439,7 +439,10 @@ class IkemenBridge: ObservableObject {
         
         // First, add characters in select.def order
         for name in selectDefOrder {
-            if let index = remaining.firstIndex(where: { $0.directory.lastPathComponent.lowercased() == name.lowercased() }) {
+            // Extract folder name from select.def entry (could be "kfm" or "kfm/kfm.def")
+            let folderName = name.components(separatedBy: "/").first ?? name
+            
+            if let index = remaining.firstIndex(where: { $0.directory.lastPathComponent.lowercased() == folderName.lowercased() }) {
                 result.append(remaining[index])
                 remaining.remove(at: index)
             }
@@ -567,7 +570,7 @@ class IkemenBridge: ObservableObject {
                 let relativePath = "data/\(dir.lastPathComponent)/system.def"
                 let isActive = (activeMotif == relativePath) || (activeMotif == dir.lastPathComponent)
                 
-                var screenpackInfo = ScreenpackInfo(defFile: systemDef, isActive: isActive)
+                let screenpackInfo = ScreenpackInfo(defFile: systemDef, isActive: isActive)
                 foundScreenpacks.append(screenpackInfo)
             }
         }
@@ -576,7 +579,7 @@ class IkemenBridge: ObservableObject {
         let defaultSystemDef = dataPath.appendingPathComponent("system.def")
         if fileManager.fileExists(atPath: defaultSystemDef.path) {
             let isActive = (activeMotif == "data/system.def") || (activeMotif == nil) || activeMotif?.isEmpty == true
-            var defaultScreenpack = ScreenpackInfo(defFile: defaultSystemDef, isActive: isActive)
+            let defaultScreenpack = ScreenpackInfo(defFile: defaultSystemDef, isActive: isActive)
             foundScreenpacks.append(defaultScreenpack)
         }
         
