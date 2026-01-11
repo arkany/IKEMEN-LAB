@@ -136,7 +136,7 @@ public struct ScreenpackInfo: Identifiable, Hashable {
         
         // Parse system.def file
         let parsed = DEFParser.parse(url: defFile)
-        let defContent = (try? String(contentsOf: defFile, encoding: .utf8).lowercased()) ?? ""
+        let defContent = (DEFParser.readFileContent(from: defFile)?.lowercased()) ?? ""
         
         // Get name from [Info] section or filename
         let parsedName = parsed?.value(for: "name", inSection: "info") 

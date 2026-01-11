@@ -720,11 +720,10 @@ class CharacterDetailsView: NSView {
         defFileNameLabel.stringValue = defFileName
         
         // Read and display the definition file content
-        do {
-            let content = try String(contentsOf: character.defFile, encoding: .utf8)
+        if let content = DEFParser.readFileContent(from: character.defFile) {
             let attributedContent = syntaxHighlightDEF(content)
             defFileCodeView.textStorage?.setAttributedString(attributedContent)
-        } catch {
+        } else {
             let errorAttr = NSAttributedString(
                 string: "Unable to read definition file",
                 attributes: [
@@ -994,7 +993,7 @@ struct CharacterExtendedInfo {
         var mugenVer = "Ikemen GO / MUGEN 1.0+"
         let verDate = character.versionDate
         
-        if let content = try? String(contentsOf: defFile, encoding: .utf8) {
+        if let content = DEFParser.readFileContent(from: defFile) {
             let lines = content.components(separatedBy: .newlines)
             
             for line in lines {
@@ -1140,7 +1139,7 @@ struct CMDParser {
         let fileManager = FileManager.default
         
         // First, check the DEF file for cmd reference
-        if let content = try? String(contentsOf: character.defFile, encoding: .utf8) {
+        if let content = DEFParser.readFileContent(from: character.defFile) {
             let lines = content.components(separatedBy: .newlines)
             for line in lines {
                 let trimmed = line.trimmingCharacters(in: .whitespaces).lowercased()

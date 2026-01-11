@@ -6,6 +6,25 @@ import Foundation
 /// Handles INI-style key=value parsing with section tracking
 public struct DEFParser {
     
+    /// Common encodings used in MUGEN/Ikemen content from various regions
+    private static let fallbackEncodings: [String.Encoding] = [
+        .utf8,
+        .windowsCP1252,      // Western European (common for English MUGEN content)
+        .shiftJIS,           // Japanese (common for Japanese MUGEN content)
+        .isoLatin1,          // ISO Latin 1
+        .ascii               // Last resort
+    ]
+    
+    /// Read file content with fallback encodings for international MUGEN content
+    public static func readFileContent(from url: URL) -> String? {
+        for encoding in fallbackEncodings {
+            if let content = try? String(contentsOf: url, encoding: encoding) {
+                return content
+            }
+        }
+        return nil
+    }
+    
     /// Parsed result from a DEF file
     public struct ParseResult {
         /// All key-value pairs, keyed by lowercased key name
@@ -39,7 +58,7 @@ public struct DEFParser {
     
     /// Parse a DEF file from a URL
     public static func parse(url: URL) -> ParseResult? {
-        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+        guard let content = readFileContent(from: url) else {
             return nil
         }
         return parse(content: content)
@@ -48,7 +67,7 @@ public struct DEFParser {
     /// Extract the stage name, handling quirky files where real name is in a comment
     /// e.g., name = "O";"Avalon" -> returns "Avalon"
     public static func extractStageName(from url: URL) -> String? {
-        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+        guard let content = readFileContent(from: url) else {
             return nil
         }
         
@@ -156,14 +175,14 @@ public struct DEFParser {
     /// Check if a .def file is a storyboard (intro/ending scene)
     /// Storyboards have [SceneDef] section and should not be treated as characters
     public static func isStoryboardDefFile(_ url: URL) -> Bool {
-        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        guard let content = readFileContent(from: url) else { return false }
         return content.lowercased().contains("[scenedef]")
     }
     
     /// Check if a .def file is a valid character definition (not a storyboard, stage, font, etc.)
     /// Used by EmulatorBridge to filter valid characters
     public static func isValidCharacterDefFile(_ url: URL) -> Bool {
-        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        guard let content = readFileContent(from: url) else { return false }
         let lowercased = content.lowercased()
         
         // Exclude storyboards (intros/endings) - they have [SceneDef] section
@@ -197,7 +216,7 @@ public struct DEFParser {
     /// Check if a .def file is actually a stage definition (not a character, storyboard, font, etc.)
     /// Used by both EmulatorBridge and MetadataStore to filter valid stages
     public static func isValidStageDefFile(_ url: URL) -> Bool {
-        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        guard let content = readFileContent(from: url) else { return false }
         let lowercased = content.lowercased()
         
         // Exclude storyboards (intros/endings) - they have [SceneDef] section
@@ -307,7 +326,7 @@ public struct CNSParser {
     
     /// Parse CNS file from URL
     public static func parseStats(from url: URL) -> CharacterStats? {
-        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+        guard let content = DEFParser.readFileContent(from: url) else {
             return nil
         }
         return parseStats(content: content)
@@ -339,7 +358,7 @@ public struct CNSParser {
     /// Get stats for a character by finding and parsing their CNS file
     public static func getStats(for characterDirectory: URL, defFile: URL) -> CharacterStats {
         // Parse DEF file to get CNS reference
-        guard let defContent = try? String(contentsOf: defFile, encoding: .utf8) else {
+        guard let defContent = DEFParser.readFileContent(from: defFile) else {
             return CharacterStats(life: 1000, attack: 100, defence: 100, power: 3000, airJuggle: 15, fallDefenceUp: 50)
         }
         

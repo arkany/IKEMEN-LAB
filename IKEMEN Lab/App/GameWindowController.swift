@@ -139,7 +139,7 @@ class GameWindowController: NSWindowController {
         // Create window programmatically
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 700),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -161,6 +161,10 @@ class GameWindowController: NSWindowController {
         window.backgroundColor = DesignColors.background
         window.minSize = NSSize(width: 900, height: 600)
         window.delegate = self
+        
+        // Hide title bar but keep traffic light buttons
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
     }
     
     private func setupUI() {
@@ -443,7 +447,7 @@ class GameWindowController: NSWindowController {
             rightBorder.widthAnchor.constraint(equalToConstant: 1),
             
             // Header
-            headerView.topAnchor.constraint(equalTo: sidebarView.topAnchor),
+            headerView.topAnchor.constraint(equalTo: sidebarView.topAnchor, constant: 20),
             headerView.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor),
             headerView.heightAnchor.constraint(equalToConstant: 64),
@@ -1218,7 +1222,7 @@ class GameWindowController: NSWindowController {
     
     private func updateCharacterName(_ character: CharacterInfo, newName: String) {
         // Update the name in the .def file
-        guard let content = try? String(contentsOf: character.defFile, encoding: .utf8) else {
+        guard let content = DEFParser.readFileContent(from: character.defFile) else {
             statusLabel.stringValue = "Failed to read character file"
             return
         }
