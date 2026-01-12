@@ -69,6 +69,7 @@ class CharacterBrowserView: NSView {
     private var characters: [CharacterInfo] = []
     private var portraitCache: [String: NSImage] = [:]
     private var cancellables = Set<AnyCancellable>()
+    private var activeScreenpackSlotLimit: Int = 0
     
     // View mode
     var viewMode: BrowserViewMode = .grid {
@@ -149,6 +150,13 @@ class CharacterBrowserView: NSView {
         collectionView.register(CharacterCollectionViewItem.self, forItemWithIdentifier: CharacterCollectionViewItem.identifier)
         collectionView.register(CharacterListItem.self, forItemWithIdentifier: CharacterListItem.identifier)
         
+        // Register supplementary view for cutoff divider
+        collectionView.register(
+            CutoffDividerView.self,
+            forSupplementaryViewOfKind: NSCollectionView.elementKindSectionHeader,
+            withIdentifier: NSUserInterfaceItemIdentifier("CutoffDivider")
+        )
+        
         // Set up context menu provider
         collectionView.menuProvider = { [weak self] indexPath in
             self?.buildContextMenu(for: indexPath)
@@ -209,6 +217,14 @@ class CharacterBrowserView: NSView {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] characters in
                 self?.updateCharacters(characters)
+            }
+            .store(in: &cancellables)
+        
+        IkemenBridge.shared.$screenpacks
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] screenpacks in
+                self?.activeScreenpackSlotLimit = screenpacks.first(where: { $0.isActive })?.characterSlots ?? 0
+                self?.collectionView.reloadData()
             }
             .store(in: &cancellables)
     }
@@ -304,8 +320,20 @@ class CharacterBrowserView: NSView {
     // MARK: - Context Menu
     
     private func buildContextMenu(for indexPath: IndexPath) -> NSMenu? {
-        guard indexPath.item < characters.count else { return nil }
-        let character = characters[indexPath.item]
+        // Calculate actual character index based on section
+        let characterIndex: Int
+        if shouldShowCutoffDivider() {
+            if indexPath.section == 0 {
+                characterIndex = indexPath.item
+            } else {
+                characterIndex = activeScreenpackSlotLimit + indexPath.item
+            }
+        } else {
+            characterIndex = indexPath.item
+        }
+        
+        guard characterIndex < characters.count else { return nil }
+        let character = characters[characterIndex]
         
         let menu = NSMenu()
         
@@ -491,7 +519,19 @@ class CharacterBrowserView: NSView {
     /// Show context menu from the more button in list view
     private func showContextMenuForListItem(_ character: CharacterInfo, sourceView: NSView) {
         guard let index = characters.firstIndex(where: { $0.id == character.id }) else { return }
-        let indexPath = IndexPath(item: index, section: 0)
+        
+        // Determine the correct section and item index
+        let indexPath: IndexPath
+        if shouldShowCutoffDivider() {
+            if index < activeScreenpackSlotLimit {
+                indexPath = IndexPath(item: index, section: 0)
+            } else {
+                indexPath = IndexPath(item: index - activeScreenpackSlotLimit, section: 1)
+            }
+        } else {
+            indexPath = IndexPath(item: index, section: 0)
+        }
+        
         guard let menu = buildContextMenu(for: indexPath) else { return }
         
         // Position menu below the button
@@ -506,15 +546,40 @@ class CharacterBrowserView: NSView {
 extension CharacterBrowserView: NSCollectionViewDataSource {
     
     func numberOfSections(in collectionView: NSCollectionView) -> Int {
+        // Use 2 sections if there's a cutoff, otherwise 1
+        if shouldShowCutoffDivider() {
+            return 2  // Section 0: visible characters, Section 1: hidden characters
+        }
         return 1
     }
     
     func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
+        if shouldShowCutoffDivider() {
+            // Section 0: visible characters (up to slot limit)
+            // Section 1: hidden characters (beyond slot limit)
+            if section == 0 {
+                return min(characters.count, activeScreenpackSlotLimit)
+            } else {
+                return max(0, characters.count - activeScreenpackSlotLimit)
+            }
+        }
         return characters.count
     }
     
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
-        let character = characters[indexPath.item]
+        // Calculate actual character index based on section
+        let characterIndex: Int
+        if shouldShowCutoffDivider() {
+            if indexPath.section == 0 {
+                characterIndex = indexPath.item
+            } else {
+                characterIndex = activeScreenpackSlotLimit + indexPath.item
+            }
+        } else {
+            characterIndex = indexPath.item
+        }
+        
+        let character = characters[characterIndex]
         
         if viewMode == .grid {
             let item = collectionView.makeItem(withIdentifier: CharacterCollectionViewItem.identifier, for: indexPath) as! CharacterCollectionViewItem
@@ -522,6 +587,13 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
             
             if let cachedPortrait = portraitCache[character.id] {
                 item.setPortrait(cachedPortrait)
+            }
+            
+            // Dim characters in section 1 (hidden)
+            if shouldShowCutoffDivider() && indexPath.section == 1 {
+                item.view.alphaValue = 0.5
+            } else {
+                item.view.alphaValue = 1.0
             }
             
             return item
@@ -547,6 +619,34 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
             return item
         }
     }
+    
+    func collectionView(_ collectionView: NSCollectionView, viewForSupplementaryElementOfKind kind: NSCollectionView.SupplementaryElementKind, at indexPath: IndexPath) -> NSView {
+        // Only show header for section 1 (hidden characters)
+        if kind == NSCollectionView.elementKindSectionHeader && indexPath.section == 1 {
+            let view = collectionView.makeSupplementaryView(
+                ofKind: kind,
+                withIdentifier: NSUserInterfaceItemIdentifier("CutoffDivider"),
+                for: indexPath
+            ) as! CutoffDividerView
+            
+            let visibleCount = min(characters.count, activeScreenpackSlotLimit)
+            let hiddenCount = max(0, characters.count - activeScreenpackSlotLimit)
+            view.configure(visibleCount: visibleCount, hiddenCount: hiddenCount)
+            
+            return view
+        }
+        
+        return NSView()
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func shouldShowCutoffDivider() -> Bool {
+        // Only show divider if:
+        // 1. There's an active screenpack with a known slot limit
+        // 2. The number of characters exceeds the slot limit
+        return activeScreenpackSlotLimit > 0 && characters.count > activeScreenpackSlotLimit
+    }
 }
 
 // MARK: - NSCollectionViewDelegate
@@ -555,7 +655,20 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
     
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
         guard let indexPath = indexPaths.first else { return }
-        let character = characters[indexPath.item]
+        
+        // Calculate actual character index based on section
+        let characterIndex: Int
+        if shouldShowCutoffDivider() {
+            if indexPath.section == 0 {
+                characterIndex = indexPath.item
+            } else {
+                characterIndex = activeScreenpackSlotLimit + indexPath.item
+            }
+        } else {
+            characterIndex = indexPath.item
+        }
+        
+        let character = characters[characterIndex]
         onCharacterSelected?(character)
     }
     
@@ -566,9 +679,21 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
     }
     
     func collectionView(_ collectionView: NSCollectionView, pasteboardWriterForItemAt indexPath: IndexPath) -> NSPasteboardWriting? {
+        // Calculate actual character index based on section
+        let characterIndex: Int
+        if shouldShowCutoffDivider() {
+            if indexPath.section == 0 {
+                characterIndex = indexPath.item
+            } else {
+                characterIndex = activeScreenpackSlotLimit + indexPath.item
+            }
+        } else {
+            characterIndex = indexPath.item
+        }
+        
         let item = NSPasteboardItem()
-        // Store the index as string data
-        item.setString(String(indexPath.item), forType: .characterDrag)
+        // Store the actual character index as string data
+        item.setString(String(characterIndex), forType: .characterDrag)
         return item
     }
     
@@ -588,14 +713,24 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
     
     func collectionView(_ collectionView: NSCollectionView, acceptDrop draggingInfo: NSDraggingInfo, indexPath: IndexPath, dropOperation: NSCollectionView.DropOperation) -> Bool {
         
-        // Get the source index from the pasteboard
+        // Get the source index from the pasteboard (this is the actual character index)
         guard let pasteboardItem = draggingInfo.draggingPasteboard.pasteboardItems?.first,
               let sourceIndexString = pasteboardItem.string(forType: .characterDrag),
               let sourceIndex = Int(sourceIndexString) else {
             return false
         }
         
-        var destinationIndex = indexPath.item
+        // Calculate destination index based on section
+        var destinationIndex: Int
+        if shouldShowCutoffDivider() {
+            if indexPath.section == 0 {
+                destinationIndex = indexPath.item
+            } else {
+                destinationIndex = activeScreenpackSlotLimit + indexPath.item
+            }
+        } else {
+            destinationIndex = indexPath.item
+        }
         
         // Adjust destination if moving down
         if sourceIndex < destinationIndex {
@@ -609,9 +744,30 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
         let movedCharacter = characters.remove(at: sourceIndex)
         characters.insert(movedCharacter, at: destinationIndex)
         
-        // Animate the move in the collection view
-        collectionView.animator().moveItem(at: IndexPath(item: sourceIndex, section: 0),
-                                           to: IndexPath(item: destinationIndex, section: 0))
+        // Calculate source and destination IndexPaths for animation
+        let sourceIndexPath: IndexPath
+        let destIndexPath: IndexPath
+        
+        if shouldShowCutoffDivider() {
+            // Calculate section-based index paths
+            if sourceIndex < activeScreenpackSlotLimit {
+                sourceIndexPath = IndexPath(item: sourceIndex, section: 0)
+            } else {
+                sourceIndexPath = IndexPath(item: sourceIndex - activeScreenpackSlotLimit, section: 1)
+            }
+            
+            if destinationIndex < activeScreenpackSlotLimit {
+                destIndexPath = IndexPath(item: destinationIndex, section: 0)
+            } else {
+                destIndexPath = IndexPath(item: destinationIndex - activeScreenpackSlotLimit, section: 1)
+            }
+        } else {
+            sourceIndexPath = IndexPath(item: sourceIndex, section: 0)
+            destIndexPath = IndexPath(item: destinationIndex, section: 0)
+        }
+        
+        // Reload data instead of animating move (safer with sections)
+        collectionView.reloadData()
         
         // Save the new order to select.def
         saveCharacterOrder()
@@ -633,6 +789,19 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
                 print("Failed to save character order: \(error)")
             }
         }
+    }
+}
+
+// MARK: - NSCollectionViewDelegateFlowLayout
+
+extension CharacterBrowserView: NSCollectionViewDelegateFlowLayout {
+    
+    func collectionView(_ collectionView: NSCollectionView, layout collectionViewLayout: NSCollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> NSSize {
+        // Only show header for section 1 (hidden characters section)
+        if section == 1 && shouldShowCutoffDivider() {
+            return NSSize(width: collectionView.bounds.width, height: 40)
+        }
+        return .zero
     }
 }
 
@@ -1494,4 +1663,107 @@ class CharacterListItem: NSCollectionViewItem {
         // Return all tags joined, or empty string
         return tags.joined(separator: " • ")
     }
+}
+
+// MARK: - Cutoff Divider View
+
+/// A supplementary view that displays a divider showing the screenpack cutoff point
+class CutoffDividerView: NSView, NSCollectionViewElement {
+    
+    private var containerView: NSView!
+    private var topDividerLine: NSView!
+    private var visibleCountLabel: NSTextField!
+    private var hiddenCountLabel: NSTextField!
+    private var bottomDividerLine: NSView!
+    
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupView()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupView()
+    }
+    
+    private func setupView() {
+        wantsLayer = true
+        layer?.backgroundColor = DesignColors.zinc900.cgColor
+        
+        // Container view with gradient background
+        containerView = NSView()
+        containerView.wantsLayer = true
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(containerView)
+        
+        // Top divider line
+        topDividerLine = NSView()
+        topDividerLine.wantsLayer = true
+        topDividerLine.layer?.backgroundColor = DesignColors.zinc700.cgColor
+        topDividerLine.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(topDividerLine)
+        
+        // Visible count label (left side)
+        visibleCountLabel = NSTextField(labelWithString: "")
+        visibleCountLabel.font = DesignFonts.caption(size: 12)
+        visibleCountLabel.textColor = NSColor.systemGreen
+        visibleCountLabel.alignment = .left
+        visibleCountLabel.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(visibleCountLabel)
+        
+        // Hidden count label (right side)
+        hiddenCountLabel = NSTextField(labelWithString: "")
+        hiddenCountLabel.font = DesignFonts.caption(size: 12)
+        hiddenCountLabel.textColor = NSColor.systemOrange
+        hiddenCountLabel.alignment = .right
+        hiddenCountLabel.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(hiddenCountLabel)
+        
+        // Bottom divider line
+        bottomDividerLine = NSView()
+        bottomDividerLine.wantsLayer = true
+        bottomDividerLine.layer?.backgroundColor = DesignColors.zinc700.cgColor
+        bottomDividerLine.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(bottomDividerLine)
+        
+        // Layout constraints
+        NSLayoutConstraint.activate([
+            // Container fills the entire view
+            containerView.topAnchor.constraint(equalTo: topAnchor),
+            containerView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            containerView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            
+            // Top divider line
+            topDividerLine.topAnchor.constraint(equalTo: containerView.topAnchor),
+            topDividerLine.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            topDividerLine.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            topDividerLine.heightAnchor.constraint(equalToConstant: 1),
+            
+            // Visible count label (left)
+            visibleCountLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            visibleCountLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            
+            // Hidden count label (right)
+            hiddenCountLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            hiddenCountLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            
+            // Bottom divider line
+            bottomDividerLine.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            bottomDividerLine.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            bottomDividerLine.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            bottomDividerLine.heightAnchor.constraint(equalToConstant: 1),
+        ])
+    }
+    
+    func configure(visibleCount: Int, hiddenCount: Int) {
+        visibleCountLabel.stringValue = "✓ \(visibleCount) characters shown"
+        hiddenCountLabel.stringValue = "⚠️ \(hiddenCount) characters hidden"
+    }
+    
+    override func prepareForReuse() {
+        visibleCountLabel.stringValue = ""
+        hiddenCountLabel.stringValue = ""
+    }
+}
 }
