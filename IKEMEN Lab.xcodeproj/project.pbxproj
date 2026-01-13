@@ -52,6 +52,8 @@
 		043 /* ScreenpackPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 144 /* ScreenpackPickerSheet.swift */; };
 		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
 		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
+		044 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145 /* UpdateChecker.swift */; };
+		045 /* AboutWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146 /* AboutWindowController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -110,6 +112,8 @@
 		142 /* CharacterPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterPickerSheet.swift; sourceTree = "<group>"; };
 		143 /* StagePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StagePickerSheet.swift; sourceTree = "<group>"; };
 		144 /* ScreenpackPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpackPickerSheet.swift; sourceTree = "<group>"; };
+		145 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
+		146 /* AboutWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindowController.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -222,6 +226,7 @@
 				133 /* ContentValidator.swift */,
 				134 /* TagDetector.swift */,
 				135 /* DuplicateDetector.swift */,
+				145 /* UpdateChecker.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -256,6 +261,7 @@
 				142 /* CharacterPickerSheet.swift */,
 				143 /* StagePickerSheet.swift */,
 				144 /* ScreenpackPickerSheet.swift */,
+				146 /* AboutWindowController.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -435,6 +441,8 @@
 				041 /* CharacterPickerSheet.swift in Sources */,
 				042 /* StagePickerSheet.swift in Sources */,
 				043 /* ScreenpackPickerSheet.swift in Sources */,
+				044 /* UpdateChecker.swift in Sources */,
+				045 /* AboutWindowController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

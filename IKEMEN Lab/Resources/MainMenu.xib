@@ -22,10 +22,17 @@
                             <menuItem title="About MacMAME" id="58">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
-                                    <action selector="orderFrontStandardAboutPanel:" target="-1" id="142"/>
+                                    <action selector="showAboutWindow:" target="700" id="142"/>
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="236"/>
+                            <menuItem title="Check for Updates…" id="800">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="checkForUpdates:" target="700" id="801"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="802"/>
                             <menuItem title="Settings…" keyEquivalent="," id="129">
                                 <connections>
                                     <action selector="showSettings:" target="700" id="600"/>

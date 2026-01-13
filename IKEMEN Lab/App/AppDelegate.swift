@@ -4,11 +4,15 @@ import Cocoa
 class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     
     private var gameWindowController: GameWindowController?
+    private var aboutWindowController: AboutWindowController?
     
     // MARK: - Application Lifecycle
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMainWindow()
+        
+        // Check for updates in background (respects 24-hour interval)
+        UpdateChecker.shared.checkOnLaunchIfNeeded()
     }
     
     func applicationWillTerminate(_ notification: Notification) {
@@ -65,6 +69,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     @IBAction func showSettings(_ sender: Any?) {
         // Select the Settings nav item in the main window
         gameWindowController?.selectSettingsNavItem()
+    }
+    
+    @IBAction func checkForUpdates(_ sender: Any?) {
+        UpdateChecker.shared.checkForUpdatesInteractively()
+    }
+    
+    @IBAction func showAboutWindow(_ sender: Any?) {
+        if aboutWindowController == nil {
+            aboutWindowController = AboutWindowController()
+        }
+        aboutWindowController?.showAboutWindow()
     }
     
     // MARK: - Menu Validation
