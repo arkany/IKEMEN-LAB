@@ -237,7 +237,7 @@ class CharacterDetailsView: NSView {
         // === Tags Section ===
         tagsHeader = NSTextField(labelWithString: "Tags")
         tagsHeader.translatesAutoresizingMaskIntoConstraints = false
-        tagsHeader.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        tagsHeader.font = DesignFonts.body(size: 12)
         tagsHeader.textColor = DesignColors.zinc400
         contentView.addSubview(tagsHeader)
         
@@ -607,13 +607,89 @@ class CharacterDetailsView: NSView {
         badge.addSubview(label)
         
         NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: badge.topAnchor, constant: 3),
-            label.bottomAnchor.constraint(equalTo: badge.bottomAnchor, constant: -3),
-            label.leadingAnchor.constraint(equalTo: badge.leadingAnchor, constant: 6),
-            label.trailingAnchor.constraint(equalTo: badge.trailingAnchor, constant: -6),
+            // Fixed height for consistent badge sizing
+            badge.heightAnchor.constraint(equalToConstant: 24),
+            
+            // Center label vertically, pin horizontally
+            label.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
+            label.leadingAnchor.constraint(equalTo: badge.leadingAnchor, constant: 8),
+            label.trailingAnchor.constraint(equalTo: badge.trailingAnchor, constant: -8),
         ])
         
         return badge
+    }
+    
+    /// Layouts tag badges in a flow/wrap pattern
+    private func layoutTagsInFlowLayout(badges: [NSView], in container: NSView) {
+        guard !badges.isEmpty else { return }
+        
+        let horizontalSpacing: CGFloat = 8
+        let verticalSpacing: CGFloat = 8
+        let containerWidth = container.bounds.width > 0 ? container.bounds.width : 280 // fallback width
+        
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var rowBadges: [[NSView]] = [[]]
+        
+        // First pass: calculate intrinsic sizes and determine rows
+        for badge in badges {
+            badge.layoutSubtreeIfNeeded()
+            let badgeSize = badge.fittingSize
+            
+            // Check if badge fits in current row
+            if currentX + badgeSize.width > containerWidth && currentX > 0 {
+                // Start new row
+                currentX = 0
+                currentY += rowHeight + verticalSpacing
+                rowHeight = 0
+                rowBadges.append([])
+            }
+            
+            rowBadges[rowBadges.count - 1].append(badge)
+            currentX += badgeSize.width + horizontalSpacing
+            rowHeight = max(rowHeight, badgeSize.height)
+        }
+        
+        // Second pass: apply constraints
+        currentX = 0
+        currentY = 0
+        rowHeight = 0
+        var previousBadgeInRow: NSView? = nil
+        var previousRowFirstBadge: NSView? = nil
+        
+        for (rowIndex, row) in rowBadges.enumerated() {
+            previousBadgeInRow = nil
+            
+            for (badgeIndex, badge) in row.enumerated() {
+                let badgeSize = badge.fittingSize
+                
+                if badgeIndex == 0 {
+                    // First badge in row - anchor to leading edge
+                    badge.leadingAnchor.constraint(equalTo: container.leadingAnchor).isActive = true
+                    
+                    if rowIndex == 0 {
+                        // First row - anchor to top
+                        badge.topAnchor.constraint(equalTo: container.topAnchor).isActive = true
+                    } else if let prevRowBadge = previousRowFirstBadge {
+                        // Subsequent rows - anchor below previous row
+                        badge.topAnchor.constraint(equalTo: prevRowBadge.bottomAnchor, constant: verticalSpacing).isActive = true
+                    }
+                    previousRowFirstBadge = badge
+                } else if let prevBadge = previousBadgeInRow {
+                    // Subsequent badges - anchor to previous badge
+                    badge.leadingAnchor.constraint(equalTo: prevBadge.trailingAnchor, constant: horizontalSpacing).isActive = true
+                    badge.topAnchor.constraint(equalTo: prevBadge.topAnchor).isActive = true
+                }
+                
+                previousBadgeInRow = badge
+            }
+        }
+        
+        // Set container height based on last row
+        if let lastBadge = badges.last {
+            lastBadge.bottomAnchor.constraint(equalTo: container.bottomAnchor).isActive = true
+        }
     }
     
     // MARK: - Actions
@@ -772,25 +848,16 @@ class CharacterDetailsView: NSView {
                 noTagsLabel.bottomAnchor.constraint(equalTo: tagsContainerView.bottomAnchor),
             ])
         } else {
-            // Create a wrapping flow layout for tags
-            let stackView = NSStackView()
-            stackView.translatesAutoresizingMaskIntoConstraints = false
-            stackView.orientation = .horizontal
-            stackView.spacing = 8
-            stackView.alignment = .leading
-            tagsContainerView.addSubview(stackView)
-            
+            // Create badges and manually position them in a wrapping flow layout
+            var badges: [NSView] = []
             for tag in tags {
                 let badge = createTagBadge(tag)
-                stackView.addArrangedSubview(badge)
+                tagsContainerView.addSubview(badge)
+                badges.append(badge)
             }
             
-            NSLayoutConstraint.activate([
-                stackView.topAnchor.constraint(equalTo: tagsContainerView.topAnchor),
-                stackView.leadingAnchor.constraint(equalTo: tagsContainerView.leadingAnchor),
-                stackView.trailingAnchor.constraint(lessThanOrEqualTo: tagsContainerView.trailingAnchor),
-                stackView.bottomAnchor.constraint(equalTo: tagsContainerView.bottomAnchor),
-            ])
+            // Layout badges in a flow/wrap pattern
+            layoutTagsInFlowLayout(badges: badges, in: tagsContainerView)
         }
     }
     

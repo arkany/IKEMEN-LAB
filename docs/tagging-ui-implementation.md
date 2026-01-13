@@ -99,9 +99,9 @@ Add small tag badges (max 2-3) to the bottom of character grid cards.
 
 ## Task 3: Add Tags to Search/Filter
 
-**File:** `IKEMEN Lab/Core/MetadataStore.swift` and `CharacterBrowserView.swift`
+**Files:** `IKEMEN Lab/Core/MetadataStore.swift` and `IKEMEN Lab/App/GameWindowController.swift`
 
-Extend search functionality to match tags.
+Extend search functionality to match tags so users can search by franchise (e.g., "Marvel", "KOF").
 
 ### Requirements
 
@@ -109,12 +109,115 @@ Extend search functionality to match tags.
 2. Example: searching "Marvel" should find all characters with "Marvel" tag
 3. Tags should be stored in SQLite for efficient querying
 
-### Implementation Steps
+### Part 1: Add `tags` Column to Database Schema
 
-1. Add `tags TEXT` column to characters table in MetadataStore
-2. Store `inferredTags.joined(separator: ",")` when indexing
-3. Update search query to: `WHERE name LIKE ? OR author LIKE ? OR tags LIKE ?`
-4. Update filter logic in `CharacterBrowserView` to check tags array
+**File:** `IKEMEN Lab/Core/MetadataStore.swift`
+
+1. Add `tags` column to `CharacterRecord` struct:
+```swift
+public struct CharacterRecord: Codable, FetchableRecord, PersistableRecord, Identifiable {
+    // ... existing fields ...
+    public var tags: String?           // Comma-separated inferred tags
+}
+```
+
+2. Add migration in `createTablesIfNeeded()` to add `tags` column:
+```swift
+// Add tags column if it doesn't exist (migration)
+if try db.columns(in: "characters").map({ $0.name }).contains("tags") == false {
+    try db.alter(table: "characters") { t in
+        t.add(column: "tags", .text)
+    }
+}
+```
+
+3. Create index for tags search:
+```swift
+try db.execute(sql: """
+    CREATE INDEX IF NOT EXISTS idx_characters_tags 
+    ON characters(tags COLLATE NOCASE)
+""")
+```
+
+### Part 2: Store Tags When Indexing Characters
+
+**File:** `IKEMEN Lab/Core/MetadataStore.swift`
+
+Update `indexCharacter()` to compute and store tags:
+
+```swift
+public func indexCharacter(_ info: CharacterInfo) throws {
+    let tagsString = info.inferredTags.joined(separator: ",")
+    
+    let record = CharacterRecord(
+        id: info.id,
+        name: info.displayName,
+        // ... other fields ...
+        tags: tagsString.isEmpty ? nil : tagsString
+    )
+    try upsertCharacter(record)
+}
+```
+
+### Part 3: Update Search Query to Include Tags
+
+**File:** `IKEMEN Lab/Core/MetadataStore.swift`
+
+Update `searchCharacters()` to also match tags:
+
+```swift
+/// Search characters by name, author, or tags
+public func searchCharacters(query: String) throws -> [CharacterRecord] {
+    guard !query.isEmpty else {
+        return try allCharacters()
+    }
+    
+    let pattern = "%\(query)%"
+    return try dbQueue?.read { db in
+        try CharacterRecord
+            .filter(
+                Column("name").like(pattern) || 
+                Column("author").like(pattern) ||
+                Column("tags").like(pattern)
+            )
+            .order(Column("name").collating(.localizedCaseInsensitiveCompare))
+            .fetchAll(db)
+    } ?? []
+}
+```
+
+### Part 4: Update In-Memory Fallback Search
+
+**File:** `IKEMEN Lab/App/GameWindowController.swift`
+
+In `performSearch()` (~line 1112), update the fallback filter to also check tags:
+
+```swift
+// Fallback to simple filtering (includes tags)
+let filtered = allCharacters.filter {
+    $0.displayName.localizedCaseInsensitiveContains(query) ||
+    $0.author.localizedCaseInsensitiveContains(query) ||
+    $0.inferredTags.contains { $0.localizedCaseInsensitiveContains(query) }
+}
+```
+
+Also update the primary filter path to include tags:
+```swift
+let filtered = allCharacters.filter { char in
+    matchingPaths.contains(char.directory.path) ||
+    char.displayName.localizedCaseInsensitiveContains(query) ||
+    char.author.localizedCaseInsensitiveContains(query) ||
+    char.inferredTags.contains { $0.localizedCaseInsensitiveContains(query) }
+}
+```
+
+### Part 5: Repeat for Stages (Optional)
+
+Apply the same pattern to:
+- `StageRecord` — add `tags: String?` field
+- `indexStage()` — store `stage.inferredTags.joined(separator: ",")`
+- `searchStages()` — add `|| Column("tags").like(pattern)`
+- `performSearch()` stages case — add tag matching
 
 ---
 
