@@ -34,6 +34,10 @@ class CharacterDetailsView: NSView {
     private var authorStatView: NSView!
     private var versionStatView: NSView!
     
+    // Tags section
+    private var tagsHeader: NSTextField!
+    private var tagsContainerView: NSView!
+    
     // Attributes section
     private var attributesHeader: NSTextField!
     private var attributesSubtitle: NSTextField!
@@ -230,6 +234,17 @@ class CharacterDetailsView: NSView {
         statsGridView.addArrangedSubview(authorStatView)
         statsGridView.addArrangedSubview(versionStatView)
         
+        // === Tags Section ===
+        tagsHeader = NSTextField(labelWithString: "Tags")
+        tagsHeader.translatesAutoresizingMaskIntoConstraints = false
+        tagsHeader.font = DesignFonts.body(size: 12)
+        tagsHeader.textColor = DesignColors.zinc400
+        contentView.addSubview(tagsHeader)
+        
+        tagsContainerView = NSView()
+        tagsContainerView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(tagsContainerView)
+        
         // === Attributes Section ===
         let attributesContainer = NSView()
         attributesContainer.translatesAutoresizingMaskIntoConstraints = false
@@ -376,8 +391,17 @@ class CharacterDetailsView: NSView {
             statsGridView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
             statsGridView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
             
+            // Tags section
+            tagsHeader.topAnchor.constraint(equalTo: statsGridView.bottomAnchor, constant: spacing),
+            tagsHeader.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            
+            tagsContainerView.topAnchor.constraint(equalTo: tagsHeader.bottomAnchor, constant: 12),
+            tagsContainerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            tagsContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            tagsContainerView.heightAnchor.constraint(greaterThanOrEqualToConstant: 24),
+            
             // Attributes section
-            attributesContainer.topAnchor.constraint(equalTo: statsGridView.bottomAnchor, constant: spacing),
+            attributesContainer.topAnchor.constraint(equalTo: tagsContainerView.bottomAnchor, constant: spacing),
             attributesContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
             attributesContainer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
             
@@ -563,6 +587,111 @@ class CharacterDetailsView: NSView {
         return card
     }
     
+    private func createTagBadge(_ text: String) -> NSView {
+        let badge = NSView()
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        badge.wantsLayer = true
+        badge.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        badge.layer?.cornerRadius = 6
+        badge.layer?.borderWidth = 1
+        badge.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        
+        let label = NSTextField(labelWithString: text)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = DesignFonts.caption(size: 11)
+        label.textColor = DesignColors.zinc300
+        label.isBordered = false
+        label.drawsBackground = false
+        label.isEditable = false
+        label.isSelectable = false
+        badge.addSubview(label)
+        
+        NSLayoutConstraint.activate([
+            // Fixed height for consistent badge sizing
+            badge.heightAnchor.constraint(equalToConstant: 24),
+            
+            // Center label vertically, pin horizontally
+            label.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
+            label.leadingAnchor.constraint(equalTo: badge.leadingAnchor, constant: 8),
+            label.trailingAnchor.constraint(equalTo: badge.trailingAnchor, constant: -8),
+        ])
+        
+        return badge
+    }
+    
+    /// Layouts tag badges in a flow/wrap pattern
+    private func layoutTagsInFlowLayout(badges: [NSView], in container: NSView) {
+        guard !badges.isEmpty else { return }
+        
+        let horizontalSpacing: CGFloat = 8
+        let verticalSpacing: CGFloat = 8
+        let containerWidth = container.bounds.width > 0 ? container.bounds.width : 280 // fallback width
+        
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var rowBadges: [[NSView]] = [[]]
+        
+        // First pass: calculate intrinsic sizes and determine rows
+        for badge in badges {
+            badge.layoutSubtreeIfNeeded()
+            let badgeSize = badge.fittingSize
+            
+            // Check if badge fits in current row
+            if currentX + badgeSize.width > containerWidth && currentX > 0 {
+                // Start new row
+                currentX = 0
+                currentY += rowHeight + verticalSpacing
+                rowHeight = 0
+                rowBadges.append([])
+            }
+            
+            rowBadges[rowBadges.count - 1].append(badge)
+            currentX += badgeSize.width + horizontalSpacing
+            rowHeight = max(rowHeight, badgeSize.height)
+        }
+        
+        // Second pass: apply constraints
+        currentX = 0
+        currentY = 0
+        rowHeight = 0
+        var previousBadgeInRow: NSView? = nil
+        var previousRowFirstBadge: NSView? = nil
+        
+        for (rowIndex, row) in rowBadges.enumerated() {
+            previousBadgeInRow = nil
+            
+            for (badgeIndex, badge) in row.enumerated() {
+                let badgeSize = badge.fittingSize
+                
+                if badgeIndex == 0 {
+                    // First badge in row - anchor to leading edge
+                    badge.leadingAnchor.constraint(equalTo: container.leadingAnchor).isActive = true
+                    
+                    if rowIndex == 0 {
+                        // First row - anchor to top
+                        badge.topAnchor.constraint(equalTo: container.topAnchor).isActive = true
+                    } else if let prevRowBadge = previousRowFirstBadge {
+                        // Subsequent rows - anchor below previous row
+                        badge.topAnchor.constraint(equalTo: prevRowBadge.bottomAnchor, constant: verticalSpacing).isActive = true
+                    }
+                    previousRowFirstBadge = badge
+                } else if let prevBadge = previousBadgeInRow {
+                    // Subsequent badges - anchor to previous badge
+                    badge.leadingAnchor.constraint(equalTo: prevBadge.trailingAnchor, constant: horizontalSpacing).isActive = true
+                    badge.topAnchor.constraint(equalTo: prevBadge.topAnchor).isActive = true
+                }
+                
+                previousBadgeInRow = badge
+            }
+        }
+        
+        // Set container height based on last row
+        if let lastBadge = badges.last {
+            lastBadge.bottomAnchor.constraint(equalTo: container.bottomAnchor).isActive = true
+        }
+    }
+    
     // MARK: - Actions
     
     @objc private func openFolderClicked() {
@@ -607,6 +736,9 @@ class CharacterDetailsView: NSView {
         
         // Palettes
         updatePalettes(count: extendedInfo.paletteCount)
+        
+        // Tags
+        updateTags(for: character)
         
         // Load move list
         loadMoveList(for: character)
@@ -691,6 +823,41 @@ class CharacterDetailsView: NSView {
             ])
             
             paletteStackView.addArrangedSubview(moreContainer)
+        }
+    }
+    
+    private func updateTags(for character: CharacterInfo) {
+        // Clear existing tags
+        tagsContainerView.subviews.forEach { $0.removeFromSuperview() }
+        
+        let tags = character.inferredTags
+        
+        if tags.isEmpty {
+            // Show "No tags detected" message
+            let noTagsLabel = NSTextField(labelWithString: "No tags detected")
+            noTagsLabel.translatesAutoresizingMaskIntoConstraints = false
+            noTagsLabel.font = DesignFonts.caption(size: 11)
+            noTagsLabel.textColor = DesignColors.zinc500
+            noTagsLabel.isBordered = false
+            noTagsLabel.drawsBackground = false
+            tagsContainerView.addSubview(noTagsLabel)
+            
+            NSLayoutConstraint.activate([
+                noTagsLabel.topAnchor.constraint(equalTo: tagsContainerView.topAnchor),
+                noTagsLabel.leadingAnchor.constraint(equalTo: tagsContainerView.leadingAnchor),
+                noTagsLabel.bottomAnchor.constraint(equalTo: tagsContainerView.bottomAnchor),
+            ])
+        } else {
+            // Create badges and manually position them in a wrapping flow layout
+            var badges: [NSView] = []
+            for tag in tags {
+                let badge = createTagBadge(tag)
+                tagsContainerView.addSubview(badge)
+                badges.append(badge)
+            }
+            
+            // Layout badges in a flow/wrap pattern
+            layoutTagsInFlowLayout(badges: badges, in: tagsContainerView)
         }
     }
     
@@ -861,6 +1028,9 @@ class CharacterDetailsView: NSView {
         
         palettesHeader.stringValue = "Palettes"
         paletteStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // Clear tags
+        tagsContainerView.subviews.forEach { $0.removeFromSuperview() }
         
         moveListStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         let placeholderLabel = NSTextField(labelWithString: "Select a character to view details")
