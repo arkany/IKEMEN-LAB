@@ -21,6 +21,7 @@ public struct CharacterRecord: Codable, FetchableRecord, PersistableRecord, Iden
     public var style: String?          // e.g., "POTS", "MVC2", "Anime"
     public var isHD: Bool?
     public var hasAI: Bool?
+    public var tags: String?           // Comma-separated inferred tags
 }
 
 /// Stage metadata stored in SQLite
@@ -116,10 +117,22 @@ public final class MetadataStore {
             t.column("resolution", .text)
         }
         
+        // Add tags column if it doesn't exist (migration)
+        if try db.columns(in: "characters").map({ $0.name }).contains("tags") == false {
+            try db.alter(table: "characters") { t in
+                t.add(column: "tags", .text)
+            }
+        }
+        
         // Full-text search indexes (for future advanced search)
         try db.execute(sql: """
             CREATE INDEX IF NOT EXISTS idx_characters_name_author 
             ON characters(name COLLATE NOCASE, author COLLATE NOCASE)
+        """)
+        
+        try db.execute(sql: """
+            CREATE INDEX IF NOT EXISTS idx_characters_tags 
+            ON characters(tags COLLATE NOCASE)
         """)
         
         try db.execute(sql: """
@@ -139,6 +152,8 @@ public final class MetadataStore {
     
     /// Insert or update character from CharacterInfo
     public func indexCharacter(_ info: CharacterInfo) throws {
+        let tagsString = info.inferredTags.joined(separator: ",")
+        
         let record = CharacterRecord(
             id: info.id,
             name: info.displayName,
@@ -151,7 +166,8 @@ public final class MetadataStore {
             sourceGame: nil,
             style: nil,
             isHD: nil,
-            hasAI: nil
+            hasAI: nil,
+            tags: tagsString.isEmpty ? nil : tagsString
         )
         try upsertCharacter(record)
     }
@@ -170,7 +186,7 @@ public final class MetadataStore {
         } ?? []
     }
     
-    /// Search characters by name or author
+    /// Search characters by name, author, or tags
     public func searchCharacters(query: String) throws -> [CharacterRecord] {
         guard !query.isEmpty else {
             return try allCharacters()
@@ -179,7 +195,11 @@ public final class MetadataStore {
         let pattern = "%\(query)%"
         return try dbQueue?.read { db in
             try CharacterRecord
-                .filter(Column("name").like(pattern) || Column("author").like(pattern))
+                .filter(
+                    Column("name").like(pattern) || 
+                    Column("author").like(pattern) ||
+                    Column("tags").like(pattern)
+                )
                 .order(Column("name").collating(.localizedCaseInsensitiveCompare))
                 .fetchAll(db)
         } ?? []

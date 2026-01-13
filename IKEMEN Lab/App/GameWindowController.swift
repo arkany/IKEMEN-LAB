@@ -1129,14 +1129,16 @@ class GameWindowController: NSWindowController {
                     let filtered = allCharacters.filter { char in
                         matchingPaths.contains(char.directory.path) ||
                         char.displayName.localizedCaseInsensitiveContains(query) ||
-                        char.author.localizedCaseInsensitiveContains(query)
+                        char.author.localizedCaseInsensitiveContains(query) ||
+                        char.inferredTags.contains { $0.localizedCaseInsensitiveContains(query) }
                     }
                     characterBrowserView?.setCharacters(filtered)
                 } catch {
-                    // Fallback to simple filtering
+                    // Fallback to simple filtering (includes tags)
                     let filtered = allCharacters.filter {
                         $0.displayName.localizedCaseInsensitiveContains(query) ||
-                        $0.author.localizedCaseInsensitiveContains(query)
+                        $0.author.localizedCaseInsensitiveContains(query) ||
+                        $0.inferredTags.contains { $0.localizedCaseInsensitiveContains(query) }
                     }
                     characterBrowserView?.setCharacters(filtered)
                 }
