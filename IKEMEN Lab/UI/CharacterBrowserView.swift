@@ -269,11 +269,18 @@ class CharacterBrowserView: NSView {
                         ImageCache.shared.set(realPortrait, for: cacheKey)
                     }
                     
-                    // Find and update the item
-                    if let index = self?.characters.firstIndex(where: { $0.id == character.id }) {
-                        let indexPath = IndexPath(item: index, section: 0)
-                        if let item = self?.collectionView.item(at: indexPath) as? CharacterCollectionViewItem {
-                            item.setPortrait(self?.portraitCache[character.id])
+                    // Find and update the item in the correct section
+                    guard let self else { return }
+                    if let index = self.characters.firstIndex(where: { $0.id == character.id }) {
+                        let indexPath: IndexPath
+                        if self.shouldShowCutoffDivider() && index >= self.activeScreenpackSlotLimit {
+                            indexPath = IndexPath(item: index - self.activeScreenpackSlotLimit, section: 1)
+                        } else {
+                            indexPath = IndexPath(item: index, section: 0)
+                        }
+                        
+                        if let item = self.collectionView.item(at: indexPath) as? CharacterCollectionViewItem {
+                            item.setPortrait(self.portraitCache[character.id])
                         }
                     }
                 }
@@ -589,12 +596,8 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
                 item.setPortrait(cachedPortrait)
             }
             
-            // Dim characters in section 1 (hidden)
-            if shouldShowCutoffDivider() && indexPath.section == 1 {
-                item.view.alphaValue = 0.5
-            } else {
-                item.view.alphaValue = 1.0
-            }
+            // Dim characters in section 1 (hidden) but keep interactions intact
+            item.view.alphaValue = shouldShowCutoffDivider() && indexPath.section == 1 ? 0.5 : 1.0
             
             return item
         } else {
@@ -615,6 +618,9 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
             if let cachedPortrait = portraitCache[character.id] {
                 item.setPortrait(cachedPortrait)
             }
+            
+            // Dim list rows in the hidden section while leaving them fully interactive
+            item.view.alphaValue = shouldShowCutoffDivider() && indexPath.section == 1 ? 0.5 : 1.0
             
             return item
         }
@@ -1688,7 +1694,9 @@ class CutoffDividerView: NSView, NSCollectionViewElement {
     
     private func setupView() {
         wantsLayer = true
-        layer?.backgroundColor = DesignColors.zinc900.cgColor
+        // Outer background stays dark so margins render as solid black behind inset container
+        layer?.backgroundColor = DesignColors.zinc950.cgColor
+        // TODO: Refresh divider visuals to match the final design pass.
         
         // Container view with gradient background
         containerView = NSView()
@@ -1729,10 +1737,10 @@ class CutoffDividerView: NSView, NSCollectionViewElement {
         // Layout constraints
         NSLayoutConstraint.activate([
             // Container fills the entire view
-            containerView.topAnchor.constraint(equalTo: topAnchor),
+            containerView.topAnchor.constraint(equalTo: topAnchor, constant: 8),
             containerView.leadingAnchor.constraint(equalTo: leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            containerView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            containerView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
             
             // Top divider line
             topDividerLine.topAnchor.constraint(equalTo: containerView.topAnchor),
@@ -1765,5 +1773,4 @@ class CutoffDividerView: NSView, NSCollectionViewElement {
         visibleCountLabel.stringValue = ""
         hiddenCountLabel.stringValue = ""
     }
-}
 }
