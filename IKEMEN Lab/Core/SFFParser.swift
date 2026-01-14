@@ -543,6 +543,11 @@ public struct SFFv2Parser: SFFVersionParser {
             return .failure(.fileTooSmall)
         }
         
+        // SFFv2 Header structure:
+        // Offset 0-11: Signature "ElecbyteSpr\0"
+        // Offset 12-15: Version bytes
+        // Offset 16-35: 20 reserved bytes (NOT 12!)
+        // Offset 36+: spriteListOffset, spriteCount, paletteListOffset, paletteCount, ldataOffset, ldataLength, tdataOffset, tdataLength
         let spriteOffset = SFFUtils.readUInt32(data, at: 36)
         let spriteCount = SFFUtils.readUInt32(data, at: 40)
         let paletteOffset = SFFUtils.readUInt32(data, at: 44)
@@ -601,6 +606,11 @@ public struct SFFv2Parser: SFFVersionParser {
             return .failure(.fileTooSmall)
         }
         
+        // SFFv2 Header structure:
+        // Offset 0-11: Signature "ElecbyteSpr\0"
+        // Offset 12-15: Version bytes
+        // Offset 16-35: 20 reserved bytes (NOT 12!)
+        // Offset 36+: spriteListOffset, spriteCount, paletteListOffset, paletteCount, ldataOffset, ldataLength, tdataOffset, tdataLength
         let spriteOffset = SFFUtils.readUInt32(data, at: 36)
         let spriteCount = SFFUtils.readUInt32(data, at: 40)
         let paletteOffset = SFFUtils.readUInt32(data, at: 44)
@@ -680,12 +690,13 @@ public struct SFFv2Parser: SFFVersionParser {
             return nil
         }
         
-        let usesTdata = (flags & 1) != 0
+        // Bug fix: Use flags field (not format) to determine data location
+        // flags & 1 == 0 means ldata, flags & 1 == 1 means tdata
         let actualOffset: Int
-        if usesTdata {
-            actualOffset = tdataOffset + Int(dataOffset)
-        } else {
+        if (flags & 1) == 0 {
             actualOffset = ldataOffset + Int(dataOffset)
+        } else {
+            actualOffset = tdataOffset + Int(dataOffset)
         }
         
         guard actualOffset + Int(dataLength) <= data.count else {
@@ -783,7 +794,7 @@ public struct SFFv2Parser: SFFVersionParser {
         case 2: // RLE8
             pixels = decodeRLE8(data, width: width, height: height)
         case 3: // RLE5
-            return nil
+            pixels = decodeRLE5(data, width: width, height: height)
         case 4: // LZ5
             pixels = decodeLZ5(data, width: width, height: height)
         default:
@@ -827,38 +838,36 @@ public struct SFFv2Parser: SFFVersionParser {
         return pixels
     }
     
+    /// RLE8 decoder matching IKEMEN-GO's Rle8Decode exactly
+    /// Algorithm: (byte & 0xC0) == 0x40 are RLE markers with count = (byte & 0x3F)
+    ///            ALL other bytes are literal pixel values (output directly)
     private static func decodeRLE8(_ data: Data, width: Int, height: Int) -> [UInt8] {
+        guard !data.isEmpty else { return Array(data) }
+        
         var pixels = [UInt8](repeating: 0, count: width * height)
         var srcIdx = 0
         var dstIdx = 0
         
-        while srcIdx < data.count && dstIdx < pixels.count {
-            let ctrl = data[data.startIndex + srcIdx]
-            srcIdx += 1
-            
-            if (ctrl & 0xC0) == 0x40 {
-                let runLen = Int(ctrl & 0x3F)
-                guard srcIdx < data.count else { break }
-                let color = data[data.startIndex + srcIdx]
+        while dstIdx < pixels.count {
+            var runLen = 1
+            var d = data[data.startIndex + srcIdx]
+            if srcIdx < data.count - 1 {
                 srcIdx += 1
-                
-                for _ in 0..<runLen {
-                    if dstIdx < pixels.count {
-                        pixels[dstIdx] = color
-                        dstIdx += 1
-                    }
-                }
-            } else if (ctrl & 0xC0) == 0x00 {
-                let runLen = Int(ctrl & 0x3F)
-                for _ in 0..<runLen {
-                    guard srcIdx < data.count, dstIdx < pixels.count else { break }
-                    pixels[dstIdx] = data[data.startIndex + srcIdx]
+            }
+            
+            // Only 0x40-0x7F are RLE markers
+            if (d & 0xC0) == 0x40 {
+                runLen = Int(d & 0x3F)
+                d = data[data.startIndex + srcIdx]
+                if srcIdx < data.count - 1 {
                     srcIdx += 1
-                    dstIdx += 1
                 }
-            } else {
+            }
+            
+            // Output the pixel value runLen times
+            for _ in 0..<runLen {
                 if dstIdx < pixels.count {
-                    pixels[dstIdx] = ctrl
+                    pixels[dstIdx] = d
                     dstIdx += 1
                 }
             }
@@ -867,39 +876,151 @@ public struct SFFv2Parser: SFFVersionParser {
         return pixels
     }
     
+    /// LZ5 decoder matching IKEMEN-GO's Lz5Decode exactly
     private static func decodeLZ5(_ data: Data, width: Int, height: Int) -> [UInt8] {
-        var pixels = [UInt8](repeating: 0, count: width * height)
-        var srcIdx = 4
-        var dstIdx = 0
+        guard !data.isEmpty else { return Array(data) }
         
-        while srcIdx < data.count && dstIdx < pixels.count {
-            guard srcIdx < data.count else { break }
-            let ctrl = data[data.startIndex + srcIdx]
+        var pixels = [UInt8](repeating: 0, count: width * height)
+        var srcIdx = 0
+        var dstIdx = 0
+        var runLen = 0
+        
+        var ct = data[data.startIndex + srcIdx]
+        var cts: UInt = 0
+        var rb: UInt8 = 0
+        var rbc: UInt = 0
+        
+        if srcIdx < data.count - 1 {
             srcIdx += 1
+        }
+        
+        while dstIdx < pixels.count {
+            var d = Int(data[data.startIndex + srcIdx])
+            if srcIdx < data.count - 1 {
+                srcIdx += 1
+            }
             
-            for bit in 0..<8 {
-                guard srcIdx < data.count, dstIdx < pixels.count else { break }
-                
-                if (ctrl & (1 << bit)) != 0 {
-                    guard srcIdx + 1 < data.count else { break }
-                    let b1 = Int(data[data.startIndex + srcIdx])
-                    let b2 = Int(data[data.startIndex + srcIdx + 1])
-                    srcIdx += 2
-                    
-                    let length = (b1 & 0x3F) + 1
-                    let offset = ((b1 & 0xC0) << 2) | b2
-                    
-                    let copyFrom = dstIdx - offset - 1
-                    for j in 0..<length {
-                        if dstIdx < pixels.count && copyFrom + j >= 0 && copyFrom + j < pixels.count {
-                            pixels[dstIdx] = pixels[copyFrom + j]
-                            dstIdx += 1
-                        }
+            if (ct & UInt8(1 << cts)) != 0 {
+                // Copy from previous output
+                if (d & 0x3F) == 0 {
+                    // Long offset mode
+                    d = (d << 2 | Int(data[data.startIndex + srcIdx])) + 1
+                    if srcIdx < data.count - 1 {
+                        srcIdx += 1
+                    }
+                    runLen = Int(data[data.startIndex + srcIdx]) + 2
+                    if srcIdx < data.count - 1 {
+                        srcIdx += 1
                     }
                 } else {
-                    pixels[dstIdx] = data[data.startIndex + srcIdx]
+                    // Short offset mode with recycled bits
+                    rb |= UInt8((d & 0xC0) >> Int(rbc))
+                    rbc += 2
+                    runLen = d & 0x3F
+                    if rbc < 8 {
+                        d = Int(data[data.startIndex + srcIdx]) + 1
+                        if srcIdx < data.count - 1 {
+                            srcIdx += 1
+                        }
+                    } else {
+                        d = Int(rb) + 1
+                        rb = 0
+                        rbc = 0
+                    }
+                }
+                
+                // Copy runLen+1 bytes from offset d back in output
+                while true {
+                    if dstIdx < pixels.count && dstIdx - d >= 0 {
+                        pixels[dstIdx] = pixels[dstIdx - d]
+                        dstIdx += 1
+                    }
+                    runLen -= 1
+                    if runLen < 0 {
+                        break
+                    }
+                }
+            } else {
+                // Literal run
+                if (d & 0xE0) == 0 {
+                    // Long literal run
+                    runLen = Int(data[data.startIndex + srcIdx]) + 8
+                    if srcIdx < data.count - 1 {
+                        srcIdx += 1
+                    }
+                } else {
+                    // Short literal run
+                    runLen = d >> 5
+                    d = d & 0x1F
+                }
+                
+                // Output literal value runLen times
+                while runLen > 0 {
+                    if dstIdx < pixels.count {
+                        pixels[dstIdx] = UInt8(d)
+                        dstIdx += 1
+                    }
+                    runLen -= 1
+                }
+            }
+            
+            cts += 1
+            if cts >= 8 {
+                ct = data[data.startIndex + srcIdx]
+                cts = 0
+                if srcIdx < data.count - 1 {
                     srcIdx += 1
+                }
+            }
+        }
+        
+        return pixels
+    }
+    
+    /// RLE5 decoder matching IKEMEN-GO's Rle5Decode exactly
+    private static func decodeRLE5(_ data: Data, width: Int, height: Int) -> [UInt8] {
+        guard !data.isEmpty else { return Array(data) }
+        
+        var pixels = [UInt8](repeating: 0, count: width * height)
+        var srcIdx = 0
+        var dstIdx = 0
+        
+        while dstIdx < pixels.count {
+            var rl = Int(data[data.startIndex + srcIdx])
+            if srcIdx < data.count - 1 {
+                srcIdx += 1
+            }
+            
+            var dl = Int(data[data.startIndex + srcIdx] & 0x7F)
+            var c: UInt8 = 0
+            
+            if (data[data.startIndex + srcIdx] >> 7) != 0 {
+                if srcIdx < data.count - 1 {
+                    srcIdx += 1
+                }
+                c = data[data.startIndex + srcIdx]
+            }
+            
+            if srcIdx < data.count - 1 {
+                srcIdx += 1
+            }
+            
+            while true {
+                if dstIdx < pixels.count {
+                    pixels[dstIdx] = c
                     dstIdx += 1
+                }
+                rl -= 1
+                if rl < 0 {
+                    dl -= 1
+                    if dl < 0 {
+                        break
+                    }
+                    c = data[data.startIndex + srcIdx] & 0x1F
+                    rl = Int(data[data.startIndex + srcIdx] >> 5)
+                    if srcIdx < data.count - 1 {
+                        srcIdx += 1
+                    }
                 }
             }
         }
