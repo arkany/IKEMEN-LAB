@@ -160,24 +160,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             // Install the content using ContentManager
             let result = try ContentManager.shared.installContent(from: fileURL, to: workingDir, overwrite: false)
             
-            // Extract character ID from result (folder name)
-            // Result format: "Installed character: Name" or "Installed stage: Name"
+            // Extract character ID from result
             let isCharacter = result.contains("character:")
             
-            if isCharacter, let characterName = extractCharacterName(from: fileURL) {
-                // Store scraped metadata
-                let scrapedMetadata = ScrapedMetadata(
-                    characterId: characterName,
-                    name: metadata.name,
-                    author: metadata.author,
-                    version: metadata.version,
-                    description: metadata.description,
-                    tags: metadata.tags,
-                    sourceUrl: metadata.sourceUrl,
-                    scrapedAt: Date()
-                )
-                
-                try? MetadataStore.shared.storeScrapedMetadata(scrapedMetadata)
+            if isCharacter {
+                // Get the most recently installed character from database
+                // This is more reliable than trying to parse the folder name
+                if let recentCharacters = try? MetadataStore.shared.allCharacters(),
+                   let newestCharacter = recentCharacters.sorted(by: { $0.installedAt > $1.installedAt }).first {
+                    
+                    // Store scraped metadata linked to the actual character ID
+                    let scrapedMetadata = ScrapedMetadata(
+                        characterId: newestCharacter.id,
+                        name: metadata.name,
+                        author: metadata.author,
+                        version: metadata.version,
+                        description: metadata.description,
+                        tags: metadata.tags,
+                        sourceUrl: metadata.sourceUrl,
+                        scrapedAt: Date()
+                    )
+                    
+                    try? MetadataStore.shared.storeScrapedMetadata(scrapedMetadata)
+                }
             }
             
             DispatchQueue.main.async { [weak self] in
@@ -190,14 +195,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
                 self?.showError("Installation failed: \(error.localizedDescription)")
             }
         }
-    }
-    
-    /// Extract character folder name from downloaded file
-    private func extractCharacterName(from fileURL: URL) -> String? {
-        // Try to determine the character name from the archive
-        // This is a simple heuristic - may need refinement
-        let fileName = fileURL.deletingPathExtension().lastPathComponent
-        return ContentManager.shared.sanitizeFolderName(fileName)
     }
     
     /// Show error alert
