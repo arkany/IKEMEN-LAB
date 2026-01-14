@@ -34,7 +34,7 @@ struct AboutView: View, AppKitHostable {
                         .foregroundColor(.textSecondary)
                     Spacer()
                     Text("\(appState.characters.count)")
-                        .font(.stat(size: 12))
+                        .font(.header(size: 12))
                         .foregroundColor(.textPrimary)
                 }
                 
@@ -44,7 +44,7 @@ struct AboutView: View, AppKitHostable {
                         .foregroundColor(.textSecondary)
                     Spacer()
                     Text("\(appState.stages.count)")
-                        .font(.stat(size: 12))
+                        .font(.header(size: 12))
                         .foregroundColor(.textPrimary)
                 }
             }

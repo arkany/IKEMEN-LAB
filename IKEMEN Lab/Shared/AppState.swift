@@ -53,17 +53,26 @@ class AppState: ObservableObject {
         // Sync characters
         IkemenBridge.shared.$characters
             .receive(on: DispatchQueue.main)
-            .assign(to: &$characters)
+            .sink { [weak self] characters in
+                self?.characters = characters
+            }
+            .store(in: &cancellables)
         
         // Sync stages
         IkemenBridge.shared.$stages
             .receive(on: DispatchQueue.main)
-            .assign(to: &$stages)
+            .sink { [weak self] stages in
+                self?.stages = stages
+            }
+            .store(in: &cancellables)
         
         // Sync screenpacks
         IkemenBridge.shared.$screenpacks
             .receive(on: DispatchQueue.main)
-            .assign(to: &$screenpacks)
+            .sink { [weak self] screenpacks in
+                self?.screenpacks = screenpacks
+            }
+            .store(in: &cancellables)
         
         // Sync engine state
         IkemenBridge.shared.$engineState
@@ -77,7 +86,10 @@ class AppState: ObservableObject {
                 case .error(let error): return "error: \(error.localizedDescription)"
                 }
             }
-            .assign(to: &$engineState)
+            .sink { [weak self] state in
+                self?.engineState = state
+            }
+            .store(in: &cancellables)
         
         // Load IKEMEN path from settings
         if let path = AppSettings.shared.ikemenPath {
