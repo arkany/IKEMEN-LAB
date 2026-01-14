@@ -118,7 +118,8 @@ public final class MetadataStore {
         }
         
         // Add tags column if it doesn't exist (migration)
-        if !try db.columns(in: "characters").map({ $0.name }).contains("tags") {
+        let characterColumns = try db.columns(in: "characters").map { $0.name }
+        if !characterColumns.contains("tags") {
             try db.alter(table: "characters") { t in
                 t.add(column: "tags", .text)
             }
