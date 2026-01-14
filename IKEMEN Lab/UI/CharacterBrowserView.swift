@@ -1,6 +1,15 @@
 import Cocoa
 import Combine
 
+// MARK: - Registration Filter
+
+/// Filter for character registration status
+enum RegistrationFilter {
+    case all
+    case registeredOnly
+    case unregisteredOnly
+}
+
 // MARK: - Pasteboard Type for Character Drag
 
 extension NSPasteboard.PasteboardType {
@@ -66,7 +75,8 @@ class CharacterBrowserView: NSView {
     private var scrollView: NSScrollView!
     private var collectionView: CharacterCollectionView!
     private var flowLayout: NSCollectionViewFlowLayout!
-    private var characters: [CharacterInfo] = []
+    private var allCharacters: [CharacterInfo] = []  // All characters from data source
+    private var characters: [CharacterInfo] = []     // Filtered characters for display
     private var portraitCache: [String: NSImage] = [:]
     private var cancellables = Set<AnyCancellable>()
     private var activeScreenpackSlotLimit: Int = 0
@@ -75,6 +85,13 @@ class CharacterBrowserView: NSView {
     var viewMode: BrowserViewMode = .grid {
         didSet {
             updateLayoutForViewMode()
+        }
+    }
+    
+    // Registration status filter
+    var registrationFilter: RegistrationFilter = .all {
+        didSet {
+            applyFilters()
         }
     }
     
@@ -236,11 +253,24 @@ class CharacterBrowserView: NSView {
     
     private func updateCharacters(_ newCharacters: [CharacterInfo]) {
         // Keep characters in the order received (which comes from select.def via EmulatorBridge)
-        self.characters = newCharacters
-        collectionView.reloadData()
+        self.allCharacters = newCharacters
+        applyFilters()
         
         // Load portraits in background
         loadPortraitsAsync()
+    }
+    
+    /// Apply registration filter to characters
+    private func applyFilters() {
+        switch registrationFilter {
+        case .all:
+            characters = allCharacters
+        case .registeredOnly:
+            characters = allCharacters.filter { $0.status == .active || $0.status == .disabled }
+        case .unregisteredOnly:
+            characters = allCharacters.filter { $0.status == .unregistered }
+        }
+        collectionView.reloadData()
     }
     
     // MARK: - Portrait Loading
@@ -344,6 +374,21 @@ class CharacterBrowserView: NSView {
         
         let menu = NSMenu()
         
+        // If unregistered, show "Add to select.def" option first
+        if character.status == .unregistered {
+            let addToSelectDefItem = NSMenuItem(
+                title: "Add to select.def",
+                action: #selector(addToSelectDefAction(_:)),
+                keyEquivalent: ""
+            )
+            addToSelectDefItem.image = NSImage(systemSymbolName: "plus.circle", accessibilityDescription: nil)
+            addToSelectDefItem.representedObject = character
+            addToSelectDefItem.target = self
+            menu.addItem(addToSelectDefItem)
+            
+            menu.addItem(NSMenuItem.separator())
+        }
+        
         // Add to Collection submenu
         let addToCollectionItem = NSMenuItem(title: "Add to Collection", action: nil, keyEquivalent: "")
         addToCollectionItem.submenu = buildCollectionsSubmenu(for: character)
@@ -351,21 +396,23 @@ class CharacterBrowserView: NSView {
         
         menu.addItem(NSMenuItem.separator())
         
-        // Enable/Disable toggle
-        let disableItem = NSMenuItem()
-        if character.isDisabled {
-            disableItem.title = "Enable Character"
-            disableItem.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: nil)
-        } else {
-            disableItem.title = "Disable Character"
-            disableItem.image = NSImage(systemSymbolName: "xmark.circle", accessibilityDescription: nil)
+        // Enable/Disable toggle (only for registered characters)
+        if character.status != .unregistered {
+            let disableItem = NSMenuItem()
+            if character.isDisabled {
+                disableItem.title = "Enable Character"
+                disableItem.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: nil)
+            } else {
+                disableItem.title = "Disable Character"
+                disableItem.image = NSImage(systemSymbolName: "xmark.circle", accessibilityDescription: nil)
+            }
+            disableItem.target = self
+            disableItem.action = #selector(toggleDisableCharacter(_:))
+            disableItem.representedObject = character
+            menu.addItem(disableItem)
+            
+            menu.addItem(NSMenuItem.separator())
         }
-        disableItem.target = self
-        disableItem.action = #selector(toggleDisableCharacter(_:))
-        disableItem.representedObject = character
-        menu.addItem(disableItem)
-        
-        menu.addItem(NSMenuItem.separator())
         
         // Check if folder name is mismatched with character name
         if let suggestedName = ContentManager.shared.detectMismatchedCharacterFolder(character.directory) {
@@ -487,6 +534,33 @@ class CharacterBrowserView: NSView {
     @objc private func toggleDisableCharacter(_ sender: NSMenuItem) {
         guard let character = sender.representedObject as? CharacterInfo else { return }
         onCharacterDisableToggle?(character)
+    }
+    
+    @objc private func addToSelectDefAction(_ sender: NSMenuItem) {
+        guard let character = sender.representedObject as? CharacterInfo,
+              let workingDir = IkemenBridge.shared.workingDirectory else { return }
+        
+        do {
+            // Find the correct select.def entry for this character
+            let charEntry = ContentManager.shared.findCharacterDefEntry(charName: character.directory.lastPathComponent, in: character.directory)
+            
+            // Add to select.def
+            try ContentManager.shared.addCharacterToSelectDef(charEntry, in: workingDir)
+            
+            // Reload characters to update status
+            IkemenBridge.shared.loadContent()
+            
+            // Show success toast
+            ToastManager.shared.showSuccess(
+                title: "Added to select.def",
+                subtitle: "\(character.displayName) will now appear in-game"
+            )
+        } catch {
+            ToastManager.shared.showError(
+                title: "Failed to add character",
+                subtitle: error.localizedDescription
+            )
+        }
     }
     
     @objc private func renameCharacterFolder(_ sender: NSMenuItem) {
@@ -876,6 +950,9 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     private var statusDot: NSView!
     private var placeholderLabel: NSTextField!
     private var tagsStackView: NSStackView!
+    private var unregisteredOverlay: NSView!
+    private var unregisteredBadge: NSView!
+    private var unregisteredLabel: NSTextField!
     
     private var trackingArea: NSTrackingArea?
     private var isHovered = false
@@ -963,6 +1040,35 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         tagsStackView.distribution = .fill
         containerView.addSubview(tagsStackView)
         
+        // Unregistered overlay - semi-transparent overlay for unregistered characters
+        unregisteredOverlay = NSView()
+        unregisteredOverlay.translatesAutoresizingMaskIntoConstraints = false
+        unregisteredOverlay.wantsLayer = true
+        unregisteredOverlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.5).cgColor
+        unregisteredOverlay.isHidden = true
+        containerView.addSubview(unregisteredOverlay)
+        
+        // Unregistered badge - top-right corner
+        unregisteredBadge = NSView()
+        unregisteredBadge.translatesAutoresizingMaskIntoConstraints = false
+        unregisteredBadge.wantsLayer = true
+        unregisteredBadge.layer?.cornerRadius = 4
+        unregisteredBadge.layer?.backgroundColor = DesignColors.zinc700.cgColor
+        unregisteredBadge.layer?.borderWidth = 1
+        unregisteredBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        unregisteredBadge.isHidden = true
+        containerView.addSubview(unregisteredBadge)
+        
+        unregisteredLabel = NSTextField(labelWithString: "UNREGISTERED")
+        unregisteredLabel.translatesAutoresizingMaskIntoConstraints = false
+        unregisteredLabel.font = DesignFonts.caption(size: 8)
+        unregisteredLabel.textColor = DesignColors.textTertiary
+        unregisteredLabel.isBordered = false
+        unregisteredLabel.drawsBackground = false
+        unregisteredLabel.isEditable = false
+        unregisteredLabel.isSelectable = false
+        unregisteredBadge.addSubview(unregisteredLabel)
+        
         // Layout
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -1001,6 +1107,21 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
             authorLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
             authorLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
             authorLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12),
+            
+            // Unregistered overlay fills container
+            unregisteredOverlay.topAnchor.constraint(equalTo: containerView.topAnchor),
+            unregisteredOverlay.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            unregisteredOverlay.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            unregisteredOverlay.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            
+            // Unregistered badge in top-right
+            unregisteredBadge.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 8),
+            unregisteredBadge.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
+            unregisteredBadge.heightAnchor.constraint(equalToConstant: 18),
+            
+            unregisteredLabel.centerYAnchor.constraint(equalTo: unregisteredBadge.centerYAnchor),
+            unregisteredLabel.leadingAnchor.constraint(equalTo: unregisteredBadge.leadingAnchor, constant: 6),
+            unregisteredLabel.trailingAnchor.constraint(equalTo: unregisteredBadge.trailingAnchor, constant: -6),
         ])
     }
     
@@ -1099,6 +1220,18 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         // Show status dot if this is the first character (placeholder logic - could be enhanced)
         statusDot.isHidden = true
         
+        // Show unregistered overlay and badge for unregistered characters
+        let isUnregistered = (character.status == .unregistered)
+        unregisteredOverlay.isHidden = !isUnregistered
+        unregisteredBadge.isHidden = !isUnregistered
+        
+        // Add tooltip for unregistered characters
+        if isUnregistered {
+            view.toolTip = "Not in select.def - won't appear in game"
+        } else {
+            view.toolTip = nil
+        }
+        
         // Update tags (show up to 3)
         updateTags(character.inferredTags)
     }
@@ -1186,6 +1319,11 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         // Clear tags
         tagsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         tagsStackView.isHidden = true
+        
+        // Reset unregistered overlay and badge
+        unregisteredOverlay.isHidden = true
+        unregisteredBadge.isHidden = true
+        view.toolTip = nil
     }
 }
 
@@ -1643,19 +1781,36 @@ class CharacterListItem: NSCollectionViewItem {
         statusDot.isHidden = true
         
         // Toggle state - ON means enabled, OFF means disabled
-        statusToggle.state = character.isDisabled ? .off : .on
+        // Hide toggle for unregistered characters
+        if character.status == .unregistered {
+            statusToggle.isHidden = true
+        } else {
+            statusToggle.isHidden = false
+            statusToggle.state = character.isDisabled ? .off : .on
+        }
         
-        // Visual feedback for disabled state
-        if character.isDisabled {
+        // Visual feedback for unregistered/disabled state
+        if character.status == .unregistered {
+            // Unregistered: dimmed text with secondary color
+            nameLabel.textColor = DesignColors.textSecondary
+            pathLabel.textColor = DesignColors.zinc700
+            authorLabel.textColor = DesignColors.zinc600
+            containerView.layer?.opacity = 0.6
+            view.toolTip = "Not in select.def - won't appear in game"
+        } else if character.isDisabled {
+            // Disabled: dimmed text
             nameLabel.textColor = DesignColors.zinc500
             pathLabel.textColor = DesignColors.zinc700
             authorLabel.textColor = DesignColors.zinc600
             containerView.layer?.opacity = 0.7
+            view.toolTip = nil
         } else {
+            // Active: normal text
             nameLabel.textColor = DesignColors.zinc300
             pathLabel.textColor = DesignColors.zinc600
             authorLabel.textColor = DesignColors.zinc500
             containerView.layer?.opacity = 1.0
+            view.toolTip = nil
         }
     }
     
