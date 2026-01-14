@@ -1,0 +1,74 @@
+{
+  "manifest_version": 3,
+  "name": "IKEMEN Lab Installer",
+  "version": "1.0.0",
+  "description": "One-click installation of MUGEN characters and stages to IKEMEN Lab",
+  "icons": {
+    "48": "images/icon-48.png",
+    "96": "images/icon-96.png",
+    "128": "images/icon-128.png"
+  },
+  "permissions": [
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://mugenarchive.com/*",
+    "https://*.mugenarchive.com/*",
+    "https://mugenfreeforall.com/*",
+    "https://*.mugenfreeforall.com/*",
+    "https://mugenguild.com/*",
+    "https://*.mugenguild.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mugenarchive.com/forums/*",
+        "https://*.mugenarchive.com/forums/*"
+      ],
+      "js": [
+        "content-scripts/shared.js",
+        "content-scripts/mugenarchive.js"
+      ],
+      "css": [
+        "content-scripts/button-styles.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mugenfreeforall.com/*",
+        "https://*.mugenfreeforall.com/*"
+      ],
+      "js": [
+        "content-scripts/shared.js",
+        "content-scripts/mugenfreeforall.js"
+      ],
+      "css": [
+        "content-scripts/button-styles.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mugenguild.com/*",
+        "https://*.mugenguild.com/*"
+      ],
+      "js": [
+        "content-scripts/shared.js",
+        "content-scripts/mugenguild.js"
+      ],
+      "css": [
+        "content-scripts/button-styles.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "images/icon-48.png",
+      "96": "images/icon-96.png"
+    },
+    "default_title": "IKEMEN Lab Installer"
+  }
+}
