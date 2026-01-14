@@ -242,3 +242,7 @@ class CollectionStore: ObservableObject {
         }
     }
 }
+
+// MARK: - Protocol Conformance
+
+extension CollectionStore: CollectionStoreProtocol {}
