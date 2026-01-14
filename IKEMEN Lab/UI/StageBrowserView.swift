@@ -1,11 +1,6 @@
 import Cocoa
 import Combine
 
-// MARK: - Registration Filter
-
-/// Filter for stage registration status (shared with characters)
-// (Already defined in CharacterBrowserView, but redefined here for standalone usage)
-
 // MARK: - Custom Collection View for Context Menu Support
 
 /// NSCollectionView subclass that properly handles right-click/control-click context menus
