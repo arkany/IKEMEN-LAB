@@ -1143,12 +1143,12 @@ class CharacterDetailsView: NSView {
         heroDateLabel.stringValue = ""
         heroImageView.image = nil
         
-        if let authorValue = authorStatView.viewWithTag(100) as? NSTextField {
-            authorValue.stringValue = "—"
-        }
-        if let versionValue = versionStatView.viewWithTag(100) as? NSTextField {
-            versionValue.stringValue = "—"
-        }
+        authorValueLabel.stringValue = "—"
+        versionValueLabel.stringValue = "—"
+        
+        // Hide source info section
+        sourceInfoHeader.isHidden = true
+        sourceInfoContainer.isHidden = true
         
         palettesHeader.stringValue = "Palettes"
         paletteStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
