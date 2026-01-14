@@ -875,6 +875,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     private var authorLabel: NSTextField!
     private var statusDot: NSView!
     private var placeholderLabel: NSTextField!
+    private var tagsStackView: NSStackView!
     
     private var trackingArea: NSTrackingArea?
     private var isHovered = false
@@ -953,6 +954,15 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         authorLabel.maximumNumberOfLines = 1
         containerView.addSubview(authorLabel)
         
+        // Tags stack view - horizontal, above the name label
+        tagsStackView = NSStackView()
+        tagsStackView.translatesAutoresizingMaskIntoConstraints = false
+        tagsStackView.orientation = .horizontal
+        tagsStackView.spacing = 4
+        tagsStackView.alignment = .leading
+        tagsStackView.distribution = .fill
+        containerView.addSubview(tagsStackView)
+        
         // Layout
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -978,6 +988,11 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
             statusDot.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
             statusDot.widthAnchor.constraint(equalToConstant: 8),
             statusDot.heightAnchor.constraint(equalToConstant: 8),
+            
+            // Tags above name
+            tagsStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
+            tagsStackView.trailingAnchor.constraint(lessThanOrEqualTo: containerView.trailingAnchor, constant: -8),
+            tagsStackView.bottomAnchor.constraint(equalTo: nameLabel.topAnchor, constant: -6),
             
             nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
             nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
@@ -1083,6 +1098,53 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         
         // Show status dot if this is the first character (placeholder logic - could be enhanced)
         statusDot.isHidden = true
+        
+        // Update tags (show up to 3)
+        updateTags(character.inferredTags)
+    }
+    
+    private func updateTags(_ tags: [String]) {
+        // Clear existing tags
+        tagsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // Add up to 3 tags
+        let displayTags = Array(tags.prefix(3))
+        for tag in displayTags {
+            let badge = createSmallTagBadge(tag)
+            tagsStackView.addArrangedSubview(badge)
+        }
+        
+        // Hide if no tags
+        tagsStackView.isHidden = displayTags.isEmpty
+    }
+    
+    private func createSmallTagBadge(_ text: String) -> NSView {
+        let badge = NSView()
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        badge.wantsLayer = true
+        badge.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.6).cgColor
+        badge.layer?.cornerRadius = 4
+        badge.layer?.borderWidth = 1
+        badge.layer?.borderColor = NSColor.white.withAlphaComponent(0.15).cgColor
+        
+        let label = NSTextField(labelWithString: text)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = DesignFonts.caption(size: 9)
+        label.textColor = NSColor.white.withAlphaComponent(0.9)
+        label.isBordered = false
+        label.drawsBackground = false
+        label.isEditable = false
+        label.isSelectable = false
+        badge.addSubview(label)
+        
+        NSLayoutConstraint.activate([
+            badge.heightAnchor.constraint(equalToConstant: 16),
+            label.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
+            label.leadingAnchor.constraint(equalTo: badge.leadingAnchor, constant: 5),
+            label.trailingAnchor.constraint(equalTo: badge.trailingAnchor, constant: -5),
+        ])
+        
+        return badge
     }
     
     func setPortrait(_ image: NSImage?) {
@@ -1120,6 +1182,10 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         isSelected = false
         isHovered = false
         updateAppearance(animated: false)
+        
+        // Clear tags
+        tagsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        tagsStackView.isHidden = true
     }
 }
 

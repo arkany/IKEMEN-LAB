@@ -243,6 +243,9 @@ IKEMEN Lab must handle two distinct user scenarios:
 | ├─ Phase 5: Smart Collections | 📋 Todo | Tag-based auto-population |
 | └─ Phase 6: Export/Import | 📋 Todo | `.ikemencollection` format |
 | Auto-tagging (basic rules) | ✅ Done | Infer source game, style from filenames/metadata (TagDetector.swift) |
+| **Tagging UI - Details View** | ✅ Done | Tags displayed as pill badges in CharacterDetailsView with flow layout |
+| **Tagging UI - Search** | ✅ Done | Search now matches against inferred tags (e.g., "Marvel", "KOF") |
+| **Tagging UI - Grid Cards** | 📋 Todo | Show up to 3 tags on character grid cards |
 | Detect duplicates + outdated versions | 🔄 In Progress | DuplicateDetector core done; needs pre-install warning + badge display |
 | Detect screenpack character limit | ✅ Done | Parse rows × columns from system.def; orange warning badge when roster exceeds slots |
 | **Character cutoff indicator** | 📋 Todo | Show visual divider in Character Browser after slot limit; "X characters won't appear in-game" |
