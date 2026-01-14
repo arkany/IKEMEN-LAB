@@ -118,3 +118,7 @@ public final class AppSettings {
 public extension Notification.Name {
     static let settingsChanged = Notification.Name("AppSettingsChanged")
 }
+
+// MARK: - Protocol Conformance
+
+extension AppSettings: AppSettingsProtocol {}

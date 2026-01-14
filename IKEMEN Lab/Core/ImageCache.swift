@@ -145,3 +145,7 @@ public final class ImageCache {
         return "ImageCache: \(hitCount) hits, \(missCount) misses (\(String(format: "%.1f", hitRate * 100))% hit rate)"
     }
 }
+
+// MARK: - Protocol Conformance
+
+extension ImageCache: ImageCacheProtocol {}

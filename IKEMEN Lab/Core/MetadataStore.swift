@@ -395,3 +395,7 @@ public final class MetadataStore {
         dbQueue = nil
     }
 }
+
+// MARK: - Protocol Conformance
+
+extension MetadataStore: MetadataStoreProtocol {}
