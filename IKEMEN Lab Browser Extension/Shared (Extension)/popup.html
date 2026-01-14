@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IKEMEN Lab Installer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 320px;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #667eea;
+        }
+        
+        p {
+            margin-bottom: 16px;
+            color: #666;
+        }
+        
+        .status {
+            padding: 12px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 16px;
+        }
+        
+        .status-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+        
+        .supported-sites {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .supported-sites li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .supported-sites li:last-child {
+            border-bottom: none;
+        }
+        
+        .checkmark {
+            color: #10b981;
+            margin-right: 8px;
+        }
+        
+        .footer {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 IKEMEN Lab Installer</h1>
+        
+        <div class="status">
+            <div class="status-title">Extension Active</div>
+            <div>Visit supported MUGEN sites to see install buttons</div>
+        </div>
+        
+        <p><strong>How it works:</strong></p>
+        <p>When you visit a character or stage download page on supported sites, you'll see an "Install to IKEMEN Lab" button. Click it to automatically download and install the content!</p>
+        
+        <p><strong>Supported Sites:</strong></p>
+        <ul class="supported-sites">
+            <li><span class="checkmark">✓</span> MUGEN Archive</li>
+            <li><span class="checkmark">⏳</span> MUGEN Free For All (Coming Soon)</li>
+            <li><span class="checkmark">⏳</span> MUGEN Fighters Guild (Coming Soon)</li>
+        </ul>
+        
+        <div class="footer">
+            <a href="https://github.com/arkany/IKEMEN-LAB" target="_blank">IKEMEN Lab</a> · v1.0.0
+        </div>
+    </div>
+</body>
+</html>
