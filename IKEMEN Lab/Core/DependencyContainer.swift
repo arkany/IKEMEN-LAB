@@ -15,8 +15,7 @@ final class DependencyContainer {
     // MARK: - Initialization
     
     private init() {
-        // Register default implementations
-        registerDefaults()
+        // Default initialization - services are created lazily on first access
     }
     
     /// Create a container with custom dependencies (for testing)
@@ -32,10 +31,6 @@ final class DependencyContainer {
         self.metadataStore = metadataStore
         self.collectionStore = collectionStore
         self.appSettings = appSettings
-    }
-    
-    private func registerDefaults() {
-        // Lazy initialization - actual singletons created on first access
     }
     
     // MARK: - Service Accessors
