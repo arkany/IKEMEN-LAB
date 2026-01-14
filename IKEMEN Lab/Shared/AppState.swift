@@ -92,7 +92,7 @@ class AppState: ObservableObject {
             .store(in: &cancellables)
         
         // Load IKEMEN path from settings
-        if let path = AppSettings.shared.ikemenPath {
+        if let path = AppSettings.shared.ikemenGOPath {
             self.ikemenPath = path
         }
     }
