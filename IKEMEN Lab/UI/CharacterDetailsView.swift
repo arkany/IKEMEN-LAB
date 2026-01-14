@@ -32,7 +32,9 @@ class CharacterDetailsView: NSView {
     // Quick stats
     private var statsGridView: NSStackView!
     private var authorStatView: NSView!
+    private var authorValueLabel: NSTextField!  // Direct reference instead of tag lookup
     private var versionStatView: NSView!
+    private var versionValueLabel: NSTextField!  // Direct reference instead of tag lookup
     
     // Source info section (from browser extension)
     private var sourceInfoHeader: NSTextField!
@@ -238,8 +240,14 @@ class CharacterDetailsView: NSView {
         statsGridView.spacing = 16
         contentView.addSubview(statsGridView)
         
-        authorStatView = createStatCard(title: "Author", value: "—")
-        versionStatView = createStatCard(title: "Version", value: "—")
+        let authorResult = createStatCard(title: "Author", value: "—")
+        authorStatView = authorResult.card
+        authorValueLabel = authorResult.valueLabel
+        
+        let versionResult = createStatCard(title: "Version", value: "—")
+        versionStatView = versionResult.card
+        versionValueLabel = versionResult.valueLabel
+        
         statsGridView.addArrangedSubview(authorStatView)
         statsGridView.addArrangedSubview(versionStatView)
         
@@ -618,7 +626,7 @@ class CharacterDetailsView: NSView {
         return button
     }
     
-    private func createStatCard(title: String, value: String) -> NSView {
+    private func createStatCard(title: String, value: String) -> (card: NSView, valueLabel: NSTextField) {
         let card = NSView()
         card.translatesAutoresizingMaskIntoConstraints = false
         card.wantsLayer = true
@@ -637,7 +645,6 @@ class CharacterDetailsView: NSView {
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
         valueLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
         valueLabel.textColor = DesignColors.zinc200
-        valueLabel.tag = 100 // For updating later
         card.addSubview(valueLabel)
         
         NSLayoutConstraint.activate([
@@ -651,7 +658,7 @@ class CharacterDetailsView: NSView {
             valueLabel.trailingAnchor.constraint(lessThanOrEqualTo: card.trailingAnchor, constant: -12),
         ])
         
-        return card
+        return (card, valueLabel)
     }
     
     private func createTagBadge(_ text: String) -> NSView {
@@ -787,13 +794,10 @@ class CharacterDetailsView: NSView {
         let extendedInfo = CharacterExtendedInfo(from: character)
         
         // Quick stats
-        if let authorValue = authorStatView.viewWithTag(100) as? NSTextField {
-            authorValue.stringValue = character.author
-        }
-        if let versionValue = versionStatView.viewWithTag(100) as? NSTextField {
-            let versionDateFormatted = VersionDateFormatter.formatToStandard(extendedInfo.versionDate)
-            versionValue.stringValue = versionDateFormatted.isEmpty ? "1.0" : versionDateFormatted
-        }
+        authorValueLabel.stringValue = character.author
+        
+        let versionDateFormatted = VersionDateFormatter.formatToStandard(extendedInfo.versionDate)
+        versionValueLabel.stringValue = versionDateFormatted.isEmpty ? "1.0" : versionDateFormatted
         
         // Update attribute bars with real CNS data
         lifeBar.update(value: extendedInfo.life, maxValue: CNSParser.CharacterStats.maxLife)
@@ -971,15 +975,13 @@ class CharacterDetailsView: NSView {
         }
         
         // Override version if scraped version is available
-        if let version = metadata.version, !version.isEmpty,
-           let versionValue = versionStatView.viewWithTag(100) as? NSTextField {
-            versionValue.stringValue = version
+        if let version = metadata.version, !version.isEmpty {
+            versionValueLabel.stringValue = version
         }
         
         // Override author if scraped author is available
-        if let author = metadata.author, !author.isEmpty,
-           let authorValue = authorStatView.viewWithTag(100) as? NSTextField {
-            authorValue.stringValue = author
+        if let author = metadata.author, !author.isEmpty {
+            authorValueLabel.stringValue = author
         }
     }
     
