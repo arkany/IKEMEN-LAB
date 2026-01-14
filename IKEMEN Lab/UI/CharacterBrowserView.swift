@@ -1,15 +1,6 @@
 import Cocoa
 import Combine
 
-// MARK: - Registration Filter
-
-/// Filter for character registration status
-enum RegistrationFilter {
-    case all
-    case registeredOnly
-    case unregisteredOnly
-}
-
 // MARK: - Pasteboard Type for Character Drag
 
 extension NSPasteboard.PasteboardType {
