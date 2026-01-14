@@ -1403,7 +1403,7 @@ class GameWindowController: NSWindowController {
         mainAreaView.addSubview(settingsView)
         
         NSLayoutConstraint.activate([
-            settingsView.topAnchor.constraint(equalTo: mainAreaView.topAnchor, constant: 24),
+            settingsView.topAnchor.constraint(equalTo: contentHeaderView.bottomAnchor, constant: 16),
             settingsView.leadingAnchor.constraint(equalTo: mainAreaView.leadingAnchor, constant: 24),
             settingsView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             settingsView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
@@ -1423,7 +1423,8 @@ class GameWindowController: NSWindowController {
         scrollView.drawsBackground = false
         container.addSubview(scrollView)
         
-        let contentView = NSView()
+        // Use a flipped view so content starts at the top
+        let contentView = FlippedView()
         contentView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.documentView = contentView
         
@@ -1489,7 +1490,8 @@ class GameWindowController: NSWindowController {
             stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            stackView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            
+            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
         ])
         
         return container
@@ -1634,7 +1636,7 @@ class GameWindowController: NSWindowController {
         let labelField = NSTextField(labelWithString: label)
         labelField.font = DesignFonts.body(size: 16)
         labelField.textColor = DesignColors.textPrimary
-        labelField.widthAnchor.constraint(equalToConstant: 200).isActive = true
+        labelField.setContentCompressionResistancePriority(.required, for: .horizontal)
         row.addArrangedSubview(labelField)
         
         let toggle = NSSwitch()
@@ -2791,4 +2793,9 @@ private class AppToggleHandler: NSObject {
     @objc func toggleChanged(_ sender: NSSwitch) {
         setValue(sender.state == .on)
     }
+}
+
+// MARK: - Flipped View for top-aligned scroll content
+private class FlippedView: NSView {
+    override var isFlipped: Bool { true }
 }
