@@ -34,6 +34,12 @@ class CharacterDetailsView: NSView {
     private var authorStatView: NSView!
     private var versionStatView: NSView!
     
+    // Source info section (from browser extension)
+    private var sourceInfoHeader: NSTextField!
+    private var sourceInfoContainer: NSView!
+    private var sourceUrlLabel: NSTextField!
+    private var scrapedDescriptionLabel: NSTextField!
+    
     // Tags section
     private var tagsHeader: NSTextField!
     private var tagsContainerView: NSView!
@@ -63,6 +69,9 @@ class CharacterDetailsView: NSView {
     // Scroll view
     private var scrollView: NSScrollView!
     private var contentView: NSView!
+    
+    // Dynamic constraints
+    private var tagsTopConstraint: NSLayoutConstraint?
     
     private var currentCharacter: CharacterInfo?
     
@@ -234,6 +243,44 @@ class CharacterDetailsView: NSView {
         statsGridView.addArrangedSubview(authorStatView)
         statsGridView.addArrangedSubview(versionStatView)
         
+        // === Source Info Section (from browser extension) ===
+        sourceInfoHeader = NSTextField(labelWithString: "Source")
+        sourceInfoHeader.translatesAutoresizingMaskIntoConstraints = false
+        sourceInfoHeader.font = DesignFonts.body(size: 12)
+        sourceInfoHeader.textColor = DesignColors.zinc400
+        sourceInfoHeader.isHidden = true  // Hidden by default, shown when scraped data exists
+        contentView.addSubview(sourceInfoHeader)
+        
+        sourceInfoContainer = NSView()
+        sourceInfoContainer.translatesAutoresizingMaskIntoConstraints = false
+        sourceInfoContainer.wantsLayer = true
+        sourceInfoContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        sourceInfoContainer.layer?.cornerRadius = 8
+        sourceInfoContainer.layer?.borderWidth = 1
+        sourceInfoContainer.layer?.borderColor = DesignColors.zinc800.cgColor
+        sourceInfoContainer.isHidden = true  // Hidden by default
+        contentView.addSubview(sourceInfoContainer)
+        
+        sourceUrlLabel = NSTextField(labelWithString: "")
+        sourceUrlLabel.translatesAutoresizingMaskIntoConstraints = false
+        sourceUrlLabel.font = DesignFonts.caption(size: 11)
+        sourceUrlLabel.textColor = NSColor.systemBlue
+        sourceUrlLabel.isBordered = false
+        sourceUrlLabel.drawsBackground = false
+        sourceUrlLabel.lineBreakMode = .byTruncatingMiddle
+        sourceUrlLabel.maximumNumberOfLines = 1
+        sourceInfoContainer.addSubview(sourceUrlLabel)
+        
+        scrapedDescriptionLabel = NSTextField(labelWithString: "")
+        scrapedDescriptionLabel.translatesAutoresizingMaskIntoConstraints = false
+        scrapedDescriptionLabel.font = DesignFonts.caption(size: 11)
+        scrapedDescriptionLabel.textColor = DesignColors.zinc400
+        scrapedDescriptionLabel.isBordered = false
+        scrapedDescriptionLabel.drawsBackground = false
+        scrapedDescriptionLabel.lineBreakMode = .byWordWrapping
+        scrapedDescriptionLabel.maximumNumberOfLines = 3
+        sourceInfoContainer.addSubview(scrapedDescriptionLabel)
+        
         // === Tags Section ===
         tagsHeader = NSTextField(labelWithString: "Tags")
         tagsHeader.translatesAutoresizingMaskIntoConstraints = false
@@ -391,8 +438,24 @@ class CharacterDetailsView: NSView {
             statsGridView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
             statsGridView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
             
-            // Tags section
-            tagsHeader.topAnchor.constraint(equalTo: statsGridView.bottomAnchor, constant: spacing),
+            // Source info section
+            sourceInfoHeader.topAnchor.constraint(equalTo: statsGridView.bottomAnchor, constant: spacing),
+            sourceInfoHeader.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            
+            sourceInfoContainer.topAnchor.constraint(equalTo: sourceInfoHeader.bottomAnchor, constant: 12),
+            sourceInfoContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            sourceInfoContainer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            
+            sourceUrlLabel.topAnchor.constraint(equalTo: sourceInfoContainer.topAnchor, constant: 12),
+            sourceUrlLabel.leadingAnchor.constraint(equalTo: sourceInfoContainer.leadingAnchor, constant: 12),
+            sourceUrlLabel.trailingAnchor.constraint(equalTo: sourceInfoContainer.trailingAnchor, constant: -12),
+            
+            scrapedDescriptionLabel.topAnchor.constraint(equalTo: sourceUrlLabel.bottomAnchor, constant: 8),
+            scrapedDescriptionLabel.leadingAnchor.constraint(equalTo: sourceInfoContainer.leadingAnchor, constant: 12),
+            scrapedDescriptionLabel.trailingAnchor.constraint(equalTo: sourceInfoContainer.trailingAnchor, constant: -12),
+            scrapedDescriptionLabel.bottomAnchor.constraint(equalTo: sourceInfoContainer.bottomAnchor, constant: -12),
+            
+            // Tags section - leadingAnchor only (topAnchor set dynamically)
             tagsHeader.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
             
             tagsContainerView.topAnchor.constraint(equalTo: tagsHeader.bottomAnchor, constant: 12),
@@ -456,6 +519,10 @@ class CharacterDetailsView: NSView {
             defFileScrollView.trailingAnchor.constraint(equalTo: defFileContainer.trailingAnchor),
             defFileScrollView.bottomAnchor.constraint(equalTo: defFileContainer.bottomAnchor),
         ])
+        
+        // Set initial dynamic constraint (no source info by default)
+        tagsTopConstraint = tagsHeader.topAnchor.constraint(equalTo: statsGridView.bottomAnchor, constant: spacing)
+        tagsTopConstraint?.isActive = true
         
         // Set up tracking area for hero hover
         setupHeroTracking()
@@ -740,6 +807,9 @@ class CharacterDetailsView: NSView {
         // Tags
         updateTags(for: character)
         
+        // Load scraped metadata from database
+        loadScrapedMetadata(for: character)
+        
         // Load move list
         loadMoveList(for: character)
         
@@ -858,6 +928,58 @@ class CharacterDetailsView: NSView {
             
             // Layout badges in a flow/wrap pattern
             layoutTagsInFlowLayout(badges: badges, in: tagsContainerView)
+        }
+    }
+    
+    // MARK: - Scraped Metadata
+    
+    private func loadScrapedMetadata(for character: CharacterInfo) {
+        // Try to load scraped metadata from database
+        guard let metadata = try? MetadataStore.shared.scrapedMetadata(for: character.id) else {
+            // No scraped metadata - hide the section
+            sourceInfoHeader.isHidden = true
+            sourceInfoContainer.isHidden = true
+            
+            // Update dynamic constraint to anchor tags to stats grid
+            tagsTopConstraint?.isActive = false
+            tagsTopConstraint = tagsHeader.topAnchor.constraint(equalTo: statsGridView.bottomAnchor, constant: 32)
+            tagsTopConstraint?.isActive = true
+            return
+        }
+        
+        // Show the source info section
+        sourceInfoHeader.isHidden = false
+        sourceInfoContainer.isHidden = false
+        
+        // Update dynamic constraint to anchor tags to source info
+        tagsTopConstraint?.isActive = false
+        tagsTopConstraint = tagsHeader.topAnchor.constraint(equalTo: sourceInfoContainer.bottomAnchor, constant: 32)
+        tagsTopConstraint?.isActive = true
+        
+        // Display source URL
+        if let url = URL(string: metadata.sourceUrl) {
+            sourceUrlLabel.stringValue = "🔗 \(url.host ?? metadata.sourceUrl)"
+        } else {
+            sourceUrlLabel.stringValue = "🔗 \(metadata.sourceUrl)"
+        }
+        
+        // Display description if available
+        if let description = metadata.description, !description.isEmpty {
+            scrapedDescriptionLabel.stringValue = description
+        } else {
+            scrapedDescriptionLabel.stringValue = "No description available"
+        }
+        
+        // Override version if scraped version is available
+        if let version = metadata.version, !version.isEmpty,
+           let versionValue = versionStatView.viewWithTag(100) as? NSTextField {
+            versionValue.stringValue = version
+        }
+        
+        // Override author if scraped author is available
+        if let author = metadata.author, !author.isEmpty,
+           let authorValue = authorStatView.viewWithTag(100) as? NSTextField {
+            authorValue.stringValue = author
         }
     }
     
