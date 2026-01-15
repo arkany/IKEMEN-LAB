@@ -8,6 +8,15 @@ public enum BrowserViewMode {
     case list
 }
 
+// MARK: - Registration Filter
+
+/// Filter for content registration status
+public enum RegistrationFilter {
+    case all
+    case registeredOnly
+    case unregisteredOnly
+}
+
 // MARK: - Design System Colors (Zinc Palette from HTML/Tailwind)
 
 /// Modern dark theme design system colors
@@ -135,6 +144,21 @@ public struct DesignColors {
     
     /// Warning background - amber-500/10
     public static let warningBackground = NSColor(red: 0xf5/255.0, green: 0x9e/255.0, blue: 0x0b/255.0, alpha: 0.1)
+    
+    /// Negative/error - red-500 (#ef4444)
+    public static let negative = NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 1.0)
+    
+    /// Negative background - red-500/15
+    public static let negativeBackground = NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 0.15)
+    
+    /// Red-900 for dark backgrounds - (#7f1d1d)
+    public static let red900 = NSColor(red: 0x7f/255.0, green: 0x1d/255.0, blue: 0x1d/255.0, alpha: 1.0)
+    
+    /// Red-400 for text on dark backgrounds - (#f87171)
+    public static let red400 = NSColor(red: 0xf8/255.0, green: 0x71/255.0, blue: 0x71/255.0, alpha: 1.0)
+    
+    /// Red-200 for high contrast text - (#fecaca)
+    public static let red200 = NSColor(red: 0xfe/255.0, green: 0xca/255.0, blue: 0xca/255.0, alpha: 1.0)
     
     /// Character badge - blue-500
     public static let badgeCharacter = NSColor(red: 0x3b/255.0, green: 0x82/255.0, blue: 0xf6/255.0, alpha: 1.0)
