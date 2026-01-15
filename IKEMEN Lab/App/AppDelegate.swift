@@ -149,7 +149,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     
     /// Install downloaded content and store scraped metadata
     private func installDownloadedContent(at fileURL: URL, metadata: InstallMetadata) {
-        guard let workingDir = EmulatorBridge.shared.workingDirectory else {
+        guard let workingDir = IkemenBridge.shared.workingDirectory else {
             DispatchQueue.main.async { [weak self] in
                 self?.showError("Working directory not set. Please configure IKEMEN GO path in Settings.")
             }
