@@ -1044,16 +1044,16 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         unregisteredBadge.translatesAutoresizingMaskIntoConstraints = false
         unregisteredBadge.wantsLayer = true
         unregisteredBadge.layer?.cornerRadius = 4
-        unregisteredBadge.layer?.backgroundColor = DesignColors.zinc700.cgColor
+        unregisteredBadge.layer?.backgroundColor = DesignColors.red900.cgColor
         unregisteredBadge.layer?.borderWidth = 1
-        unregisteredBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        unregisteredBadge.layer?.borderColor = DesignColors.negative.withAlphaComponent(0.3).cgColor
         unregisteredBadge.isHidden = true
         containerView.addSubview(unregisteredBadge)
         
         unregisteredLabel = NSTextField(labelWithString: "UNREGISTERED")
         unregisteredLabel.translatesAutoresizingMaskIntoConstraints = false
         unregisteredLabel.font = DesignFonts.caption(size: 8)
-        unregisteredLabel.textColor = DesignColors.textTertiary
+        unregisteredLabel.textColor = DesignColors.red200
         unregisteredLabel.isBordered = false
         unregisteredLabel.drawsBackground = false
         unregisteredLabel.isEditable = false
