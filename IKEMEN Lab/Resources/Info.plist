@@ -38,5 +38,16 @@
 	<true/>
 	<key>NSSupportsSuddenTermination</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>IKEMEN Lab URL Scheme</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ikemenlab</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -50,6 +50,31 @@ public struct RecentInstall: Codable, FetchableRecord {
     public var author: String           // Author for display
 }
 
+/// Metadata scraped from web browser extension
+public struct ScrapedMetadata: Codable, FetchableRecord, PersistableRecord {
+    public static let databaseTableName = "scraped_metadata"
+    
+    public var characterId: String      // Foreign key to characters.id
+    public var name: String?
+    public var author: String?
+    public var version: String?
+    public var description: String?
+    public var tags: String?            // Comma-separated tags
+    public var sourceUrl: String
+    public var scrapedAt: Date
+    
+    public init(characterId: String, name: String?, author: String?, version: String?, description: String?, tags: [String]?, sourceUrl: String, scrapedAt: Date) {
+        self.characterId = characterId
+        self.name = name
+        self.author = author
+        self.version = version
+        self.description = description
+        self.tags = tags?.joined(separator: ",")
+        self.sourceUrl = sourceUrl
+        self.scrapedAt = scrapedAt
+    }
+}
+
 // MARK: - Metadata Store
 
 /// SQLite-backed metadata index for characters and stages
@@ -115,6 +140,20 @@ public final class MetadataStore {
             t.column("updatedAt", .datetime).notNull()
             t.column("sourceGame", .text)
             t.column("resolution", .text)
+        }
+        
+        // Scraped metadata table (from browser extension)
+        try db.create(table: "scraped_metadata", ifNotExists: true) { t in
+            t.column("characterId", .text).notNull()
+                .indexed()
+                .references("characters", onDelete: .cascade)
+            t.column("name", .text)
+            t.column("author", .text)
+            t.column("version", .text)
+            t.column("description", .text)
+            t.column("tags", .text)
+            t.column("sourceUrl", .text).notNull()
+            t.column("scrapedAt", .datetime).notNull()
         }
         
         // Add tags column if it doesn't exist (migration)
@@ -381,6 +420,34 @@ public final class MetadataStore {
     public func reindexAll(from workingDir: URL) throws {
         try reindexCharacters(from: workingDir)
         try reindexStages(from: workingDir)
+    }
+    
+    // MARK: - Scraped Metadata Operations
+    
+    /// Store metadata scraped from browser extension
+    public func storeScrapedMetadata(_ metadata: ScrapedMetadata) throws {
+        try dbQueue?.write { db in
+            try metadata.insert(db)
+        }
+    }
+    
+    /// Get scraped metadata for a character
+    public func scrapedMetadata(for characterId: String) throws -> ScrapedMetadata? {
+        try dbQueue?.read { db in
+            try ScrapedMetadata
+                .filter(Column("characterId") == characterId)
+                .order(Column("scrapedAt").desc)
+                .fetchOne(db)
+        }
+    }
+    
+    /// Delete scraped metadata for a character
+    public func deleteScrapedMetadata(for characterId: String) throws {
+        try dbQueue?.write { db in
+            try ScrapedMetadata
+                .filter(Column("characterId") == characterId)
+                .deleteAll(db)
+        }
     }
     
     // MARK: - Utility
