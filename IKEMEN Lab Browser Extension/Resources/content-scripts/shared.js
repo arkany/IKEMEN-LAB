@@ -63,34 +63,82 @@ function extractTags(text) {
 }
 
 // Trigger installation via custom URL scheme
-function triggerInstall(downloadUrl, metadata) {
+async function triggerInstall(downloadUrl, metadata) {
     if (!downloadUrl) {
         console.error('IKEMEN Lab: No download URL provided');
         return;
     }
     
-    const payload = {
-        downloadUrl: downloadUrl,
-        metadata: {
-            name: metadata.name || null,
-            author: metadata.author || null,
-            version: metadata.version || null,
-            description: metadata.description || null,
-            tags: metadata.tags || [],
-            sourceUrl: window.location.href,
-            scrapedAt: new Date().toISOString()
+    console.log('IKEMEN Lab: Fetching file with credentials...');
+    
+    try {
+        // Fetch the file with cookies (content script has access to page cookies)
+        const response = await fetch(downloadUrl, {
+            credentials: 'include',
+            mode: 'cors'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-    };
-    
-    // Encode payload as URL parameter
-    const payloadJson = JSON.stringify(payload);
-    const encodedPayload = encodeURIComponent(payloadJson);
-    const url = `ikemenlab://install?data=${encodedPayload}`;
-    
-    console.log('IKEMEN Lab: Triggering installation', payload);
-    
-    // Navigate to the custom URL scheme
-    window.location.href = url;
+        
+        // Get the blob data
+        const blob = await response.blob();
+        console.log('IKEMEN Lab: Downloaded', blob.size, 'bytes, type:', blob.type);
+        
+        // Convert to base64 data URL
+        const reader = new FileReader();
+        reader.onloadend = function() {
+            const base64Data = reader.result.split(',')[1]; // Remove data:...;base64, prefix
+            
+            const payload = {
+                fileData: base64Data,
+                fileName: getFilenameFromUrl(downloadUrl) || 'download.zip',
+                metadata: {
+                    name: metadata.name || null,
+                    author: metadata.author || null,
+                    version: metadata.version || null,
+                    description: metadata.description || null,
+                    tags: metadata.tags || [],
+                    sourceUrl: window.location.href,
+                    scrapedAt: new Date().toISOString()
+                }
+            };
+            
+            // Encode payload as URL parameter
+            const payloadJson = JSON.stringify(payload);
+            const encodedPayload = encodeURIComponent(payloadJson);
+            const url = `ikemenlab://install?data=${encodedPayload}`;
+            
+            console.log('IKEMEN Lab: Triggering installation with', blob.size, 'bytes');
+            
+            // Navigate to the custom URL scheme
+            window.location.href = url;
+        };
+        reader.readAsDataURL(blob);
+        
+    } catch (error) {
+        console.error('IKEMEN Lab: Download failed:', error);
+        // Fallback: open in new tab
+        alert('Download requires login. Opening download page...');
+        window.open(downloadUrl, '_blank');
+    }
+}
+
+// Extract filename from URL
+function getFilenameFromUrl(url) {
+    try {
+        const urlObj = new URL(url);
+        const params = urlObj.searchParams;
+        // Try to get filename from URL params
+        const id = params.get('id');
+        if (id) {
+            return id.split('-').slice(1).join('-') + '.zip';
+        }
+        return urlObj.pathname.split('/').pop();
+    } catch (e) {
+        return null;
+    }
 }
 
 // Create and inject the "Install to IKEMEN Lab" button

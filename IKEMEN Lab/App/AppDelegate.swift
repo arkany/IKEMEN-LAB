@@ -4,7 +4,9 @@ import Cocoa
 
 /// Payload structure from browser extension
 struct InstallPayload: Codable {
-    let downloadUrl: String
+    let downloadUrl: String?
+    let fileData: String?  // Base64-encoded file data
+    let fileName: String?
     let metadata: InstallMetadata
 }
 
@@ -86,13 +88,47 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         
         // Download and install content in background
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.downloadAndInstall(payload: payload)
+            // Check if file data is included directly (from fetch with credentials)
+            if let fileData = payload.fileData,
+               let data = Data(base64Encoded: fileData) {
+                self?.installFromData(data, fileName: payload.fileName ?? "download.zip", metadata: payload.metadata)
+            } else if let downloadUrl = payload.downloadUrl {
+                // Fall back to downloading from URL
+                var modifiedPayload = payload
+                self?.downloadAndInstall(payload: modifiedPayload)
+            } else {
+                DispatchQueue.main.async {
+                    self?.showError("No download URL or file data provided")
+                }
+            }
+        }
+    }
+    
+    /// Install content from data (base64 decoded from extension)
+    private func installFromData(_ data: Data, fileName: String, metadata: InstallMetadata) {
+        let tempDir = FileManager.default.temporaryDirectory
+        let destFile = tempDir.appendingPathComponent(fileName)
+        
+        do {
+            // Write data to temp file
+            if FileManager.default.fileExists(atPath: destFile.path) {
+                try FileManager.default.removeItem(at: destFile)
+            }
+            try data.write(to: destFile)
+            
+            // Install the content
+            installDownloadedContent(at: destFile, metadata: metadata)
+        } catch {
+            DispatchQueue.main.async { [weak self] in
+                self?.showError("Failed to save file: \(error.localizedDescription)")
+            }
         }
     }
     
     /// Download content from URL and install it
     private func downloadAndInstall(payload: InstallPayload) {
-        guard let downloadURL = URL(string: payload.downloadUrl) else {
+        guard let urlString = payload.downloadUrl,
+              let downloadURL = URL(string: urlString) else {
             DispatchQueue.main.async { [weak self] in
                 self?.showError("Invalid download URL")
             }
@@ -109,10 +145,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         
         // Download file to temporary location
         let tempDir = FileManager.default.temporaryDirectory
-        let destFile = tempDir.appendingPathComponent(downloadURL.lastPathComponent)
         
-        // Use URLSession to download
-        let task = URLSession.shared.downloadTask(with: downloadURL) { [weak self] tempLocation, response, error in
+        // Create URL request with cookies from shared cookie storage (Safari shares cookies)
+        var request = URLRequest(url: downloadURL)
+        request.httpShouldHandleCookies = true
+        
+        // Get cookies for the domain
+        if let cookies = HTTPCookieStorage.shared.cookies(for: downloadURL) {
+            let cookieHeaders = HTTPCookie.requestHeaderFields(with: cookies)
+            for (key, value) in cookieHeaders {
+                request.setValue(value, forHTTPHeaderField: key)
+            }
+        }
+        
+        // Use URLSession with shared cookie storage
+        let config = URLSessionConfiguration.default
+        config.httpCookieStorage = HTTPCookieStorage.shared
+        config.httpCookieAcceptPolicy = .always
+        let session = URLSession(configuration: config)
+        
+        let task = session.downloadTask(with: request) { [weak self] tempLocation, response, error in
             guard let self = self else { return }
             
             if let error = error {
@@ -129,12 +181,59 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
                 return
             }
             
+            // Get filename from Content-Disposition header or suggested filename
+            var filename = "download.zip"
+            if let httpResponse = response as? HTTPURLResponse,
+               let contentDisposition = httpResponse.value(forHTTPHeaderField: "Content-Disposition") {
+                // Parse filename from Content-Disposition: attachment; filename="something.zip"
+                if let range = contentDisposition.range(of: "filename=") {
+                    var extractedName = String(contentDisposition[range.upperBound...])
+                    extractedName = extractedName.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+                    if !extractedName.isEmpty {
+                        filename = extractedName
+                    }
+                }
+            } else if let suggestedFilename = response?.suggestedFilename,
+                      !suggestedFilename.hasSuffix(".php") && !suggestedFilename.hasSuffix(".html") {
+                filename = suggestedFilename
+            } else if let name = payload.metadata.name {
+                // Use metadata name as fallback
+                filename = name.replacingOccurrences(of: " ", with: "_") + ".zip"
+            }
+            
+            let destFile = tempDir.appendingPathComponent(filename)
+            
             // Move downloaded file to temp directory
             do {
                 if FileManager.default.fileExists(atPath: destFile.path) {
                     try FileManager.default.removeItem(at: destFile)
                 }
                 try FileManager.default.moveItem(at: tempLocation, to: destFile)
+                
+                // Check if we got an HTML error page instead of the actual file
+                if let fileData = try? Data(contentsOf: destFile, options: .mappedIfSafe) {
+                    // Check for HTML content (login page, error page, etc.)
+                    if let content = String(data: fileData.prefix(1000), encoding: .utf8),
+                       content.contains("<html") || content.contains("<!DOCTYPE") || content.contains("<HTML") {
+                        DispatchQueue.main.async {
+                            self.showError("Download requires login. Please download the file manually from mugenarchive.com, then drag it into IKEMEN Lab.")
+                        }
+                        return
+                    }
+                    
+                    // Check if it's a valid archive by magic bytes
+                    let bytes = [UInt8](fileData.prefix(8))
+                    let isZip = bytes.count >= 2 && bytes[0] == 0x50 && bytes[1] == 0x4B
+                    let isRar = bytes.count >= 4 && bytes[0] == 0x52 && bytes[1] == 0x61 && bytes[2] == 0x72 && bytes[3] == 0x21
+                    let is7z = bytes.count >= 4 && bytes[0] == 0x37 && bytes[1] == 0x7A && bytes[2] == 0xBC && bytes[3] == 0xAF
+                    
+                    if !isZip && !isRar && !is7z {
+                        DispatchQueue.main.async {
+                            self.showError("Download requires login. Please download the file manually from mugenarchive.com, then drag it into IKEMEN Lab.")
+                        }
+                        return
+                    }
+                }
                 
                 // Install the content
                 self.installDownloadedContent(at: destFile, metadata: payload.metadata)

@@ -17,19 +17,21 @@
         
         // Check URL patterns
         const url = window.location.href.toLowerCase();
-        const isRelevantUrl = url.includes('/forums/downloads/') ||
-                              url.includes('/forums/threads/') ||
-                              url.includes('forums.mugenarchive.com');
+        const isRelevantUrl = url.includes('/forums/downloads') ||
+                              url.includes('/forums/threads') ||
+                              url.includes('downloads.php') ||
+                              url.includes('mugenarchive.com');
         
-        return hasDownloadButton && isRelevantUrl;
+        return hasDownloadButton || isRelevantUrl;
     }
     
     // Find download URL on the page
     function findDownloadUrl() {
-        // Try various selectors for download links
+        // Try various selectors for download links - prioritize the actual download button
         const selectors = [
+            'a.newcontent_textcontrol[href*="act=down"]',
+            'a[href*="act=down"]',
             'a.download-button',
-            'a[href*="download"]',
             '.attachment a[href*=".zip"]',
             '.attachment a[href*=".rar"]',
             '.attachment a[href*=".7z"]',
@@ -105,10 +107,20 @@
             return;
         }
         
-        // Find a good place to inject the button
-        const targetElement = document.querySelector('.message-main') ||
-                             document.querySelector('.post-content') ||
-                             document.querySelector('.p-body-main');
+        // Find a good place to inject the button - next to the Download button
+        const downloadBtn = document.querySelector('a.newcontent_textcontrol[href*="act=down"]') ||
+                           document.querySelector('a[href*="act=down"]') ||
+                           document.querySelector('a.downloadbtn');
+        
+        let targetElement = null;
+        if (downloadBtn) {
+            targetElement = downloadBtn.parentElement;
+        } else {
+            // Fallback: find the file info table or content area
+            targetElement = document.querySelector('table.tborder') ||
+                           document.querySelector('.page') ||
+                           document.querySelector('#content');
+        }
         
         if (!targetElement) {
             console.log('IKEMEN Lab: No suitable location for button');
@@ -118,9 +130,11 @@
         // Create button container
         const container = document.createElement('div');
         container.className = 'ikemen-lab-button-container';
+        container.style.cssText = 'display: inline-block; margin: 10px 5px; vertical-align: middle;';
         
-        // Create button
+        // Create button with inline styles as fallback
         const button = createInstallButton();
+        button.style.cssText = 'background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; display: inline-flex; align-items: center;';
         button.onclick = function() {
             console.log('IKEMEN Lab: Button clicked');
             setButtonLoading(button, true);
@@ -139,10 +153,14 @@
         
         container.appendChild(button);
         
-        // Insert at the top of the content area
-        targetElement.insertBefore(container, targetElement.firstChild);
+        // Insert next to download button, or at top of target
+        if (downloadBtn && downloadBtn.parentElement === targetElement) {
+            targetElement.insertBefore(container, downloadBtn.nextSibling);
+        } else {
+            targetElement.appendChild(container);
+        }
         
-        console.log('IKEMEN Lab: Button injected successfully');
+        console.log('IKEMEN Lab: Button injected successfully at', targetElement.tagName);
     }
     
     // Initialize

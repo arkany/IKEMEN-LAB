@@ -52,11 +52,12 @@
 		043 /* ScreenpackPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 144 /* ScreenpackPickerSheet.swift */; };
 		044 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145 /* UpdateChecker.swift */; };
 		045 /* AboutWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146 /* AboutWindowController.swift */; };
-		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
-		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
 		047 /* Services.swift in Sources */ = {isa = PBXBuildFile; fileRef = 147 /* Services.swift */; };
 		048 /* DependencyContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148 /* DependencyContainer.swift */; };
 		049 /* Injectable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 149 /* Injectable.swift */; };
+		10AF34FB2F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 10AF34E32F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
+		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,7 +68,28 @@
 			remoteGlobalIDString = 500;
 			remoteInfo = "IKEMEN Lab";
 		};
+		10AF34F92F19FDAC00A8F377 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 700 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 10AF34E22F19FDAC00A8F377;
+			remoteInfo = "IKEMEN Lab Browser Extension";
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		10AF34FC2F19FDAC00A8F377 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				10AF34FB2F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		101 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -80,6 +102,7 @@
 		1071BF202F10ABCB00D9D1CA /* IKEMEN Lab Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "IKEMEN Lab Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		108 /* IKEMEN Lab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "IKEMEN Lab.entitlements"; sourceTree = "<group>"; };
 		109 /* IKEMEN Lab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "IKEMEN Lab.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		10AF34E32F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "IKEMEN Lab Browser Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		10B1001B2F0114A400EC215A /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		10B1001E2F0114A500EC215A /* ToastNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastNotification.swift; sourceTree = "<group>"; };
 		112 /* IKEMEN Lab-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "IKEMEN Lab-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -120,19 +143,36 @@
 		147 /* Services.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services.swift; sourceTree = "<group>"; };
 		148 /* DependencyContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyContainer.swift; sourceTree = "<group>"; };
 		149 /* Injectable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Injectable.swift; sourceTree = "<group>"; };
-		150 /* Protocols */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Protocols; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		204 /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameController.framework; path = System/Library/Frameworks/GameController.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		10AF34FF2F19FDAC00A8F377 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 10AF34E22F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1071BF212F10ABCB00D9D1CA /* IKEMEN Lab Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "IKEMEN Lab Tests"; sourceTree = "<group>"; };
+		10AF34E42F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (10AF34FF2F19FDAC00A8F377 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = "IKEMEN Lab Browser Extension"; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		1071BF1D2F10ABCB00D9D1CA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		10AF34E02F19FDAC00A8F377 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -159,6 +199,7 @@
 			children = (
 				401 /* IKEMEN Lab */,
 				1071BF212F10ABCB00D9D1CA /* IKEMEN Lab Tests */,
+				10AF34E42F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */,
 				402 /* Frameworks */,
 				403 /* Products */,
 			);
@@ -195,6 +236,7 @@
 			children = (
 				109 /* IKEMEN Lab.app */,
 				1071BF202F10ABCB00D9D1CA /* IKEMEN Lab Tests.xctest */,
+				10AF34E32F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -238,14 +280,6 @@
 				148 /* DependencyContainer.swift */,
 			);
 			path = Core;
-			sourceTree = "<group>";
-		};
-		417 /* Protocols */ = {
-			isa = PBXGroup;
-			children = (
-				147 /* Services.swift */,
-			);
-			path = Protocols;
 			sourceTree = "<group>";
 		};
 		413 /* Resources */ = {
@@ -303,6 +337,14 @@
 			path = Shared;
 			sourceTree = "<group>";
 		};
+		417 /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				147 /* Services.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -329,6 +371,28 @@
 			productReference = 1071BF202F10ABCB00D9D1CA /* IKEMEN Lab Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		10AF34E22F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10AF35002F19FDAC00A8F377 /* Build configuration list for PBXNativeTarget "IKEMEN Lab Browser Extension" */;
+			buildPhases = (
+				10AF34DF2F19FDAC00A8F377 /* Sources */,
+				10AF34E02F19FDAC00A8F377 /* Frameworks */,
+				10AF34E12F19FDAC00A8F377 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				10AF34E42F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */,
+			);
+			name = "IKEMEN Lab Browser Extension";
+			packageProductDependencies = (
+			);
+			productName = "IKEMEN Lab Browser Extension";
+			productReference = 10AF34E32F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		500 /* IKEMEN Lab */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 600 /* Build configuration list for PBXNativeTarget "IKEMEN Lab" */;
@@ -336,10 +400,12 @@
 				501 /* Sources */,
 				300 /* Frameworks */,
 				502 /* Resources */,
+				10AF34FC2F19FDAC00A8F377 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				10AF34FA2F19FDAC00A8F377 /* PBXTargetDependency */,
 			);
 			name = "IKEMEN Lab";
 			packageProductDependencies = (
@@ -362,6 +428,9 @@
 					1071BF1F2F10ABCB00D9D1CA = {
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 500;
+					};
+					10AF34E22F19FDAC00A8F377 = {
+						CreatedOnToolsVersion = 26.2;
 					};
 					500 = {
 						CreatedOnToolsVersion = 15.0;
@@ -386,12 +455,20 @@
 			targets = (
 				500 /* IKEMEN Lab */,
 				1071BF1F2F10ABCB00D9D1CA /* IKEMEN Lab Tests */,
+				10AF34E22F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		1071BF1E2F10ABCB00D9D1CA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		10AF34E12F19FDAC00A8F377 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -413,6 +490,13 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		1071BF1C2F10ABCB00D9D1CA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		10AF34DF2F19FDAC00A8F377 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -475,6 +559,11 @@
 			target = 500 /* IKEMEN Lab */;
 			targetProxy = 1071BF242F10ABCB00D9D1CA /* PBXContainerItemProxy */;
 		};
+		10AF34FA2F19FDAC00A8F377 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 10AF34E22F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */;
+			targetProxy = 10AF34F92F19FDAC00A8F377 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -486,7 +575,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.ikemenlab.IKEMEN-Lab-Tests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -506,7 +595,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.ikemenlab.IKEMEN-Lab-Tests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -515,6 +604,74 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IKEMEN Lab.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/IKEMEN Lab";
+			};
+			name = Release;
+		};
+		10AF34FD2F19FDAC00A8F377 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "IKEMEN Lab Browser Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "IKEMEN Lab Browser Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 0.2.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.ikemenlab.IKEMENLab.IKEMEN-Lab-Browser-Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		10AF34FE2F19FDAC00A8F377 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "IKEMEN Lab Browser Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "IKEMEN Lab Browser Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 0.2.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.ikemenlab.IKEMENLab.IKEMEN-Lab-Browser-Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -700,6 +857,15 @@
 			buildConfigurations = (
 				1071BF262F10ABCB00D9D1CA /* Debug */,
 				1071BF272F10ABCB00D9D1CA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		10AF35002F19FDAC00A8F377 /* Build configuration list for PBXNativeTarget "IKEMEN Lab Browser Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				10AF34FD2F19FDAC00A8F377 /* Debug */,
+				10AF34FE2F19FDAC00A8F377 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
