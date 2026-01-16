@@ -46,6 +46,7 @@ protocol MetadataStoreProtocol: AnyObject {
     func allStages() throws -> [StageRecord]
     func searchCharacters(query: String) throws -> [CharacterRecord]
     func searchStages(query: String) throws -> [StageRecord]
+    func mostRecentlyInstalledCharacter() throws -> CharacterRecord?
     func recentlyInstalled(limit: Int) throws -> [RecentInstall]
     func reindexAll(from workingDir: URL) throws
 }
