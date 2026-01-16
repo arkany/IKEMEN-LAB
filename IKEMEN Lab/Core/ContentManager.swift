@@ -413,6 +413,32 @@ public final class ContentManager {
     
     // MARK: - Content Installation
     
+    /// Detect archive format by file content (magic bytes)
+    private func detectArchiveFormat(from fileURL: URL) -> String? {
+        guard let fileHandle = try? FileHandle(forReadingFrom: fileURL) else { return nil }
+        defer { try? fileHandle.close() }
+        
+        guard let headerData = try? fileHandle.read(upToCount: 8) else { return nil }
+        let bytes = [UInt8](headerData)
+        
+        // ZIP: PK (0x50 0x4B)
+        if bytes.count >= 2 && bytes[0] == 0x50 && bytes[1] == 0x4B {
+            return "zip"
+        }
+        
+        // RAR: Rar! (0x52 0x61 0x72 0x21)
+        if bytes.count >= 4 && bytes[0] == 0x52 && bytes[1] == 0x61 && bytes[2] == 0x72 && bytes[3] == 0x21 {
+            return "rar"
+        }
+        
+        // 7z: 7z (0x37 0x7A 0xBC 0xAF 0x27 0x1C)
+        if bytes.count >= 6 && bytes[0] == 0x37 && bytes[1] == 0x7A && bytes[2] == 0xBC && bytes[3] == 0xAF {
+            return "7z"
+        }
+        
+        return nil
+    }
+    
     /// Install content from an archive file (zip, rar, 7z - auto-detects character or stage)
     public func installContent(from archiveURL: URL, to workingDir: URL, overwrite: Bool = false) throws -> String {
         let tempDir = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -424,7 +450,8 @@ public final class ContentManager {
         // Create temp directory
         try fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
         
-        let ext = archiveURL.pathExtension.lowercased()
+        // Detect format by magic bytes first, fall back to extension
+        let ext = detectArchiveFormat(from: archiveURL) ?? archiveURL.pathExtension.lowercased()
         
         // Extract based on file type
         try extractArchive(from: archiveURL, to: tempDir, format: ext)
