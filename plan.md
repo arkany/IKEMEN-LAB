@@ -80,10 +80,15 @@ All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
 | └─ AI patch detection | 📋 Todo |
 | Hitbox/frame data viewer | 📋 Todo |
 | Similar character suggestions | 📋 Todo |
-| **Browser Extension** | 📋 Todo |
-| ├─ "Install to IKEMEN Lab" button | 📋 Todo |
-| ├─ Scrape metadata from web | 📋 Todo |
-| └─ Update detection (aspirational) | 📋 Todo |
+| **Browser Extension** | ✅ Done |
+| ├─ "Install to IKEMEN Lab" button | ✅ Done |
+| ├─ Scrape metadata from web | ✅ Done |
+| ├─ Dashboard CTA for extension | 📋 Todo |
+| ├─ Multi-browser packaging | 📋 Todo |
+| │  ├─ Safari (Xcode target) | ✅ Done |
+| │  ├─ Chrome/Edge/Opera (.crx) | 📋 Todo |
+| │  └─ Firefox (.xpi) | 📋 Todo |
+| └─ Update detection (aspirational) | 💭 Future |
 | Random roster generation | 📋 Todo |
 
 ### 🏛️ v3 — Polish & Safety
