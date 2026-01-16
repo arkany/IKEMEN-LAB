@@ -28,6 +28,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         return true
     }
     
+    // MARK: - URL Scheme Handling (Browser Extension Integration)
+    
+    // TODO: Implement URL scheme handler for browser extension
+    // When browser extension sends ikemenlab:// URLs, handle installation here
+    // Use MetadataStore.shared.mostRecentlyInstalledCharacter() to efficiently
+    // get the most recent character after installation, instead of loading all characters
+    //
+    // Example implementation:
+    // func application(_ application: NSApplication, open urls: [URL]) {
+    //     for url in urls {
+    //         if url.scheme == "ikemenlab" {
+    //             // Parse URL, download content, install
+    //             // After install: let recent = try? MetadataStore.shared.mostRecentlyInstalledCharacter()
+    //             // Show notification or navigate to the newly installed character
+    //         }
+    //     }
+    // }
+    
     // MARK: - Window Setup
     
     private func setupMainWindow() {

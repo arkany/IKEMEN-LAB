@@ -220,6 +220,17 @@ public final class MetadataStore {
         } ?? 0
     }
     
+    /// Get the most recently installed character
+    /// Uses efficient SQL query instead of loading all characters
+    public func mostRecentlyInstalledCharacter() throws -> CharacterRecord? {
+        try dbQueue?.read { db in
+            try CharacterRecord
+                .order(Column("installedAt").desc)
+                .limit(1)
+                .fetchOne(db)
+        }
+    }
+    
     // MARK: - Stage Operations
     
     /// Insert or update a stage record

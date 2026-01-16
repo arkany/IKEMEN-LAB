@@ -200,6 +200,10 @@ class MockMetadataStore: MetadataStoreProtocol {
         }
     }
     
+    func mostRecentlyInstalledCharacter() throws -> CharacterRecord? {
+        return characterRecords.sorted { $0.installedAt > $1.installedAt }.first
+    }
+    
     func recentlyInstalled(limit: Int) throws -> [RecentInstall] {
         recentlyInstalledCalled = true
         return Array(recentInstalls.prefix(limit))
