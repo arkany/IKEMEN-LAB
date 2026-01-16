@@ -835,7 +835,7 @@ public final class ContentManager {
     /// - Just folder name (e.g., "kfm") if folder/folder.def exists with exact case match
     /// - Explicit path (e.g., "Bbhood/BBHood.def") if the def filename differs from folder name
     /// NOTE: Skips storyboard .def files (intros/endings with [SceneDef])
-    private func findCharacterDefEntry(charName: String, in charPath: URL) -> String {
+    public func findCharacterDefEntry(charName: String, in charPath: URL) -> String {
         guard let contents = try? fileManager.contentsOfDirectory(at: charPath, includingPropertiesForKeys: nil) else {
             return charName
         }

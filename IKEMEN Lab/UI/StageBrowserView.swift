@@ -60,8 +60,16 @@ class StageBrowserView: NSView {
     private var scrollView: NSScrollView!
     private var collectionView: StageCollectionView!
     private var flowLayout: NSCollectionViewFlowLayout!
-    private var stages: [StageInfo] = []
+    private var allStages: [StageInfo] = []  // All stages from data source
+    private var stages: [StageInfo] = []     // Filtered stages for display
     private var cancellables = Set<AnyCancellable>()
+    
+    // Registration status filter
+    var registrationFilter: RegistrationFilter = .all {
+        didSet {
+            applyFilters()
+        }
+    }
     
     // Layout constants from shared design system
     private let listItemHeight = BrowserLayout.stageListItemHeight
@@ -175,7 +183,20 @@ class StageBrowserView: NSView {
     }
     
     private func updateStages(_ newStages: [StageInfo]) {
-        self.stages = newStages.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        self.allStages = newStages.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        applyFilters()
+    }
+    
+    /// Apply registration filter to stages
+    private func applyFilters() {
+        switch registrationFilter {
+        case .all:
+            stages = allStages
+        case .registeredOnly:
+            stages = allStages.filter { $0.status == .active || $0.status == .disabled }
+        case .unregisteredOnly:
+            stages = allStages.filter { $0.status == .unregistered }
+        }
         collectionView.reloadData()
     }
     
@@ -236,21 +257,38 @@ extension StageBrowserView {
         let stage = stages[indexPath.item]
         let menu = NSMenu()
         
-        // Disable/Enable toggle
-        let disableItem = NSMenuItem()
-        if stage.isDisabled {
-            disableItem.title = "Enable Stage"
-            disableItem.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: nil)
-        } else {
-            disableItem.title = "Disable Stage"
-            disableItem.image = NSImage(systemSymbolName: "slash.circle", accessibilityDescription: nil)
+        // If unregistered, show "Add to select.def" option first
+        if stage.status == .unregistered {
+            let addToSelectDefItem = NSMenuItem(
+                title: "Add to select.def",
+                action: #selector(addStageToSelectDefAction(_:)),
+                keyEquivalent: ""
+            )
+            addToSelectDefItem.image = NSImage(systemSymbolName: "plus.circle", accessibilityDescription: nil)
+            addToSelectDefItem.representedObject = stage
+            addToSelectDefItem.target = self
+            menu.addItem(addToSelectDefItem)
+            
+            menu.addItem(NSMenuItem.separator())
         }
-        disableItem.target = self
-        disableItem.action = #selector(toggleDisableStage(_:))
-        disableItem.representedObject = stage
-        menu.addItem(disableItem)
         
-        menu.addItem(NSMenuItem.separator())
+        // Disable/Enable toggle (only for registered stages)
+        if stage.status != .unregistered {
+            let disableItem = NSMenuItem()
+            if stage.isDisabled {
+                disableItem.title = "Enable Stage"
+                disableItem.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: nil)
+            } else {
+                disableItem.title = "Disable Stage"
+                disableItem.image = NSImage(systemSymbolName: "slash.circle", accessibilityDescription: nil)
+            }
+            disableItem.target = self
+            disableItem.action = #selector(toggleDisableStage(_:))
+            disableItem.representedObject = stage
+            menu.addItem(disableItem)
+            
+            menu.addItem(NSMenuItem.separator())
+        }
         
         // Rename Stage
         let renameItem = NSMenuItem()
@@ -287,6 +325,33 @@ extension StageBrowserView {
     @objc private func toggleDisableStage(_ sender: NSMenuItem) {
         guard let stage = sender.representedObject as? StageInfo else { return }
         onStageDisableToggle?(stage)
+    }
+    
+    @objc private func addStageToSelectDefAction(_ sender: NSMenuItem) {
+        guard let stage = sender.representedObject as? StageInfo,
+              let workingDir = IkemenBridge.shared.workingDirectory else { return }
+        
+        do {
+            // Get the stage entry name from the defFile
+            let stageName = stage.defFile.deletingPathExtension().lastPathComponent
+            
+            // Add to select.def
+            try ContentManager.shared.addStageToSelectDef(stageName, in: workingDir)
+            
+            // Reload stages to update status
+            IkemenBridge.shared.loadContent()
+            
+            // Show success toast
+            ToastManager.shared.showSuccess(
+                title: "Added to select.def",
+                subtitle: "\(stage.name) will now appear in-game"
+            )
+        } catch {
+            ToastManager.shared.showError(
+                title: "Failed to add stage",
+                subtitle: error.localizedDescription
+            )
+        }
     }
     
     @objc private func renameStageAction(_ sender: NSMenuItem) {
@@ -704,11 +769,26 @@ class StageListItem: NSCollectionViewItem {
             dateLabel.stringValue = "—"
         }
         
-        // Toggle state - ON means enabled, OFF means disabled
-        statusToggle.state = stage.isDisabled ? .off : .on
+        // Toggle state - hide for unregistered stages
+        if stage.status == .unregistered {
+            statusToggle.isHidden = true
+        } else {
+            statusToggle.isHidden = false
+            statusToggle.state = stage.isDisabled ? .off : .on
+        }
         
-        // Show disabled state
-        if stage.isDisabled {
+        // Show visual state based on status
+        if stage.status == .unregistered {
+            // Unregistered: dimmed
+            previewImageView.alphaValue = 0.3
+            disabledOverlay.isHidden = false
+            disabledIcon.isHidden = false
+            nameLabel.textColor = DesignColors.textSecondary
+            nameLabel.stringValue = stage.name
+            pathLabel.textColor = DesignColors.zinc700
+            view.toolTip = "Not in select.def - won't appear in game"
+        } else if stage.isDisabled {
+            // Disabled: strikethrough and dimmed
             previewImageView.alphaValue = 0.4
             disabledOverlay.isHidden = false
             disabledIcon.isHidden = false
@@ -720,13 +800,16 @@ class StageListItem: NSCollectionViewItem {
             ]
             nameLabel.attributedStringValue = NSAttributedString(string: stage.name, attributes: attributes)
             pathLabel.textColor = DesignColors.zinc700
+            view.toolTip = nil
         } else {
+            // Active: normal
             previewImageView.alphaValue = 0.6
             disabledOverlay.isHidden = true
             disabledIcon.isHidden = true
             nameLabel.textColor = DesignColors.zinc300
             nameLabel.stringValue = stage.name  // Remove strikethrough
             pathLabel.textColor = DesignColors.zinc600
+            view.toolTip = nil
         }
         
         // Load preview image

@@ -8,6 +8,15 @@ public enum BrowserViewMode {
     case list
 }
 
+// MARK: - Registration Filter
+
+/// Filter for content registration status
+public enum RegistrationFilter {
+    case all
+    case registeredOnly
+    case unregisteredOnly
+}
+
 // MARK: - Design System Colors (Zinc Palette from HTML/Tailwind)
 
 /// Modern dark theme design system colors
