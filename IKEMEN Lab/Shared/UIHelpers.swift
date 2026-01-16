@@ -54,6 +54,14 @@ public struct DesignColors {
     /// emerald-400 (#34d399)
     public static let emerald400 = NSColor(red: 0x34/255.0, green: 0xd3/255.0, blue: 0x99/255.0, alpha: 1.0)
     
+    // MARK: - Red Palette (Tailwind)
+    
+    /// red-900 (#7f1d1d)
+    public static let red900 = NSColor(red: 0x7f/255.0, green: 0x1d/255.0, blue: 0x1d/255.0, alpha: 1.0)
+    
+    /// red-200 (#fecaca)
+    public static let red200 = NSColor(red: 0xfe/255.0, green: 0xca/255.0, blue: 0xca/255.0, alpha: 1.0)
+    
     // MARK: - Core Backgrounds
     
     /// Main app background - zinc-950 (#09090b)

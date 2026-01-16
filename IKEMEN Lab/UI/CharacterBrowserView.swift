@@ -1212,6 +1212,8 @@ class CharacterListItem: NSCollectionViewItem {
     private var nameLabel: NSTextField!
     private var pathLabel: NSTextField!
     private var statusDot: NSView!
+    private var unregisteredBadge: NSView!
+    private var unregisteredLabel: NSTextField!
     private var authorLabel: NSTextField!
     private var seriesBadge: NSView!
     private var seriesLabel: NSTextField!
@@ -1332,6 +1334,33 @@ class CharacterListItem: NSCollectionViewItem {
         statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
         statusDot.isHidden = true
         nameRow.addArrangedSubview(statusDot)
+        
+        // UNREGISTERED badge (red900 bg, red200 text, 4px radius)
+        unregisteredBadge = NSView()
+        unregisteredBadge.translatesAutoresizingMaskIntoConstraints = false
+        unregisteredBadge.wantsLayer = true
+        unregisteredBadge.layer?.cornerRadius = 4
+        unregisteredBadge.layer?.backgroundColor = DesignColors.red900.cgColor
+        unregisteredBadge.isHidden = true
+        
+        unregisteredLabel = NSTextField(labelWithString: "UNREGISTERED")
+        unregisteredLabel.translatesAutoresizingMaskIntoConstraints = false
+        unregisteredLabel.font = NSFont.systemFont(ofSize: 9, weight: .semibold)
+        unregisteredLabel.textColor = DesignColors.red200
+        unregisteredLabel.isBordered = false
+        unregisteredLabel.drawsBackground = false
+        unregisteredLabel.isEditable = false
+        unregisteredLabel.isSelectable = false
+        unregisteredBadge.addSubview(unregisteredLabel)
+        nameRow.addArrangedSubview(unregisteredBadge)
+        
+        NSLayoutConstraint.activate([
+            unregisteredBadge.heightAnchor.constraint(equalToConstant: 16),
+            unregisteredLabel.centerYAnchor.constraint(equalTo: unregisteredBadge.centerYAnchor),
+            unregisteredLabel.leadingAnchor.constraint(equalTo: unregisteredBadge.leadingAnchor, constant: 5),
+            unregisteredLabel.trailingAnchor.constraint(equalTo: unregisteredBadge.trailingAnchor, constant: -5),
+        ])
+        
         nameStack.addArrangedSubview(nameRow)
         
         // Path label (mono font)
@@ -1642,6 +1671,9 @@ class CharacterListItem: NSCollectionViewItem {
         // Status dot hidden by default
         statusDot.isHidden = true
         
+        // Show UNREGISTERED badge for unregistered characters
+        unregisteredBadge.isHidden = character.status != .unregistered
+        
         // Toggle state - ON means enabled, OFF means disabled
         statusToggle.state = character.isDisabled ? .off : .on
         
@@ -1689,6 +1721,7 @@ class CharacterListItem: NSCollectionViewItem {
         versionLabel.stringValue = ""
         dateLabel.stringValue = ""
         statusDot.isHidden = true
+        unregisteredBadge.isHidden = true
         statusToggle.state = .on
         currentCharacter = nil
         onStatusToggled = nil
