@@ -400,10 +400,17 @@ class DashboardView: NSView {
         
         // Set width proportions
         leftColumn.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        leftColumn.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         rightColumn.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        rightColumn.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         
-        // Right column fixed width ~300px
-        rightColumn.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        // Right column preferred width ~280px, but can compress
+        let rightWidthConstraint = rightColumn.widthAnchor.constraint(equalToConstant: 280)
+        rightWidthConstraint.priority = .defaultHigh
+        rightWidthConstraint.isActive = true
+        
+        // Minimum width for right column
+        rightColumn.widthAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
         
         contentStack.addArrangedSubview(columnsContainer)
         
@@ -542,17 +549,17 @@ class DashboardView: NSView {
             nameHeader.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
             nameHeader.centerYAnchor.constraint(equalTo: header.centerYAnchor),
             
-            // Type column (centered at ~45%)
-            typeHeader.centerXAnchor.constraint(equalTo: header.centerXAnchor, constant: -40),
-            typeHeader.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            // Status column - align left edge with toggle (toggle is ~38px, at trailing -16, so leading ~-54)
+            statusHeader.leadingAnchor.constraint(equalTo: header.trailingAnchor, constant: -54),
+            statusHeader.centerYAnchor.constraint(equalTo: header.centerYAnchor),
             
-            // Date column
-            dateHeader.trailingAnchor.constraint(equalTo: statusHeader.leadingAnchor, constant: -60),
+            // Date column - positioned to the left of status, aligned with date text
+            dateHeader.leadingAnchor.constraint(equalTo: statusHeader.leadingAnchor, constant: -110),
             dateHeader.centerYAnchor.constraint(equalTo: header.centerYAnchor),
             
-            // Status column (right)
-            statusHeader.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -30),
-            statusHeader.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            // Type column - positioned to the left of date, aligned with type badge
+            typeHeader.leadingAnchor.constraint(equalTo: dateHeader.leadingAnchor, constant: -100),
+            typeHeader.centerYAnchor.constraint(equalTo: header.centerYAnchor),
         ])
         
         return header
@@ -2195,12 +2202,12 @@ class RecentInstallRow: NSView {
             iconLabel.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),
             
             // Name stack
-            nameStack.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 16),
+            nameStack.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
             nameStack.centerYAnchor.constraint(equalTo: centerYAnchor),
-            nameStack.trailingAnchor.constraint(lessThanOrEqualTo: typeBadge.leadingAnchor, constant: -20),
+            nameStack.trailingAnchor.constraint(lessThanOrEqualTo: typeBadge.leadingAnchor, constant: -12),
             
-            // Type badge (centered area)
-            typeBadge.centerXAnchor.constraint(equalTo: centerXAnchor, constant: -40),
+            // Type badge - positioned relative to date
+            typeBadge.trailingAnchor.constraint(equalTo: dateLabel.leadingAnchor, constant: -20),
             typeBadge.centerYAnchor.constraint(equalTo: centerYAnchor),
             typeBadge.heightAnchor.constraint(equalToConstant: 24),
             
@@ -2214,12 +2221,12 @@ class RecentInstallRow: NSView {
             typeLabel.centerYAnchor.constraint(equalTo: typeBadge.centerYAnchor),
             
             // Date
-            dateLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -40),
+            dateLabel.trailingAnchor.constraint(equalTo: statusToggle.leadingAnchor, constant: -20),
             dateLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            dateLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 100),
+            dateLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 80),
             
             // Status toggle (right side)
-            statusToggle.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
+            statusToggle.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
             statusToggle.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }

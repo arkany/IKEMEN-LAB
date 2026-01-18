@@ -64,7 +64,7 @@ class GameWindowController: NSWindowController {
     private var cancellables = Set<AnyCancellable>()
     
     // Layout constants - New design system
-    private let sidebarWidth: CGFloat = 256  // w-64 from HTML
+    private let sidebarWidth: CGFloat = 220  // Narrower sidebar for better small window support
     private let sidebarPadding: CGFloat = 12 // p-3 from HTML
     
     // UI Elements - Sidebar
@@ -159,7 +159,7 @@ class GameWindowController: NSWindowController {
         window.title = "IKEMEN Lab"
         window.center()
         window.backgroundColor = DesignColors.background
-        window.minSize = NSSize(width: 900, height: 600)
+        window.minSize = NSSize(width: 700, height: 600)
         window.delegate = self
         
         // Hide title bar but keep traffic light buttons
