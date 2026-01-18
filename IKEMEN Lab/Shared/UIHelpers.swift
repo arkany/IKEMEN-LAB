@@ -145,6 +145,12 @@ public struct DesignColors {
     /// Warning background - amber-500/10
     public static let warningBackground = NSColor(red: 0xf5/255.0, green: 0x9e/255.0, blue: 0x0b/255.0, alpha: 0.1)
     
+    /// Amber-900 for dark backgrounds - (#78350f)
+    public static let amber900 = NSColor(red: 0x78/255.0, green: 0x35/255.0, blue: 0x0f/255.0, alpha: 1.0)
+    
+    /// Amber-200 for high contrast text - (#fde68a)
+    public static let amber200 = NSColor(red: 0xfd/255.0, green: 0xe6/255.0, blue: 0x8a/255.0, alpha: 1.0)
+    
     /// Negative/error - red-500 (#ef4444)
     public static let negative = NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 1.0)
     

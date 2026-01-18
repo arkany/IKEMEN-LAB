@@ -224,8 +224,8 @@ class GameWindowController: NSWindowController {
         freView.translatesAutoresizingMaskIntoConstraints = false
         firstRunView = freView
         
-        freView.onComplete = { [weak self] selectedPath in
-            self?.handleFREComplete(with: selectedPath)
+        freView.onComplete = { [weak self] selectedPath, importMode in
+            self?.handleFREComplete(with: selectedPath, importMode: importMode)
         }
         
         freView.onSkip = { [weak self] in
@@ -249,9 +249,10 @@ class GameWindowController: NSWindowController {
         }
     }
     
-    private func handleFREComplete(with path: URL) {
+    private func handleFREComplete(with path: URL, importMode: ImportMode) {
         let settings = AppSettings.shared
         settings.ikemenGOPath = path
+        settings.importMode = importMode
         settings.hasCompletedFRE = true
         
         // Update the bridge to use the new path
@@ -266,8 +267,9 @@ class GameWindowController: NSWindowController {
         // Restore main UI
         restoreMainUIAfterFRE()
         
-        // Show success toast
-        ToastManager.shared.showSuccess(title: "IKEMEN GO linked successfully!")
+        // Show success toast with mode-specific message
+        let modeText = importMode == .freshStart ? "Full automation enabled" : "Preserving your existing setup"
+        ToastManager.shared.showSuccess(title: "IKEMEN GO linked successfully!", subtitle: modeText)
     }
     
     private func handleFRESkipped() {
@@ -2280,7 +2282,7 @@ class GameWindowController: NSWindowController {
     
     // MARK: - Drag & Drop
     
-    private let supportedArchiveExtensions = ["zip", "rar", "7z"]
+    private let supportedArchiveExtensions = ["zip", "rar", "7z", "ace"]
     
     private func showInstallDialog() {
         let openPanel = NSOpenPanel()

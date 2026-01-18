@@ -23,6 +23,7 @@ public final class AppSettings {
             Keys.defaultStageBoundLeft: -150,
             Keys.defaultStageBoundRight: 150,
             Keys.hasCompletedFRE: false,
+            Keys.importMode: ImportMode.freshStart.rawValue,
         ])
     }
     
@@ -35,6 +36,7 @@ public final class AppSettings {
         static let defaultStageBoundRight = "defaultStageBoundRight"
         static let hasCompletedFRE = "hasCompletedFRE"
         static let ikemenGOPath = "ikemenGOPath"
+        static let importMode = "importMode"
     }
     
     // MARK: - First Run Experience
@@ -43,6 +45,21 @@ public final class AppSettings {
     public var hasCompletedFRE: Bool {
         get { defaults.bool(forKey: Keys.hasCompletedFRE) }
         set { defaults.set(newValue, forKey: Keys.hasCompletedFRE) }
+    }
+    
+    /// The import mode chosen during FRE (fresh start vs existing setup)
+    public var importMode: ImportMode {
+        get {
+            guard let rawValue = defaults.string(forKey: Keys.importMode),
+                  let mode = ImportMode(rawValue: rawValue) else {
+                return .freshStart
+            }
+            return mode
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: Keys.importMode)
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
     }
     
     /// The user-configured IKEMEN GO installation path

@@ -27,7 +27,6 @@
 ## Current Focus
 
 ### 🔄 In Progress
-- [ ] Duplicate detection UI (core done, needs pre-install warning + badge display)
 - [ ] Unregistered content visualization (see [agent prompt](docs/agent-prompts/unregistered-content-visualization.md))
 
 ### 📋 Up Next
@@ -51,13 +50,16 @@ All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
 | **Screenpack Browser Overhaul** | 📋 Todo |
 | ├─ Match Character Browser design | 📋 Todo |
 | └─ README/setup notes display | 📋 Todo |
-| **First-Run Experience** | 🔄 In Progress |
-| └─ Import mode choice | 📋 Todo |
+| **First-Run Experience** | ✅ Done |
+| └─ Import mode choice | ✅ Done |
 | **Tagging UI** | 🔄 In Progress |
-| └─ Grid card tag badges | 📋 Todo |
-| **Duplicate Detection** | 🔄 In Progress |
-| ├─ Pre-install warning | 📋 Todo |
-| └─ Badge display in browser | 📋 Todo |
+| ├─ Grid card tag badges | 📋 Todo |
+| ├─ Custom tag creation | 📋 Todo |
+| ├─ Tag editing/deletion | 📋 Todo |
+| └─ Bulk tag assignment | 📋 Todo |
+| **Duplicate Detection** | ✅ Done |
+| ├─ Pre-install warning | ✅ Done |
+| └─ Badge display in browser | ✅ Done |
 | Character cutoff indicator | 📋 Todo |
 | Existing installation import | 📋 Todo |
 
@@ -74,6 +76,7 @@ All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
 | Animated idle stance preview | 📋 Todo |
 | Content validator/fixer | 📋 Todo |
 | Pre-install validation | 📋 Todo |
+| DEF file editor in character detail | 📋 Todo |
 | **Style Detection Engine** | 📋 Todo |
 | ├─ POTS/MVC2/KOF/CVS classification | 📋 Todo |
 | ├─ HD vs SD detection | 📋 Todo |

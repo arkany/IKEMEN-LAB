@@ -298,6 +298,7 @@ class MockCollectionStore: CollectionStoreProtocol {
 
 class MockAppSettings: AppSettingsProtocol {
     var hasCompletedFRE: Bool = false
+    var importMode: ImportMode = .freshStart
     var ikemenGOPath: URL?
     var hasValidIkemenGOInstallation: Bool = false
     var enablePNGStageCreation: Bool = false

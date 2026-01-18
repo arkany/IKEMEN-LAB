@@ -436,6 +436,11 @@ public final class ContentManager {
             return "7z"
         }
         
+        // ACE: **ACE** at offset 7 (0x2A 0x2A 0x41 0x43 0x45 0x2A 0x2A)
+        if bytes.count >= 14, bytes[7] == 0x2A, bytes[8] == 0x2A, bytes[9] == 0x41, bytes[10] == 0x43, bytes[11] == 0x45, bytes[12] == 0x2A, bytes[13] == 0x2A {
+            return "ace"
+        }
+        
         return nil
     }
     
@@ -502,8 +507,14 @@ public final class ContentManager {
             process.standardOutput = FileHandle.nullDevice
             process.standardError = FileHandle.nullDevice
             
+        case "ace":
+            process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/unace")
+            process.arguments = ["x", "-y", archiveURL.path, destDir.path + "/"]
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            
         default:
-            throw IkemenError.installFailed("Unsupported archive format: \(format). Supported: zip, rar, 7z")
+            throw IkemenError.installFailed("Unsupported archive format: \(format). Supported: zip, rar, 7z, ace")
         }
         
         try process.run()
@@ -515,6 +526,8 @@ public final class ContentManager {
                 throw IkemenError.installFailed("Failed to extract RAR file. Make sure unrar is installed (brew install rar)")
             case "7z":
                 throw IkemenError.installFailed("Failed to extract 7z file. Make sure p7zip is installed (brew install p7zip)")
+            case "ace":
+                throw IkemenError.installFailed("Failed to extract ACE file. Make sure unace is installed (brew install unace)")
             default:
                 throw IkemenError.installFailed("Failed to extract \(format) file")
             }

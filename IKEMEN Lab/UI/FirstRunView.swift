@@ -59,6 +59,14 @@ extension NSBezierPath {
     }
 }
 
+/// Import mode determines how IKEMEN Lab interacts with existing content
+public enum ImportMode: String, Codable {
+    /// Full automation: normalize names, organize folders, manage select.def
+    case freshStart = "freshStart"
+    /// Read-only indexing; all modifications are opt-in and reversible
+    case existingSetup = "existingSetup"
+}
+
 /// First Run Experience (FRE) overlay view
 /// Guides new users through setting up IKEMEN Lab with their IKEMEN GO installation
 class FirstRunView: NSView {
@@ -68,6 +76,7 @@ class FirstRunView: NSView {
     private var currentStep: Int = 1
     private var selectedFolderPath: URL?
     private var isValidated: Bool = false
+    private var selectedImportMode: ImportMode = .freshStart
     
     // Main container
     private var cardView: NSView!
@@ -100,8 +109,19 @@ class FirstRunView: NSView {
     
     private var detectionStats: (characters: Int, stages: Int, screenpacks: Int)?
     
+    // Step 5 specific (Import Mode Choice)
+    private var importModeContainer: NSView?
+    private var freshStartOption: NSView?
+    private var existingSetupOption: NSView?
+    private var freshStartIconView: NSImageView?
+    private var freshStartCheckContainer: NSView?
+    private var freshStartCheckIcon: NSImageView?
+    private var existingSetupIconView: NSImageView?
+    private var existingSetupCheckContainer: NSView?
+    private var existingSetupCheckIcon: NSImageView?
+    
     // Callbacks
-    var onComplete: ((URL) -> Void)?
+    var onComplete: ((URL, ImportMode) -> Void)?
     var onSkip: (() -> Void)?
     
     // MARK: - Constants
@@ -188,7 +208,7 @@ class FirstRunView: NSView {
         dotsStack.spacing = 8
         headerView.addSubview(dotsStack)
         
-        for i in 1...5 {
+        for i in 1...6 {
             let dot = NSView()
             dot.translatesAutoresizingMaskIntoConstraints = false
             dot.wantsLayer = true
@@ -232,7 +252,8 @@ class FirstRunView: NSView {
         setupStep2()
         setupStep3()
         setupStep4()
-        setupStep5()
+        setupStep5()  // Import Mode Choice (shown only when content detected)
+        setupStep6()  // Ready / Success
     }
     
     // MARK: - Step 1: Welcome
@@ -932,9 +953,263 @@ class FirstRunView: NSView {
         return (card, valueLabel)
     }
     
-    // MARK: - Step 5: Ready
+    // MARK: - Step 5: Import Mode Choice
     
     private func setupStep5() {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.isHidden = true
+        cardView.addSubview(container)
+        stepContainers.append(container)
+        importModeContainer = container
+        
+        // Icon
+        let iconContainer = NSView()
+        iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.wantsLayer = true
+        iconContainer.layer?.cornerRadius = 24
+        iconContainer.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        container.addSubview(iconContainer)
+        
+        let iconView = NSImageView()
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        if let gearImage = NSImage(systemSymbolName: "gearshape.2.fill", accessibilityDescription: nil) {
+            let config = NSImage.SymbolConfiguration(pointSize: 28, weight: .light)
+            iconView.image = gearImage.withSymbolConfiguration(config)
+        }
+        iconView.contentTintColor = DesignColors.zinc400
+        iconContainer.addSubview(iconView)
+        
+        // Title
+        let titleLabel = NSTextField(labelWithString: "How should we manage this?")
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = DesignFonts.header(size: 20)
+        titleLabel.textColor = .white
+        container.addSubview(titleLabel)
+        
+        // Description
+        let descLabel = NSTextField(wrappingLabelWithString: "We found an existing library. Choose how IKEMEN Lab should work with your content.")
+        descLabel.translatesAutoresizingMaskIntoConstraints = false
+        descLabel.font = NSFont.systemFont(ofSize: 14, weight: .regular)
+        descLabel.textColor = DesignColors.zinc400
+        descLabel.alignment = .center
+        container.addSubview(descLabel)
+        
+        // Options stack
+        let optionsStack = NSStackView()
+        optionsStack.translatesAutoresizingMaskIntoConstraints = false
+        optionsStack.orientation = .vertical
+        optionsStack.spacing = 12
+        container.addSubview(optionsStack)
+        
+        // Option 1: Fresh Start (full automation)
+        let freshStartComponents = createImportModeCard(
+            icon: "wand.and.stars",
+            title: "Fresh Start",
+            subtitle: "Full automation — organize folders, normalize names",
+            isSelected: true,
+            action: #selector(selectFreshStartMode)
+        )
+        freshStartOption = freshStartComponents.card
+        freshStartIconView = freshStartComponents.iconView
+        freshStartCheckContainer = freshStartComponents.checkContainer
+        freshStartCheckIcon = freshStartComponents.checkIcon
+        optionsStack.addArrangedSubview(freshStartComponents.card)
+        
+        // Option 2: Existing Setup (preserve everything)
+        let existingSetupComponents = createImportModeCard(
+            icon: "shield.checkered",
+            title: "Preserve My Setup",
+            subtitle: "Read-only indexing — no changes without permission",
+            isSelected: false,
+            action: #selector(selectExistingSetupMode)
+        )
+        existingSetupOption = existingSetupComponents.card
+        existingSetupIconView = existingSetupComponents.iconView
+        existingSetupCheckContainer = existingSetupComponents.checkContainer
+        existingSetupCheckIcon = existingSetupComponents.checkIcon
+        optionsStack.addArrangedSubview(existingSetupComponents.card)
+        
+        // Info note
+        let infoLabel = NSTextField(wrappingLabelWithString: "You can change this later in Settings.")
+        infoLabel.translatesAutoresizingMaskIntoConstraints = false
+        infoLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        infoLabel.textColor = DesignColors.zinc500
+        infoLabel.alignment = .center
+        container.addSubview(infoLabel)
+        
+        // Continue button
+        let continueBtn = createPrimaryButton(title: "Continue", action: #selector(step5Continue))
+        container.addSubview(continueBtn)
+        
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 64),
+            container.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 32),
+            container.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -32),
+            container.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -40),
+            
+            iconContainer.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
+            iconContainer.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            iconContainer.widthAnchor.constraint(equalToConstant: 56),
+            iconContainer.heightAnchor.constraint(equalToConstant: 56),
+            
+            iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+            
+            titleLabel.topAnchor.constraint(equalTo: iconContainer.bottomAnchor, constant: 16),
+            titleLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            
+            descLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            descLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
+            descLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
+            
+            optionsStack.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 24),
+            optionsStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            optionsStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            
+            infoLabel.topAnchor.constraint(equalTo: optionsStack.bottomAnchor, constant: 16),
+            infoLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            infoLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            
+            continueBtn.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            continueBtn.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            continueBtn.heightAnchor.constraint(equalToConstant: 40),
+            continueBtn.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+    }
+    
+    private func createImportModeCard(icon: String, title: String, subtitle: String, isSelected: Bool, action: Selector) -> (card: NSView, iconView: NSImageView, checkContainer: NSView, checkIcon: NSImageView) {
+        let card = NSView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.wantsLayer = true
+        card.layer?.cornerRadius = 12
+        card.layer?.borderWidth = 2
+        
+        if isSelected {
+            card.layer?.backgroundColor = DesignColors.zinc800.withAlphaComponent(0.5).cgColor
+            card.layer?.borderColor = NSColor.white.withAlphaComponent(0.3).cgColor
+        } else {
+            card.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+            card.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        }
+        
+        // Icon container
+        let iconContainer = NSView()
+        iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.wantsLayer = true
+        iconContainer.layer?.cornerRadius = 8
+        iconContainer.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        card.addSubview(iconContainer)
+        
+        let iconView = NSImageView()
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        if let image = NSImage(systemSymbolName: icon, accessibilityDescription: nil) {
+            iconView.image = image
+        }
+        iconView.contentTintColor = isSelected ? .white : DesignColors.zinc400
+        iconContainer.addSubview(iconView)
+        
+        // Title
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        titleLabel.textColor = .white
+        card.addSubview(titleLabel)
+        
+        // Subtitle
+        let subtitleLabel = NSTextField(labelWithString: subtitle)
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        subtitleLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        subtitleLabel.textColor = DesignColors.zinc500
+        card.addSubview(subtitleLabel)
+        
+        // Selection indicator (checkmark)
+        let checkContainer = NSView()
+        checkContainer.translatesAutoresizingMaskIntoConstraints = false
+        checkContainer.wantsLayer = true
+        checkContainer.layer?.cornerRadius = 10
+        checkContainer.layer?.borderWidth = 2
+        
+        if isSelected {
+            checkContainer.layer?.backgroundColor = NSColor.white.cgColor
+            checkContainer.layer?.borderColor = NSColor.white.cgColor
+        } else {
+            checkContainer.layer?.backgroundColor = NSColor.clear.cgColor
+            checkContainer.layer?.borderColor = DesignColors.zinc600.cgColor
+        }
+        card.addSubview(checkContainer)
+        
+        let checkIcon = NSImageView()
+        checkIcon.translatesAutoresizingMaskIntoConstraints = false
+        if let checkImage = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil) {
+            let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .bold)
+            checkIcon.image = checkImage.withSymbolConfiguration(config)
+        }
+        checkIcon.contentTintColor = DesignColors.zinc900
+        checkIcon.isHidden = !isSelected
+        checkContainer.addSubview(checkIcon)
+        
+        // Click gesture
+        let click = NSClickGestureRecognizer(target: self, action: action)
+        card.addGestureRecognizer(click)
+        
+        NSLayoutConstraint.activate([
+            card.heightAnchor.constraint(equalToConstant: 72),
+            
+            iconContainer.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            iconContainer.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            iconContainer.widthAnchor.constraint(equalToConstant: 40),
+            iconContainer.heightAnchor.constraint(equalToConstant: 40),
+            
+            iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 20),
+            iconView.heightAnchor.constraint(equalToConstant: 20),
+            
+            titleLabel.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 16),
+            titleLabel.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+            
+            subtitleLabel.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 16),
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
+            subtitleLabel.trailingAnchor.constraint(equalTo: checkContainer.leadingAnchor, constant: -12),
+            
+            checkContainer.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            checkContainer.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            checkContainer.widthAnchor.constraint(equalToConstant: 20),
+            checkContainer.heightAnchor.constraint(equalToConstant: 20),
+            
+            checkIcon.centerXAnchor.constraint(equalTo: checkContainer.centerXAnchor),
+            checkIcon.centerYAnchor.constraint(equalTo: checkContainer.centerYAnchor),
+        ])
+        
+        return (card, iconView, checkContainer, checkIcon)
+    }
+    
+    private func updateImportModeSelection(freshStart: Bool) {
+        // Update Fresh Start card
+        if let card = freshStartOption {
+            card.layer?.backgroundColor = freshStart ? DesignColors.zinc800.withAlphaComponent(0.5).cgColor : DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+            card.layer?.borderColor = freshStart ? NSColor.white.withAlphaComponent(0.3).cgColor : NSColor.white.withAlphaComponent(0.1).cgColor
+        }
+        freshStartIconView?.contentTintColor = freshStart ? .white : DesignColors.zinc400
+        freshStartCheckContainer?.layer?.backgroundColor = freshStart ? NSColor.white.cgColor : NSColor.clear.cgColor
+        freshStartCheckContainer?.layer?.borderColor = freshStart ? NSColor.white.cgColor : DesignColors.zinc600.cgColor
+        freshStartCheckIcon?.isHidden = !freshStart
+        
+        // Update Existing Setup card
+        if let card = existingSetupOption {
+            card.layer?.backgroundColor = !freshStart ? DesignColors.zinc800.withAlphaComponent(0.5).cgColor : DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+            card.layer?.borderColor = !freshStart ? NSColor.white.withAlphaComponent(0.3).cgColor : NSColor.white.withAlphaComponent(0.1).cgColor
+        }
+        existingSetupIconView?.contentTintColor = !freshStart ? .white : DesignColors.zinc400
+        existingSetupCheckContainer?.layer?.backgroundColor = !freshStart ? NSColor.white.cgColor : NSColor.clear.cgColor
+        existingSetupCheckContainer?.layer?.borderColor = !freshStart ? NSColor.white.cgColor : DesignColors.zinc600.cgColor
+        existingSetupCheckIcon?.isHidden = freshStart
+    }
+    
+    // MARK: - Step 6: Ready
+    
+    private func setupStep6() {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.isHidden = true
@@ -1348,7 +1623,29 @@ class FirstRunView: NSView {
     }
     
     @objc private func step4Continue() {
-        showStep(5, animated: true)
+        // If content was detected, show import mode choice (step 5)
+        // If empty, skip to success (step 6)
+        if let stats = detectionStats, (stats.characters > 0 || stats.stages > 0) {
+            showStep(5, animated: true)
+        } else {
+            // Empty installation - default to fresh start mode
+            selectedImportMode = .freshStart
+            showStep(6, animated: true)
+        }
+    }
+    
+    @objc private func selectFreshStartMode() {
+        selectedImportMode = .freshStart
+        updateImportModeSelection(freshStart: true)
+    }
+    
+    @objc private func selectExistingSetupMode() {
+        selectedImportMode = .existingSetup
+        updateImportModeSelection(freshStart: false)
+    }
+    
+    @objc private func step5Continue() {
+        showStep(6, animated: true)
     }
     
     @objc private func completeFRE() {
@@ -1358,7 +1655,7 @@ class FirstRunView: NSView {
             return
         }
         
-        onComplete?(folderPath)
+        onComplete?(folderPath, selectedImportMode)
         dismissWithAnimation()
     }
     

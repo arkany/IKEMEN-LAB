@@ -71,6 +71,7 @@ class CharacterBrowserView: NSView {
     private var portraitCache: [String: NSImage] = [:]
     private var cancellables = Set<AnyCancellable>()
     private var activeScreenpackSlotLimit: Int = 0
+    private var duplicateIds: Set<String> = []       // IDs of characters that have duplicates
     
     // View mode
     var viewMode: BrowserViewMode = .grid {
@@ -245,10 +246,25 @@ class CharacterBrowserView: NSView {
     private func updateCharacters(_ newCharacters: [CharacterInfo]) {
         // Keep characters in the order received (which comes from select.def via EmulatorBridge)
         self.allCharacters = newCharacters
+        
+        // Compute duplicate IDs
+        computeDuplicates()
+        
         applyFilters()
         
         // Load portraits in background
         loadPortraitsAsync()
+    }
+    
+    /// Compute which characters are duplicates and store their IDs
+    private func computeDuplicates() {
+        let groups = DuplicateDetector.findDuplicateCharacters(allCharacters)
+        duplicateIds.removeAll()
+        for group in groups {
+            for item in group.items {
+                duplicateIds.insert(item.id)
+            }
+        }
     }
     
     /// Apply registration filter to characters
@@ -652,10 +668,11 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
         }
         
         let character = characters[characterIndex]
+        let isDuplicate = duplicateIds.contains(character.id)
         
         if viewMode == .grid {
             let item = collectionView.makeItem(withIdentifier: CharacterCollectionViewItem.identifier, for: indexPath) as! CharacterCollectionViewItem
-            item.configure(with: character)
+            item.configure(with: character, isDuplicate: isDuplicate)
             
             if let cachedPortrait = portraitCache[character.id] {
                 item.setPortrait(cachedPortrait)
@@ -667,7 +684,7 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
             return item
         } else {
             let item = collectionView.makeItem(withIdentifier: CharacterListItem.identifier, for: indexPath) as! CharacterListItem
-            item.configure(with: character)
+            item.configure(with: character, isDuplicate: isDuplicate)
             
             // Wire up the toggle callback
             item.onStatusToggled = { [weak self] isEnabled in
@@ -944,6 +961,8 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     private var unregisteredOverlay: NSView!
     private var unregisteredBadge: NSView!
     private var unregisteredLabel: NSTextField!
+    private var duplicateBadge: NSView!
+    private var duplicateLabel: NSTextField!
     
     private var trackingArea: NSTrackingArea?
     private var isHovered = false
@@ -1060,6 +1079,27 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         unregisteredLabel.isSelectable = false
         unregisteredBadge.addSubview(unregisteredLabel)
         
+        // Duplicate badge - top-left corner (opposite unregistered which is top-right)
+        duplicateBadge = NSView()
+        duplicateBadge.translatesAutoresizingMaskIntoConstraints = false
+        duplicateBadge.wantsLayer = true
+        duplicateBadge.layer?.cornerRadius = 4
+        duplicateBadge.layer?.backgroundColor = DesignColors.amber900.cgColor
+        duplicateBadge.layer?.borderWidth = 1
+        duplicateBadge.layer?.borderColor = DesignColors.warning.withAlphaComponent(0.3).cgColor
+        duplicateBadge.isHidden = true
+        containerView.addSubview(duplicateBadge)
+        
+        duplicateLabel = NSTextField(labelWithString: "DUPLICATE")
+        duplicateLabel.translatesAutoresizingMaskIntoConstraints = false
+        duplicateLabel.font = DesignFonts.caption(size: 8)
+        duplicateLabel.textColor = DesignColors.amber200
+        duplicateLabel.isBordered = false
+        duplicateLabel.drawsBackground = false
+        duplicateLabel.isEditable = false
+        duplicateLabel.isSelectable = false
+        duplicateBadge.addSubview(duplicateLabel)
+        
         // Layout
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -1113,6 +1153,15 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
             unregisteredLabel.centerYAnchor.constraint(equalTo: unregisteredBadge.centerYAnchor),
             unregisteredLabel.leadingAnchor.constraint(equalTo: unregisteredBadge.leadingAnchor, constant: 6),
             unregisteredLabel.trailingAnchor.constraint(equalTo: unregisteredBadge.trailingAnchor, constant: -6),
+            
+            // Duplicate badge in top-left
+            duplicateBadge.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 8),
+            duplicateBadge.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
+            duplicateBadge.heightAnchor.constraint(equalToConstant: 18),
+            
+            duplicateLabel.centerYAnchor.constraint(equalTo: duplicateBadge.centerYAnchor),
+            duplicateLabel.leadingAnchor.constraint(equalTo: duplicateBadge.leadingAnchor, constant: 6),
+            duplicateLabel.trailingAnchor.constraint(equalTo: duplicateBadge.trailingAnchor, constant: -6),
         ])
     }
     
@@ -1200,7 +1249,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         CATransaction.commit()
     }
     
-    func configure(with character: CharacterInfo) {
+    func configure(with character: CharacterInfo, isDuplicate: Bool = false) {
         nameLabel.stringValue = character.displayName
         let formattedDate = VersionDateFormatter.formatToStandard(character.versionDate)
         authorLabel.stringValue = "\(character.author) • \(formattedDate.isEmpty ? "v1.0" : formattedDate)"
@@ -1216,9 +1265,16 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         unregisteredOverlay.isHidden = !isUnregistered
         unregisteredBadge.isHidden = !isUnregistered
         
-        // Add tooltip for unregistered characters
-        if isUnregistered {
+        // Show duplicate badge
+        duplicateBadge.isHidden = !isDuplicate
+        
+        // Add tooltip for unregistered or duplicate characters
+        if isUnregistered && isDuplicate {
+            view.toolTip = "Not in select.def • Duplicate detected in library"
+        } else if isUnregistered {
             view.toolTip = "Not in select.def - won't appear in game"
+        } else if isDuplicate {
+            view.toolTip = "Duplicate detected in library"
         } else {
             view.toolTip = nil
         }
@@ -1314,6 +1370,10 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         // Reset unregistered overlay and badge
         unregisteredOverlay.isHidden = true
         unregisteredBadge.isHidden = true
+        
+        // Reset duplicate badge
+        duplicateBadge.isHidden = true
+        
         view.toolTip = nil
     }
 }
@@ -1741,7 +1801,7 @@ class CharacterListItem: NSCollectionViewItem {
         }
     }
     
-    func configure(with character: CharacterInfo) {
+    func configure(with character: CharacterInfo, isDuplicate: Bool = false) {
         currentCharacter = character
         nameLabel.stringValue = character.displayName
         
@@ -1753,8 +1813,26 @@ class CharacterListItem: NSCollectionViewItem {
         authorLabel.stringValue = character.author
         
         // Feature tags based on character content
-        seriesLabel.stringValue = getFeatureTags(for: character)
+        var tags = getFeatureTags(for: character)
+        
+        // Add DUPLICATE indicator if applicable
+        if isDuplicate {
+            tags = tags.isEmpty ? "DUPLICATE" : "\(tags) • DUPLICATE"
+        }
+        
+        seriesLabel.stringValue = tags
         seriesBadge.isHidden = seriesLabel.stringValue.isEmpty
+        
+        // Style the badge differently if showing duplicate
+        if isDuplicate {
+            seriesBadge.layer?.backgroundColor = DesignColors.amber900.cgColor
+            seriesBadge.layer?.borderColor = DesignColors.warning.withAlphaComponent(0.3).cgColor
+            seriesLabel.textColor = DesignColors.amber200
+        } else {
+            seriesBadge.layer?.backgroundColor = DesignColors.zinc800.cgColor
+            seriesBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            seriesLabel.textColor = DesignColors.zinc400
+        }
         
         // Version
         versionLabel.stringValue = "v1.0"
@@ -1780,6 +1858,16 @@ class CharacterListItem: NSCollectionViewItem {
             statusToggle.state = character.isDisabled ? .off : .on
         }
         
+        // Build tooltip
+        var tooltipParts: [String] = []
+        if character.status == .unregistered {
+            tooltipParts.append("Not in select.def - won't appear in game")
+        }
+        if isDuplicate {
+            tooltipParts.append("Duplicate detected in library")
+        }
+        view.toolTip = tooltipParts.isEmpty ? nil : tooltipParts.joined(separator: " • ")
+        
         // Visual feedback for unregistered/disabled state
         if character.status == .unregistered {
             // Unregistered: dimmed text with secondary color
@@ -1787,7 +1875,6 @@ class CharacterListItem: NSCollectionViewItem {
             pathLabel.textColor = DesignColors.zinc700
             authorLabel.textColor = DesignColors.zinc600
             containerView.layer?.opacity = 0.6
-            view.toolTip = "Not in select.def - won't appear in game"
         } else if character.isDisabled {
             // Disabled: dimmed text
             nameLabel.textColor = DesignColors.zinc500
@@ -1843,6 +1930,12 @@ class CharacterListItem: NSCollectionViewItem {
         isSelected = false
         isHovered = false
         updateAppearance(animated: false)
+        
+        // Reset badge styling to default
+        seriesBadge.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        seriesBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        seriesLabel.textColor = DesignColors.zinc400
+        view.toolTip = nil
     }
     
     @objc private func moreButtonClicked(_ sender: NSButton) {

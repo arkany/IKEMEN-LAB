@@ -72,6 +72,7 @@ protocol CollectionStoreProtocol: AnyObject {
 /// Protocol for the AppSettings service
 protocol AppSettingsProtocol: AnyObject {
     var hasCompletedFRE: Bool { get set }
+    var importMode: ImportMode { get set }
     var ikemenGOPath: URL? { get set }
     var hasValidIkemenGOInstallation: Bool { get }
     var enablePNGStageCreation: Bool { get set }

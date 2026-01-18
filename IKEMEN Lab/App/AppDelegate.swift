@@ -222,12 +222,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
                     }
                     
                     // Check if it's a valid archive by magic bytes
-                    let bytes = [UInt8](fileData.prefix(8))
+                    let bytes = [UInt8](fileData.prefix(16))
                     let isZip = bytes.count >= 2 && bytes[0] == 0x50 && bytes[1] == 0x4B
                     let isRar = bytes.count >= 4 && bytes[0] == 0x52 && bytes[1] == 0x61 && bytes[2] == 0x72 && bytes[3] == 0x21
                     let is7z = bytes.count >= 4 && bytes[0] == 0x37 && bytes[1] == 0x7A && bytes[2] == 0xBC && bytes[3] == 0xAF
+                    let isAce = bytes.count >= 14 && bytes[7] == 0x2A && bytes[8] == 0x2A && bytes[9] == 0x41 && bytes[10] == 0x43 && bytes[11] == 0x45 && bytes[12] == 0x2A && bytes[13] == 0x2A
                     
-                    if !isZip && !isRar && !is7z {
+                    if !isZip && !isRar && !is7z && !isAce {
                         DispatchQueue.main.async {
                             self.showError("Download requires login. Please download the file manually from mugenarchive.com, then drag it into IKEMEN Lab.")
                         }
