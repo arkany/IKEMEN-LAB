@@ -2199,6 +2199,81 @@ class GameWindowController: NSWindowController {
         }
     }
     
+    // MARK: - Menu Actions
+    
+    /// Launch IKEMEN GO (Game menu, ⌘L)
+    @objc func launchGame(_ sender: Any?) {
+        launchIkemen()
+    }
+    
+    /// Refresh library content (Game menu, ⌘R)
+    @objc func refreshLibrary(_ sender: Any?) {
+        updateDashboardStats()
+        ToastManager.shared.showInfo(title: "Library Refreshed", subtitle: "Content statistics updated")
+    }
+    
+    /// Install content from file/folder (File menu, ⌘I)
+    @objc func installContent(_ sender: Any?) {
+        showInstallDialog()
+    }
+    
+    /// Reveal IKEMEN GO folder in Finder (File menu)
+    @objc func revealInFinder(_ sender: Any?) {
+        guard let workingDir = ikemenBridge.workingDirectory else {
+            showError("Not Configured", detail: "IKEMEN GO directory not set")
+            return
+        }
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: workingDir.path)
+    }
+    
+    /// Navigate to Dashboard (View menu, ⌘1)
+    @objc func showDashboard(_ sender: Any?) {
+        selectNavItem(.dashboard)
+    }
+    
+    /// Navigate to Characters (View menu, ⌘2)
+    @objc func showCharacters(_ sender: Any?) {
+        selectNavItem(.characters)
+    }
+    
+    /// Navigate to Stages (View menu, ⌘3)
+    @objc func showStages(_ sender: Any?) {
+        selectNavItem(.stages)
+    }
+    
+    /// Navigate to Screenpacks (View menu, ⌘4)
+    @objc func showScreenpacks(_ sender: Any?) {
+        selectNavItem(.addons)
+    }
+    
+    /// Navigate to Collections (View menu, ⌘5)
+    @objc func showCollections(_ sender: Any?) {
+        // Collections not in NavItem yet - for future use
+        // For now, show a placeholder message
+        ToastManager.shared.showInfo(title: "Coming Soon", subtitle: "Collections view will be available in a future update")
+    }
+    
+    /// Open IKEMEN Lab Help (user's GitHub page)
+    @objc func showHelp(_ sender: Any?) {
+        if let url = URL(string: "https://github.com/arkany/IKEMEN-LAB") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
+    /// Open IKEMEN GO Wiki
+    @objc func openIkemenWiki(_ sender: Any?) {
+        if let url = URL(string: "https://github.com/ikemen-engine/Ikemen-GO/wiki") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
+    /// Report an issue on GitHub
+    @objc func reportIssue(_ sender: Any?) {
+        if let url = URL(string: "https://github.com/arkany/IKEMEN-LAB/issues/new") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    
     // MARK: - Content Validation
     
     private func runContentValidation() {

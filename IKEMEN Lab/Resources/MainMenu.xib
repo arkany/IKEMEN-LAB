@@ -12,14 +12,14 @@
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
-        <customObject id="700" userLabel="App Delegate" customClass="AppDelegate" customModule="MacMAME" customModuleProvider="target"/>
+        <customObject id="700" userLabel="App Delegate" customClass="AppDelegate" customModule="IKEMEN_Lab" customModuleProvider="target"/>
         <menu title="Main Menu" systemMenu="main" id="29">
             <items>
                 <!-- Application Menu -->
-                <menuItem title="MacMAME" id="56">
-                    <menu key="submenu" title="MacMAME" systemMenu="apple" id="57">
+                <menuItem title="IKEMEN Lab" id="56">
+                    <menu key="submenu" title="IKEMEN Lab" systemMenu="apple" id="57">
                         <items>
-                            <menuItem title="About MacMAME" id="58">
+                            <menuItem title="About IKEMEN Lab" id="58">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="showAboutWindow:" target="700" id="142"/>
@@ -43,7 +43,7 @@
                                 <menu key="submenu" title="Services" systemMenu="services" id="132"/>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="144"/>
-                            <menuItem title="Hide MacMAME" keyEquivalent="h" id="134">
+                            <menuItem title="Hide IKEMEN Lab" keyEquivalent="h" id="134">
                                 <connections>
                                     <action selector="hide:" target="-1" id="152"/>
                                 </connections>
@@ -60,7 +60,7 @@
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="147"/>
-                            <menuItem title="Quit MacMAME" keyEquivalent="q" id="136">
+                            <menuItem title="Quit IKEMEN Lab" keyEquivalent="q" id="136">
                                 <connections>
                                     <action selector="terminate:" target="-1" id="449"/>
                                 </connections>
@@ -72,12 +72,19 @@
                 <menuItem title="File" id="83">
                     <menu key="submenu" title="File" id="84">
                         <items>
-                            <menuItem title="Open ROM…" keyEquivalent="o" id="72">
+                            <menuItem title="Install Content…" keyEquivalent="i" id="72">
                                 <connections>
-                                    <action selector="openDocument:" target="-1" id="311"/>
+                                    <action selector="installContent:" target="-1" id="311"/>
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="79"/>
+                            <menuItem title="Reveal in Finder" keyEquivalent="r" id="850">
+                                <modifierMask key="keyEquivalentModifierMask" shift="YES" command="YES"/>
+                                <connections>
+                                    <action selector="revealInFinder:" target="-1" id="851"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="852"/>
                             <menuItem title="Close" keyEquivalent="w" id="73">
                                 <connections>
                                     <action selector="performClose:" target="-1" id="193"/>
@@ -125,25 +132,20 @@
                         </items>
                     </menu>
                 </menuItem>
-                <!-- Emulation Menu -->
-                <menuItem title="Emulation" id="500">
-                    <menu key="submenu" title="Emulation" id="501">
+                <!-- Game Menu -->
+                <menuItem title="Game" id="500">
+                    <menu key="submenu" title="Game" id="501">
                         <items>
-                            <menuItem title="Pause" keyEquivalent="p" id="502">
+                            <menuItem title="Launch IKEMEN GO" keyEquivalent="l" id="510">
+                                <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                                 <connections>
-                                    <action selector="togglePause:" target="-1" id="503"/>
+                                    <action selector="launchGame:" target="-1" id="511"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Reset" keyEquivalent="r" id="504">
+                            <menuItem isSeparatorItem="YES" id="512"/>
+                            <menuItem title="Refresh Library" keyEquivalent="r" id="513">
                                 <connections>
-                                    <action selector="resetEmulation:" target="-1" id="505"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem isSeparatorItem="YES" id="506"/>
-                            <menuItem title="Insert Coin" keyEquivalent="5" id="507">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <connections>
-                                    <action selector="insertCoin:" target="-1" id="508"/>
+                                    <action selector="refreshLibrary:" target="-1" id="514"/>
                                 </connections>
                             </menuItem>
                         </items>
@@ -160,14 +162,29 @@
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="371"/>
-                            <menuItem title="Actual Size" keyEquivalent="0" id="372">
+                            <menuItem title="Show Dashboard" keyEquivalent="1" id="380">
                                 <connections>
-                                    <action selector="zoomToActualSize:" target="-1" id="373"/>
+                                    <action selector="showDashboard:" target="-1" id="381"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Double Size" keyEquivalent="2" id="374">
+                            <menuItem title="Show Characters" keyEquivalent="2" id="382">
                                 <connections>
-                                    <action selector="zoomToDoubleSize:" target="-1" id="375"/>
+                                    <action selector="showCharacters:" target="-1" id="383"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Show Stages" keyEquivalent="3" id="384">
+                                <connections>
+                                    <action selector="showStages:" target="-1" id="385"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Show Screenpacks" keyEquivalent="4" id="386">
+                                <connections>
+                                    <action selector="showScreenpacks:" target="-1" id="387"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Show Collections" keyEquivalent="5" id="388">
+                                <connections>
+                                    <action selector="showCollections:" target="-1" id="389"/>
                                 </connections>
                             </menuItem>
                         </items>
@@ -200,9 +217,20 @@
                 <menuItem title="Help" id="103">
                     <menu key="submenu" title="Help" systemMenu="help" id="106">
                         <items>
-                            <menuItem title="MacMAME Help" keyEquivalent="?" id="111">
+                            <menuItem title="IKEMEN Lab Help" keyEquivalent="?" id="111">
                                 <connections>
                                     <action selector="showHelp:" target="-1" id="360"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="900"/>
+                            <menuItem title="IKEMEN GO Wiki" id="901">
+                                <connections>
+                                    <action selector="openIkemenWiki:" target="-1" id="902"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Report an Issue…" id="903">
+                                <connections>
+                                    <action selector="reportIssue:" target="-1" id="904"/>
                                 </connections>
                             </menuItem>
                         </items>
