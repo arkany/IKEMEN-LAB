@@ -144,7 +144,7 @@ class ViewModeToggle: NSView {
             gridButton.contentTintColor = .white
             gridButton.layer?.backgroundColor = NSColor.clear.cgColor
         } else {
-            gridButton.contentTintColor = DesignColors.zinc600
+            gridButton.contentTintColor = DesignColors.textTertiary
             gridButton.layer?.backgroundColor = NSColor.clear.cgColor
         }
         
@@ -156,7 +156,7 @@ class ViewModeToggle: NSView {
             listButton.contentTintColor = .white
             listButton.layer?.backgroundColor = NSColor.clear.cgColor
         } else {
-            listButton.contentTintColor = DesignColors.zinc600
+            listButton.contentTintColor = DesignColors.textTertiary
             listButton.layer?.backgroundColor = NSColor.clear.cgColor
         }
     }
@@ -199,12 +199,12 @@ class StyledSearchField: NSView {
     private var isHovered = false
     private var isFocused = false
     
-    // Colors for different states - matches HTML: border-white/5, focus:border-zinc-700, bg-zinc-900/50, focus:bg-zinc-900
-    private let normalBorderColor = NSColor.white.withAlphaComponent(0.05)  // border-white/5
-    private let hoverBorderColor = NSColor.white.withAlphaComponent(0.10)   // hover:border-white/10
-    private let focusBorderColor = NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0)  // focus:border-zinc-700 (#3f3f46)
-    private let normalBgColor = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 0.5)  // bg-zinc-900/50
-    private let focusBgColor = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0)   // focus:bg-zinc-900 (100% opacity)
+    // Colors for different states - theme-aware
+    private var normalBorderColor: NSColor { DesignColors.borderSubtle }
+    private var hoverBorderColor: NSColor { DesignColors.borderHover }
+    private var focusBorderColor: NSColor { DesignColors.borderActive }
+    private var normalBgColor: NSColor { DesignColors.inputBackground }
+    private var focusBgColor: NSColor { DesignColors.cardBackground }
     
     var stringValue: String {
         get { textField.stringValue }

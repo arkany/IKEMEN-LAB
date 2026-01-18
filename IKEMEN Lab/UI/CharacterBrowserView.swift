@@ -917,8 +917,8 @@ class GradientOverlayView: NSView {
         // Gradient from bottom (dark) to top (transparent)
         // Matches HTML: bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent
         gradientLayer.colors = [
-            DesignColors.zinc950.cgColor,                              // bottom: zinc-950 (full)
-            DesignColors.zinc950.withAlphaComponent(0.2).cgColor,      // via: zinc-950/20
+            DesignColors.panelBackground.cgColor,                              // bottom: panel background (full)
+            DesignColors.panelBackground.withAlphaComponent(0.2).cgColor,      // via: panel/20
             NSColor.clear.cgColor                                      // top: transparent
         ]
         gradientLayer.locations = [0.0, 0.5, 1.0]
@@ -983,7 +983,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         containerView.wantsLayer = true
         containerView.layer?.cornerRadius = 12
         containerView.layer?.masksToBounds = true
-        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.1).cgColor
         containerView.layer?.borderWidth = 1
         containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         view.addSubview(containerView)
@@ -993,7 +993,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         portraitImageView.translatesAutoresizingMaskIntoConstraints = false
         portraitImageView.imageScaling = .scaleProportionallyUpOrDown
         portraitImageView.wantsLayer = true
-        portraitImageView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
+        portraitImageView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
         containerView.addSubview(portraitImageView)
         
         // Placeholder initial (shows when no portrait)
@@ -1214,7 +1214,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
             if isSelected {
                 // Active state: border-white/20, ring-1 ring-white/10, bg-zinc-900/40
                 containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.4).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.4).cgColor
                 // Add subtle glow
                 containerView.layer?.shadowColor = NSColor.white.cgColor
                 containerView.layer?.shadowOffset = .zero
@@ -1223,12 +1223,12 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
             } else if isHovered {
                 // Hover state: border-white/10, bg-zinc-900/30
                 containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.3).cgColor
                 containerView.layer?.shadowOpacity = 0
             } else {
                 // Default state: border-white/5, bg-zinc-900/10
                 containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.1).cgColor
                 containerView.layer?.shadowOpacity = 0
             }
         }
@@ -1244,7 +1244,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         } else if isHovered {
             nameLabel.textColor = .white
         } else {
-            nameLabel.textColor = DesignColors.zinc300
+            nameLabel.textColor = DesignColors.textPrimary
         }
         CATransaction.commit()
     }
@@ -1354,7 +1354,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
     override func prepareForReuse() {
         super.prepareForReuse()
         portraitImageView.image = nil
-        portraitImageView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
+        portraitImageView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
         placeholderLabel.isHidden = false
         nameLabel.stringValue = ""
         authorLabel.stringValue = ""
@@ -1470,8 +1470,8 @@ class CharacterListItem: NSCollectionViewItem {
         // Create gradient layer for icon bg
         let gradientLayer = CAGradientLayer()
         gradientLayer.colors = [
-            DesignColors.zinc800.cgColor,
-            DesignColors.zinc900.cgColor
+            DesignColors.cardBackground.cgColor,
+            DesignColors.panelBackground.cgColor
         ]
         gradientLayer.startPoint = CGPoint(x: 0, y: 0)
         gradientLayer.endPoint = CGPoint(x: 1, y: 1)
@@ -1490,7 +1490,7 @@ class CharacterListItem: NSCollectionViewItem {
         iconInitialLabel = NSTextField(labelWithString: "")
         iconInitialLabel.translatesAutoresizingMaskIntoConstraints = false
         iconInitialLabel.font = NSFont.systemFont(ofSize: 10, weight: .bold)
-        iconInitialLabel.textColor = DesignColors.zinc500
+        iconInitialLabel.textColor = DesignColors.textTertiary
         iconInitialLabel.alignment = .center
         iconView.addSubview(iconInitialLabel)
         
@@ -1510,7 +1510,7 @@ class CharacterListItem: NSCollectionViewItem {
         
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.font = DesignFonts.body(size: 14)
-        nameLabel.textColor = DesignColors.zinc300
+        nameLabel.textColor = DesignColors.textPrimary
         nameLabel.lineBreakMode = .byTruncatingTail
         nameRow.addArrangedSubview(nameLabel)
         
@@ -1526,7 +1526,7 @@ class CharacterListItem: NSCollectionViewItem {
         // Path label (mono font)
         pathLabel = NSTextField(labelWithString: "")
         pathLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
-        pathLabel.textColor = DesignColors.zinc600
+        pathLabel.textColor = DesignColors.textTertiary
         pathLabel.lineBreakMode = .byTruncatingTail
         nameStack.addArrangedSubview(pathLabel)
         
@@ -1534,7 +1534,7 @@ class CharacterListItem: NSCollectionViewItem {
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
         authorLabel.font = DesignFonts.body(size: 13)
-        authorLabel.textColor = DesignColors.zinc500
+        authorLabel.textColor = DesignColors.textSecondary
         authorLabel.lineBreakMode = .byTruncatingTail
         authorLabel.alignment = .left
         containerView.addSubview(authorLabel)
@@ -1544,7 +1544,7 @@ class CharacterListItem: NSCollectionViewItem {
         seriesBadge.translatesAutoresizingMaskIntoConstraints = false
         seriesBadge.wantsLayer = true
         seriesBadge.layer?.cornerRadius = 4
-        seriesBadge.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        seriesBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         seriesBadge.layer?.borderWidth = 1
         seriesBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         containerView.addSubview(seriesBadge)
@@ -1552,14 +1552,14 @@ class CharacterListItem: NSCollectionViewItem {
         seriesLabel = NSTextField(labelWithString: "")
         seriesLabel.translatesAutoresizingMaskIntoConstraints = false
         seriesLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        seriesLabel.textColor = DesignColors.zinc400
+        seriesLabel.textColor = DesignColors.textSecondary
         seriesBadge.addSubview(seriesLabel)
         
         // Version
         versionLabel = NSTextField(labelWithString: "")
         versionLabel.translatesAutoresizingMaskIntoConstraints = false
         versionLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        versionLabel.textColor = DesignColors.zinc500
+        versionLabel.textColor = DesignColors.textSecondary
         versionLabel.alignment = .left
         containerView.addSubview(versionLabel)
         
@@ -1567,7 +1567,7 @@ class CharacterListItem: NSCollectionViewItem {
         dateLabel = NSTextField(labelWithString: "")
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
         dateLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        dateLabel.textColor = DesignColors.zinc600
+        dateLabel.textColor = DesignColors.textTertiary
         dateLabel.alignment = .right
         containerView.addSubview(dateLabel)
         
@@ -1585,7 +1585,7 @@ class CharacterListItem: NSCollectionViewItem {
         moreButton.bezelStyle = .inline
         moreButton.isBordered = false
         moreButton.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        moreButton.contentTintColor = DesignColors.zinc400
+        moreButton.contentTintColor = DesignColors.textSecondary
         moreButton.alphaValue = 0 // Hidden by default, shown on hover
         containerView.addSubview(moreButton)
         
@@ -1795,7 +1795,7 @@ class CharacterListItem: NSCollectionViewItem {
             } else {
                 // Default
                 containerView.animator().layer?.backgroundColor = NSColor.clear.cgColor
-                nameLabel.animator().textColor = DesignColors.zinc300
+                nameLabel.animator().textColor = DesignColors.textPrimary
                 moreButton.animator().alphaValue = 0
             }
         }
@@ -1829,9 +1829,9 @@ class CharacterListItem: NSCollectionViewItem {
             seriesBadge.layer?.borderColor = DesignColors.warning.withAlphaComponent(0.3).cgColor
             seriesLabel.textColor = DesignColors.amber200
         } else {
-            seriesBadge.layer?.backgroundColor = DesignColors.zinc800.cgColor
+            seriesBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
             seriesBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
-            seriesLabel.textColor = DesignColors.zinc400
+            seriesLabel.textColor = DesignColors.textSecondary
         }
         
         // Version
@@ -1872,21 +1872,21 @@ class CharacterListItem: NSCollectionViewItem {
         if character.status == .unregistered {
             // Unregistered: dimmed text with secondary color
             nameLabel.textColor = DesignColors.textSecondary
-            pathLabel.textColor = DesignColors.zinc700
-            authorLabel.textColor = DesignColors.zinc600
+            pathLabel.textColor = DesignColors.textDisabled
+            authorLabel.textColor = DesignColors.textTertiary
             containerView.layer?.opacity = 0.6
         } else if character.isDisabled {
             // Disabled: dimmed text
-            nameLabel.textColor = DesignColors.zinc500
-            pathLabel.textColor = DesignColors.zinc700
-            authorLabel.textColor = DesignColors.zinc600
+            nameLabel.textColor = DesignColors.textSecondary
+            pathLabel.textColor = DesignColors.textDisabled
+            authorLabel.textColor = DesignColors.textTertiary
             containerView.layer?.opacity = 0.7
             view.toolTip = nil
         } else {
             // Active: normal text
-            nameLabel.textColor = DesignColors.zinc300
-            pathLabel.textColor = DesignColors.zinc600
-            authorLabel.textColor = DesignColors.zinc500
+            nameLabel.textColor = DesignColors.textPrimary
+            pathLabel.textColor = DesignColors.textTertiary
+            authorLabel.textColor = DesignColors.textSecondary
             containerView.layer?.opacity = 1.0
             view.toolTip = nil
         }
@@ -1932,9 +1932,9 @@ class CharacterListItem: NSCollectionViewItem {
         updateAppearance(animated: false)
         
         // Reset badge styling to default
-        seriesBadge.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        seriesBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         seriesBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
-        seriesLabel.textColor = DesignColors.zinc400
+        seriesLabel.textColor = DesignColors.textSecondary
         view.toolTip = nil
     }
     
@@ -2000,7 +2000,7 @@ class CutoffDividerView: NSView, NSCollectionViewElement {
     private func setupView() {
         wantsLayer = true
         // Outer background stays dark so margins render as solid black behind inset container
-        layer?.backgroundColor = DesignColors.zinc950.cgColor
+        layer?.backgroundColor = DesignColors.panelBackground.cgColor
         // TODO: Refresh divider visuals to match the final design pass.
         
         // Container view with gradient background
@@ -2012,7 +2012,7 @@ class CutoffDividerView: NSView, NSCollectionViewElement {
         // Top divider line
         topDividerLine = NSView()
         topDividerLine.wantsLayer = true
-        topDividerLine.layer?.backgroundColor = DesignColors.zinc700.cgColor
+        topDividerLine.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
         topDividerLine.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(topDividerLine)
         
@@ -2035,7 +2035,7 @@ class CutoffDividerView: NSView, NSCollectionViewElement {
         // Bottom divider line
         bottomDividerLine = NSView()
         bottomDividerLine.wantsLayer = true
-        bottomDividerLine.layer?.backgroundColor = DesignColors.zinc700.cgColor
+        bottomDividerLine.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
         bottomDividerLine.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(bottomDividerLine)
         

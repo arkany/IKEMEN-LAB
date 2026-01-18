@@ -490,7 +490,7 @@ class StageListItem: NSCollectionViewItem {
         previewContainer.layer?.borderWidth = 1
         previewContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
         previewContainer.layer?.masksToBounds = true
-        previewContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        previewContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         containerView.addSubview(previewContainer)
         
         // Preview image
@@ -528,14 +528,14 @@ class StageListItem: NSCollectionViewItem {
         // Name label
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.font = DesignFonts.body(size: 14)
-        nameLabel.textColor = DesignColors.zinc300
+        nameLabel.textColor = DesignColors.textPrimary
         nameLabel.lineBreakMode = .byTruncatingTail
         nameStack.addArrangedSubview(nameLabel)
         
         // Path label (mono font)
         pathLabel = NSTextField(labelWithString: "")
         pathLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
-        pathLabel.textColor = DesignColors.zinc600
+        pathLabel.textColor = DesignColors.textTertiary
         pathLabel.lineBreakMode = .byTruncatingTail
         nameStack.addArrangedSubview(pathLabel)
         
@@ -562,7 +562,7 @@ class StageListItem: NSCollectionViewItem {
         dateLabel = NSTextField(labelWithString: "")
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
         dateLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        dateLabel.textColor = DesignColors.zinc600
+        dateLabel.textColor = DesignColors.textTertiary
         dateLabel.alignment = .right
         containerView.addSubview(dateLabel)
         
@@ -580,7 +580,7 @@ class StageListItem: NSCollectionViewItem {
         moreButton.bezelStyle = .inline
         moreButton.isBordered = false
         moreButton.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        moreButton.contentTintColor = DesignColors.zinc400
+        moreButton.contentTintColor = DesignColors.textSecondary
         moreButton.alphaValue = 0 // Hidden by default, shown on hover
         containerView.addSubview(moreButton)
         
@@ -737,7 +737,7 @@ class StageListItem: NSCollectionViewItem {
                 // Return to dimmed state
                 if currentStage?.isDisabled != true {
                     previewImageView.animator().alphaValue = 0.6
-                    nameLabel.animator().textColor = DesignColors.zinc300
+                    nameLabel.animator().textColor = DesignColors.textPrimary
                 }
             }
         }
@@ -785,30 +785,30 @@ class StageListItem: NSCollectionViewItem {
             disabledIcon.isHidden = false
             nameLabel.textColor = DesignColors.textSecondary
             nameLabel.stringValue = stage.name
-            pathLabel.textColor = DesignColors.zinc700
+            pathLabel.textColor = DesignColors.textDisabled
             view.toolTip = "Not in select.def - won't appear in game"
         } else if stage.isDisabled {
             // Disabled: strikethrough and dimmed
             previewImageView.alphaValue = 0.4
             disabledOverlay.isHidden = false
             disabledIcon.isHidden = false
-            nameLabel.textColor = DesignColors.zinc500
+            nameLabel.textColor = DesignColors.textTertiary
             // Strikethrough effect using attributed string
             let attributes: [NSAttributedString.Key: Any] = [
                 .strikethroughStyle: NSUnderlineStyle.single.rawValue,
-                .strikethroughColor: DesignColors.zinc600
+                .strikethroughColor: DesignColors.textDisabled
             ]
             nameLabel.attributedStringValue = NSAttributedString(string: stage.name, attributes: attributes)
-            pathLabel.textColor = DesignColors.zinc700
+            pathLabel.textColor = DesignColors.textDisabled
             view.toolTip = nil
         } else {
             // Active: normal
             previewImageView.alphaValue = 0.6
             disabledOverlay.isHidden = true
             disabledIcon.isHidden = true
-            nameLabel.textColor = DesignColors.zinc300
+            nameLabel.textColor = DesignColors.textPrimary
             nameLabel.stringValue = stage.name  // Remove strikethrough
-            pathLabel.textColor = DesignColors.zinc600
+            pathLabel.textColor = DesignColors.textTertiary
             view.toolTip = nil
         }
         
@@ -828,13 +828,13 @@ class StageListItem: NSCollectionViewItem {
             audioBadgeLabel.textColor = DesignColors.emerald400
         } else {
             // No audio badge - gray style
-            audioBadge.layer?.backgroundColor = DesignColors.zinc800.withAlphaComponent(0.5).cgColor
+            audioBadge.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
             audioBadge.layer?.borderWidth = 1
             audioBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
             audioBadgeIcon.image = NSImage(systemSymbolName: "speaker.slash", accessibilityDescription: nil)
-            audioBadgeIcon.contentTintColor = DesignColors.zinc500
+            audioBadgeIcon.contentTintColor = DesignColors.textTertiary
             audioBadgeLabel.stringValue = "None"
-            audioBadgeLabel.textColor = DesignColors.zinc500
+            audioBadgeLabel.textColor = DesignColors.textTertiary
         }
     }
     
@@ -904,7 +904,7 @@ class StageListItem: NSCollectionViewItem {
         onMoreClicked = nil
         isHovered = false
         containerView.layer?.backgroundColor = NSColor.clear.cgColor
-        nameLabel.textColor = DesignColors.zinc300
-        pathLabel.textColor = DesignColors.zinc600
+        nameLabel.textColor = DesignColors.textPrimary
+        pathLabel.textColor = DesignColors.textTertiary
     }
 }

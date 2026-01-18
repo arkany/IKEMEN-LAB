@@ -877,7 +877,7 @@ class DashboardView: NSView {
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
-        iconContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        iconContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         iconContainer.layer?.cornerRadius = 8
         iconContainer.layer?.borderWidth = 1
         iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
@@ -985,7 +985,7 @@ class DashboardView: NSView {
         healthDetailContainer = NSView()
         healthDetailContainer.translatesAutoresizingMaskIntoConstraints = false
         healthDetailContainer.wantsLayer = true
-        healthDetailContainer.layer?.backgroundColor = DesignColors.zinc950.cgColor
+        healthDetailContainer.layer?.backgroundColor = DesignColors.panelBackground.cgColor
         healthDetailContainer.isHidden = true
         
         // Separator line
@@ -1174,7 +1174,7 @@ class DashboardView: NSView {
             typeBadge.font = DesignFonts.caption(size: 9)
             typeBadge.textColor = DesignColors.textTertiary
             typeBadge.wantsLayer = true
-            typeBadge.layer?.backgroundColor = DesignColors.zinc800.cgColor
+            typeBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
             typeBadge.layer?.cornerRadius = 3
             // Add padding via alignment rect insets
             headerStack.addArrangedSubview(typeBadge)
@@ -1352,11 +1352,11 @@ class DashboardDropZone: NSView {
         }
     }
     
-    // Design colors from HTML: zinc-800 (#27272a), zinc-900 (#18181b), zinc-700 (#3f3f46)
-    private let borderDefault = NSColor(red: 0x27/255.0, green: 0x27/255.0, blue: 0x2a/255.0, alpha: 1.0)  // zinc-800
-    private let borderHover = NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0)    // zinc-700
-    private let bgDefault = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 0.2)      // bg-zinc-900/20
-    private let bgHover = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 0.4)        // bg-zinc-900/40
+    // Design colors - now using semantic theme-aware colors
+    private var borderDefault: NSColor { DesignColors.borderSubtle }
+    private var borderHover: NSColor { DesignColors.borderHover }
+    private var bgDefault: NSColor { DesignColors.cardBackground.withAlphaComponent(0.2) }
+    private var bgHover: NSColor { DesignColors.cardBackground.withAlphaComponent(0.4) }
     
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -1389,10 +1389,10 @@ class DashboardDropZone: NSView {
         iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
-        iconContainer.layer?.backgroundColor = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0).cgColor  // bg-zinc-900
+        iconContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         iconContainer.layer?.cornerRadius = 24  // rounded-full for 48px container
         iconContainer.layer?.borderWidth = 1
-        iconContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor  // border-white/5
+        iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
         // Add shadow
         iconContainer.layer?.shadowColor = NSColor.black.cgColor
         iconContainer.layer?.shadowOpacity = 0.3

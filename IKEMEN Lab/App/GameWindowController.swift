@@ -1460,6 +1460,17 @@ class GameWindowController: NSWindowController {
         ])
         stackView.addArrangedSubview(audioSection)
         
+        // Appearance Section
+        let appearanceSection = createSettingsSection(title: "Appearance", settings: [
+            createAppToggleSetting(
+                label: "Light Mode",
+                description: "Switch between dark and light theme",
+                getValue: { AppSettings.shared.useLightTheme },
+                setValue: { AppSettings.shared.useLightTheme = $0 }
+            ),
+        ])
+        stackView.addArrangedSubview(appearanceSection)
+        
         // Advanced Features Section
         let advancedSection = createSettingsSection(title: "Advanced", settings: [
             createAppToggleSetting(
@@ -2116,12 +2127,85 @@ class GameWindowController: NSWindowController {
                 self?.updateMainAreaContent()
             }
             .store(in: &cancellables)
+        
+        // Observe theme changes to update UI colors
+        NotificationCenter.default.publisher(for: .themeChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.applyTheme()
+            }
+            .store(in: &cancellables)
     }
     
     private func updateNavItemCount(_ item: NavItem, count: Int) {
         // In the new design, counts are shown in separate badge labels
         guard let badge = navLabels[item] else { return }
         badge.stringValue = "\(count)"
+    }
+    
+    // MARK: - Theme Application
+    
+    /// Apply current theme colors to all UI elements
+    private func applyTheme() {
+        guard let window = window else { return }
+        
+        // Window background
+        window.backgroundColor = DesignColors.background
+        contentView?.layer?.backgroundColor = DesignColors.background.cgColor
+        sidebarView?.layer?.backgroundColor = DesignColors.background.cgColor
+        
+        // Update all nav buttons and labels
+        for (item, button) in navButtons {
+            let isSelected = selectedNavItem == item
+            if let container = button.superview {
+                container.layer?.backgroundColor = isSelected ? DesignColors.selectedBackground.cgColor : NSColor.clear.cgColor
+                container.layer?.borderColor = isSelected ? DesignColors.borderSubtle.cgColor : NSColor.clear.cgColor
+            }
+            if let iconView = button.subviews.compactMap({ $0 as? NSImageView }).first {
+                iconView.contentTintColor = isSelected ? DesignColors.textPrimary : DesignColors.textSecondary
+            }
+        }
+        
+        for (_, label) in navLabels {
+            // Badge labels are small count indicators
+            label.textColor = DesignColors.textDisabled
+        }
+        
+        // Update sidebar borders - thin views are borders
+        for subview in sidebarView?.subviews ?? [] {
+            if subview.frame.width <= 1 || subview.frame.height <= 1 {
+                subview.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+            }
+        }
+        
+        // Recursively update text colors in sidebar
+        updateTextColorsRecursively(in: sidebarView)
+        
+        // Refresh the current view to rebuild with new colors
+        if let selected = selectedNavItem {
+            selectNavItem(selected)
+        }
+        
+        // Force redraw
+        window.contentView?.needsDisplay = true
+    }
+    
+    private func updateTextColorsRecursively(in view: NSView?) {
+        guard let view = view else { return }
+        for subview in view.subviews {
+            if let textField = subview as? NSTextField {
+                // Check if it's likely a primary/header text (white in dark, dark in light)
+                let currentAlpha = textField.textColor?.alphaComponent ?? 1.0
+                if currentAlpha < 0.5 {
+                    // Disabled/placeholder
+                    textField.textColor = DesignColors.textDisabled
+                } else {
+                    // Assume primary text for now; labels will be rebuilt anyway
+                    textField.textColor = DesignColors.textPrimary
+                }
+            }
+            updateTextColorsRecursively(in: subview)
+        }
     }
     
     private func updateUI(for state: EngineState) {

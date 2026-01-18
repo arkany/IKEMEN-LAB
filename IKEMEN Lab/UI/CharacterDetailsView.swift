@@ -103,9 +103,9 @@ class CharacterDetailsView: NSView {
     
     private func setup() {
         wantsLayer = true
-        layer?.backgroundColor = DesignColors.zinc950.cgColor
+        layer?.backgroundColor = DesignColors.panelBackground.cgColor
         layer?.borderWidth = 1
-        layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        layer?.borderColor = DesignColors.borderSubtle.cgColor
         
         setupScrollView()
         setupContent()
@@ -159,7 +159,7 @@ class CharacterDetailsView: NSView {
         heroContainerView = NSView()
         heroContainerView.translatesAutoresizingMaskIntoConstraints = false
         heroContainerView.wantsLayer = true
-        heroContainerView.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        heroContainerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         contentView.addSubview(heroContainerView)
         
         // Hero background image
@@ -174,8 +174,8 @@ class CharacterDetailsView: NSView {
         heroGradientLayer = CAGradientLayer()
         heroGradientLayer.colors = [
             NSColor.clear.cgColor,
-            DesignColors.zinc950.withAlphaComponent(0.8).cgColor,
-            DesignColors.zinc950.cgColor
+            DesignColors.panelBackground.withAlphaComponent(0.8).cgColor,
+            DesignColors.panelBackground.cgColor
         ]
         heroGradientLayer.locations = [0.0, 0.5, 1.0]
         heroGradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
@@ -213,7 +213,7 @@ class CharacterDetailsView: NSView {
         
         heroDateLabel = NSTextField(labelWithString: "")
         heroDateLabel.font = DesignFonts.caption(size: 12)
-        heroDateLabel.textColor = DesignColors.zinc500
+        heroDateLabel.textColor = DesignColors.textSecondary
         badgeRow.addArrangedSubview(heroDateLabel)
         
         // Hero action buttons container (shown on hover)
@@ -255,17 +255,17 @@ class CharacterDetailsView: NSView {
         sourceInfoHeader = NSTextField(labelWithString: "Source")
         sourceInfoHeader.translatesAutoresizingMaskIntoConstraints = false
         sourceInfoHeader.font = DesignFonts.body(size: 12)
-        sourceInfoHeader.textColor = DesignColors.zinc400
+        sourceInfoHeader.textColor = DesignColors.textSecondary
         sourceInfoHeader.isHidden = true  // Hidden by default, shown when scraped data exists
         contentView.addSubview(sourceInfoHeader)
         
         sourceInfoContainer = NSView()
         sourceInfoContainer.translatesAutoresizingMaskIntoConstraints = false
         sourceInfoContainer.wantsLayer = true
-        sourceInfoContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        sourceInfoContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         sourceInfoContainer.layer?.cornerRadius = 8
         sourceInfoContainer.layer?.borderWidth = 1
-        sourceInfoContainer.layer?.borderColor = DesignColors.zinc800.cgColor
+        sourceInfoContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
         sourceInfoContainer.isHidden = true  // Hidden by default
         contentView.addSubview(sourceInfoContainer)
         
@@ -282,7 +282,7 @@ class CharacterDetailsView: NSView {
         scrapedDescriptionLabel = NSTextField(labelWithString: "")
         scrapedDescriptionLabel.translatesAutoresizingMaskIntoConstraints = false
         scrapedDescriptionLabel.font = DesignFonts.caption(size: 11)
-        scrapedDescriptionLabel.textColor = DesignColors.zinc400
+        scrapedDescriptionLabel.textColor = DesignColors.textSecondary
         scrapedDescriptionLabel.isBordered = false
         scrapedDescriptionLabel.drawsBackground = false
         scrapedDescriptionLabel.lineBreakMode = .byWordWrapping
@@ -293,7 +293,7 @@ class CharacterDetailsView: NSView {
         tagsHeader = NSTextField(labelWithString: "Tags")
         tagsHeader.translatesAutoresizingMaskIntoConstraints = false
         tagsHeader.font = DesignFonts.body(size: 12)
-        tagsHeader.textColor = DesignColors.zinc400
+        tagsHeader.textColor = DesignColors.textSecondary
         contentView.addSubview(tagsHeader)
         
         tagsContainerView = NSView()
@@ -308,13 +308,13 @@ class CharacterDetailsView: NSView {
         attributesHeader = NSTextField(labelWithString: "Attributes")
         attributesHeader.translatesAutoresizingMaskIntoConstraints = false
         attributesHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        attributesHeader.textColor = DesignColors.zinc100
+        attributesHeader.textColor = DesignColors.textPrimary
         attributesContainer.addSubview(attributesHeader)
         
         attributesSubtitle = NSTextField(labelWithString: "Based on CNS data")
         attributesSubtitle.translatesAutoresizingMaskIntoConstraints = false
         attributesSubtitle.font = NSFont.systemFont(ofSize: 10, weight: .regular)
-        attributesSubtitle.textColor = DesignColors.zinc500
+        attributesSubtitle.textColor = DesignColors.textTertiary
         attributesContainer.addSubview(attributesSubtitle)
         
         let barsStack = NSStackView()
@@ -324,8 +324,8 @@ class CharacterDetailsView: NSView {
         attributesContainer.addSubview(barsStack)
         
         lifeBar = AttributeBarView(label: "Life", value: 1000, maxValue: 1000, color: .white)
-        atkBar = AttributeBarView(label: "Atk", value: 100, maxValue: 150, color: DesignColors.zinc400)
-        defBar = AttributeBarView(label: "Def", value: 105, maxValue: 150, color: DesignColors.zinc400)
+        atkBar = AttributeBarView(label: "Atk", value: 100, maxValue: 150, color: DesignColors.textSecondary)
+        defBar = AttributeBarView(label: "Def", value: 105, maxValue: 150, color: DesignColors.textSecondary)
         powBar = AttributeBarView(label: "Pow", value: 3000, maxValue: 5000, color: NSColor.systemBlue.withAlphaComponent(0.7))
         
         barsStack.addArrangedSubview(lifeBar)
@@ -337,7 +337,7 @@ class CharacterDetailsView: NSView {
         palettesHeader = NSTextField(labelWithString: "Palettes (1)")
         palettesHeader.translatesAutoresizingMaskIntoConstraints = false
         palettesHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        palettesHeader.textColor = DesignColors.zinc100
+        palettesHeader.textColor = DesignColors.textPrimary
         contentView.addSubview(palettesHeader)
         
         paletteStackView = NSStackView()
@@ -351,7 +351,7 @@ class CharacterDetailsView: NSView {
         moveListHeader = NSTextField(labelWithString: "Move List")
         moveListHeader.translatesAutoresizingMaskIntoConstraints = false
         moveListHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        moveListHeader.textColor = DesignColors.zinc100
+        moveListHeader.textColor = DesignColors.textPrimary
         contentView.addSubview(moveListHeader)
         
         moveListStackView = NSStackView()
@@ -371,7 +371,7 @@ class CharacterDetailsView: NSView {
         defFileHeader = NSTextField(labelWithString: "Definition File")
         defFileHeader.translatesAutoresizingMaskIntoConstraints = false
         defFileHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        defFileHeader.textColor = DesignColors.zinc100
+        defFileHeader.textColor = DesignColors.textPrimary
         defFileHeaderRow.addArrangedSubview(defFileHeader)
         
         let defFileSpacer = NSView()
@@ -382,7 +382,7 @@ class CharacterDetailsView: NSView {
         defFileNameLabel = NSTextField(labelWithString: "")
         defFileNameLabel.translatesAutoresizingMaskIntoConstraints = false
         defFileNameLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
-        defFileNameLabel.textColor = DesignColors.zinc600
+        defFileNameLabel.textColor = DesignColors.textTertiary
         defFileHeaderRow.addArrangedSubview(defFileNameLabel)
         
         // Code view container
@@ -409,7 +409,7 @@ class CharacterDetailsView: NSView {
         defFileCodeView.backgroundColor = .clear
         defFileCodeView.drawsBackground = false
         defFileCodeView.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
-        defFileCodeView.textColor = DesignColors.zinc400
+        defFileCodeView.textColor = DesignColors.textSecondary
         defFileScrollView.documentView = defFileCodeView
         
         // Layout constraints
@@ -607,7 +607,7 @@ class CharacterDetailsView: NSView {
         }
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleNone
-        button.contentTintColor = DesignColors.zinc400
+        button.contentTintColor = DesignColors.textSecondary
         button.target = self
         button.action = action
         
@@ -631,20 +631,20 @@ class CharacterDetailsView: NSView {
         card.translatesAutoresizingMaskIntoConstraints = false
         card.wantsLayer = true
         card.layer?.cornerRadius = 8
-        card.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+        card.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.3).cgColor
         card.layer?.borderWidth = 1
         card.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         
         let titleLabel = NSTextField(labelWithString: title.uppercased())
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        titleLabel.textColor = DesignColors.zinc500
+        titleLabel.textColor = DesignColors.textTertiary
         card.addSubview(titleLabel)
         
         let valueLabel = NSTextField(labelWithString: value)
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
         valueLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
-        valueLabel.textColor = DesignColors.zinc200
+        valueLabel.textColor = DesignColors.textPrimary
         card.addSubview(valueLabel)
         
         NSLayoutConstraint.activate([
@@ -665,7 +665,7 @@ class CharacterDetailsView: NSView {
         let badge = NSView()
         badge.translatesAutoresizingMaskIntoConstraints = false
         badge.wantsLayer = true
-        badge.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        badge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         badge.layer?.cornerRadius = 6
         badge.layer?.borderWidth = 1
         badge.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
@@ -673,7 +673,7 @@ class CharacterDetailsView: NSView {
         let label = NSTextField(labelWithString: text)
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = DesignFonts.caption(size: 11)
-        label.textColor = DesignColors.zinc300
+        label.textColor = DesignColors.textPrimary
         label.isBordered = false
         label.drawsBackground = false
         label.isEditable = false
@@ -850,7 +850,7 @@ class CharacterDetailsView: NSView {
         paletteStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
         // Add palette dots (up to 6, then +N)
-        let colors: [NSColor] = [.white, DesignColors.zinc700, .systemBlue, .systemRed, .systemPurple, .systemYellow]
+        let colors: [NSColor] = [.white, DesignColors.borderSubtle, .systemBlue, .systemRed, .systemPurple, .systemYellow]
         let displayCount = min(count, 6)
         
         for i in 0..<displayCount {
@@ -876,14 +876,14 @@ class CharacterDetailsView: NSView {
             moreContainer.translatesAutoresizingMaskIntoConstraints = false
             moreContainer.wantsLayer = true
             moreContainer.layer?.cornerRadius = 12
-            moreContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+            moreContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
             moreContainer.layer?.borderWidth = 1
-            moreContainer.layer?.borderColor = DesignColors.zinc700.cgColor
+            moreContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
             
             let moreLabel = NSTextField(labelWithString: "+\(count - 6)")
             moreLabel.translatesAutoresizingMaskIntoConstraints = false
             moreLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-            moreLabel.textColor = DesignColors.zinc500
+            moreLabel.textColor = DesignColors.textTertiary
             moreLabel.isBordered = false
             moreLabel.drawsBackground = false
             moreLabel.alignment = .center
@@ -911,7 +911,7 @@ class CharacterDetailsView: NSView {
             let noTagsLabel = NSTextField(labelWithString: "No tags detected")
             noTagsLabel.translatesAutoresizingMaskIntoConstraints = false
             noTagsLabel.font = DesignFonts.caption(size: 11)
-            noTagsLabel.textColor = DesignColors.zinc500
+            noTagsLabel.textColor = DesignColors.textTertiary
             noTagsLabel.isBordered = false
             noTagsLabel.drawsBackground = false
             tagsContainerView.addSubview(noTagsLabel)
@@ -995,7 +995,7 @@ class CharacterDetailsView: NSView {
         if moves.isEmpty {
             let noMovesLabel = NSTextField(labelWithString: "No special moves found")
             noMovesLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-            noMovesLabel.textColor = DesignColors.zinc500
+            noMovesLabel.textColor = DesignColors.textTertiary
             moveListStackView.addArrangedSubview(noMovesLabel)
         } else {
             for move in moves.prefix(10) { // Limit to 10 for UI
@@ -1006,7 +1006,7 @@ class CharacterDetailsView: NSView {
             if moves.count > 10 {
                 let moreLabel = NSTextField(labelWithString: "+\(moves.count - 10) more moves...")
                 moreLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
-                moreLabel.textColor = DesignColors.zinc600
+                moreLabel.textColor = DesignColors.textTertiary
                 moveListStackView.addArrangedSubview(moreLabel)
             }
         }
@@ -1027,7 +1027,7 @@ class CharacterDetailsView: NSView {
             let errorAttr = NSAttributedString(
                 string: "Unable to read definition file",
                 attributes: [
-                    .foregroundColor: DesignColors.zinc500,
+                    .foregroundColor: DesignColors.textTertiary,
                     .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
                 ]
             )
@@ -1051,7 +1051,7 @@ class CharacterDetailsView: NSView {
                 lineAttr = NSAttributedString(
                     string: line,
                     attributes: [
-                        .foregroundColor: DesignColors.zinc600,
+                        .foregroundColor: DesignColors.textTertiary,
                         .font: defaultFont
                     ]
                 )
@@ -1078,7 +1078,7 @@ class CharacterDetailsView: NSView {
                     let valuePart = NSAttributedString(
                         string: String(parts[1]),
                         attributes: [
-                            .foregroundColor: DesignColors.zinc300,
+                            .foregroundColor: DesignColors.textPrimary,
                             .font: defaultFont
                         ]
                     )
@@ -1090,7 +1090,7 @@ class CharacterDetailsView: NSView {
                     lineAttr = NSAttributedString(
                         string: line,
                         attributes: [
-                            .foregroundColor: DesignColors.zinc400,
+                            .foregroundColor: DesignColors.textSecondary,
                             .font: defaultFont
                         ]
                     )
@@ -1100,7 +1100,7 @@ class CharacterDetailsView: NSView {
                 lineAttr = NSAttributedString(
                     string: line,
                     attributes: [
-                        .foregroundColor: DesignColors.zinc400,
+                        .foregroundColor: DesignColors.textSecondary,
                         .font: defaultFont
                     ]
                 )
@@ -1125,12 +1125,12 @@ class CharacterDetailsView: NSView {
         
         let nameLabel = NSTextField(labelWithString: move.displayName)
         nameLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        nameLabel.textColor = DesignColors.zinc300
+        nameLabel.textColor = DesignColors.textPrimary
         row.addArrangedSubview(nameLabel)
         
         let inputLabel = NSTextField(labelWithString: move.notation)
         inputLabel.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-        inputLabel.textColor = DesignColors.zinc500
+        inputLabel.textColor = DesignColors.textSecondary
         row.addArrangedSubview(inputLabel)
         
         return row
@@ -1159,7 +1159,7 @@ class CharacterDetailsView: NSView {
         moveListStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         let placeholderLabel = NSTextField(labelWithString: "Select a character to view details")
         placeholderLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        placeholderLabel.textColor = DesignColors.zinc500
+        placeholderLabel.textColor = DesignColors.textTertiary
         moveListStackView.addArrangedSubview(placeholderLabel)
         
         // Clear definition file
@@ -1201,7 +1201,7 @@ class AttributeBarView: NSView {
         let label = NSTextField(labelWithString: labelText)
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = DesignFonts.caption(size: 12)
-        label.textColor = DesignColors.zinc500
+        label.textColor = DesignColors.textTertiary
         addSubview(label)
         
         // Bar track
@@ -1209,7 +1209,7 @@ class AttributeBarView: NSView {
         barTrack.translatesAutoresizingMaskIntoConstraints = false
         barTrack.wantsLayer = true
         barTrack.layer?.cornerRadius = 3
-        barTrack.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        barTrack.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         addSubview(barTrack)
         
         // Bar fill
@@ -1224,7 +1224,7 @@ class AttributeBarView: NSView {
         valueLabel = NSTextField(labelWithString: "\(currentValue)")
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
         valueLabel.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        valueLabel.textColor = DesignColors.zinc300
+        valueLabel.textColor = DesignColors.textPrimary
         valueLabel.alignment = .right
         addSubview(valueLabel)
         

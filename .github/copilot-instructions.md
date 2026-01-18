@@ -28,6 +28,7 @@ IKEMEN Lab is a **macOS-native content manager** for IKEMEN GO (a MUGEN-compatib
 3. **Singletons for services** — EmulatorBridge.shared, ImageCache.shared, MetadataStore.shared
 4. **Design tokens** — Use `DesignColors.zinc950`, `DesignFonts.bodyMedium`, etc.
 5. **Error handling** — Use `Result<T, Error>` or throwing functions
+6. **Never hardcode colors** — Always use semantic colors from `DesignColors` (e.g., `textPrimary`, `cardBackground`, `borderSubtle`) instead of raw palette values (e.g., `zinc300`, `zinc800`). This ensures proper light/dark theme support.
 
 ## Implementation Specs
 
