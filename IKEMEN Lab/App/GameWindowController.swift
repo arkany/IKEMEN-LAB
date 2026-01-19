@@ -772,9 +772,16 @@ class GameWindowController: NSWindowController {
         characterBrowserView = CharacterBrowserView(frame: .zero)
         characterBrowserView.translatesAutoresizingMaskIntoConstraints = false
         characterBrowserView.isHidden = true
-        characterBrowserView.onCharacterSelected = { [weak self] character in
-            self?.statusLabel.stringValue = character.displayName
-            self?.showCharacterDetails(character)
+        characterBrowserView.onSelectionChanged = { [weak self] selection in
+            guard let self else { return }
+            if selection.count == 1, let character = selection.first {
+                self.statusLabel.stringValue = character.displayName
+                self.showCharacterDetails(character)
+            } else if selection.isEmpty {
+                self.characterDetailsView.showPlaceholder()
+            } else {
+                self.characterDetailsView.showMultiSelection(count: selection.count)
+            }
         }
         characterBrowserView.onCharacterRevealInFinder = { [weak self] character in
             self?.revealCharacterInFinder(character)
@@ -800,6 +807,9 @@ class GameWindowController: NSWindowController {
         }
         characterDetailsView.onDeleteCharacter = { [weak self] character in
             self?.confirmRemoveCharacter(character)
+        }
+        characterDetailsView.onAddTag = { [weak self] character in
+            self?.promptForCustomTag(for: [character.id])
         }
         mainAreaView.addSubview(characterDetailsView)
         
@@ -1108,6 +1118,37 @@ class GameWindowController: NSWindowController {
         
         dashboardView?.updateStats(characters: characterCount, stages: stageCount, storageBytes: storageBytes)
     }
+
+    private func promptForCustomTag(for characterIds: [String]) {
+        guard !characterIds.isEmpty else { return }
+        
+        let alert = NSAlert()
+        alert.messageText = characterIds.count > 1 ? "Add Tag to Selected" : "Add Tag"
+        alert.informativeText = "Enter a custom tag name:"
+        alert.addButton(withTitle: "Add")
+        alert.addButton(withTitle: "Cancel")
+        
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
+        input.placeholderString = "Tag name"
+        alert.accessoryView = input
+        
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else { return }
+        
+        let tag = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !tag.isEmpty else {
+            ToastManager.shared.showError(title: "Tag cannot be empty")
+            return
+        }
+        
+        do {
+            try MetadataStore.shared.assignCustomTag(tag, to: characterIds)
+            let title = characterIds.count > 1 ? "Added tag to selected" : "Tag added"
+            ToastManager.shared.showSuccess(title: title, subtitle: tag)
+        } catch {
+            ToastManager.shared.showError(title: "Failed to add tag", subtitle: error.localizedDescription)
+        }
+    }
     
     // MARK: - Search
     
@@ -1123,6 +1164,7 @@ class GameWindowController: NSWindowController {
             } else {
                 // Filter using MetadataStore first, then fallback to simple search
                 let allCharacters = ikemenBridge.characters
+                let customTagsMap = (try? MetadataStore.shared.customTagsMap(for: allCharacters.map { $0.id })) ?? [:]
                 do {
                     let results = try MetadataStore.shared.searchCharacters(query: query)
                     let matchingPaths = Set(results.map { $0.folderPath })
@@ -1132,7 +1174,8 @@ class GameWindowController: NSWindowController {
                         matchingPaths.contains(char.directory.path) ||
                         char.displayName.localizedCaseInsensitiveContains(query) ||
                         char.author.localizedCaseInsensitiveContains(query) ||
-                        char.inferredTags.contains { $0.localizedCaseInsensitiveContains(query) }
+                        char.inferredTags.contains { $0.localizedCaseInsensitiveContains(query) } ||
+                        (customTagsMap[char.id] ?? []).contains { $0.localizedCaseInsensitiveContains(query) }
                     }
                     characterBrowserView?.setCharacters(filtered)
                 } catch {
@@ -1140,7 +1183,8 @@ class GameWindowController: NSWindowController {
                     let filtered = allCharacters.filter {
                         $0.displayName.localizedCaseInsensitiveContains(query) ||
                         $0.author.localizedCaseInsensitiveContains(query) ||
-                        $0.inferredTags.contains { $0.localizedCaseInsensitiveContains(query) }
+                        $0.inferredTags.contains { $0.localizedCaseInsensitiveContains(query) } ||
+                        (customTagsMap[$0.id] ?? []).contains { $0.localizedCaseInsensitiveContains(query) }
                     }
                     characterBrowserView?.setCharacters(filtered)
                 }

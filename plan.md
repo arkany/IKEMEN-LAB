@@ -52,11 +52,13 @@ All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
 | └─ README/setup notes display | 📋 Todo |
 | **First-Run Experience** | ✅ Done |
 | └─ Import mode choice | ✅ Done |
-| **Tagging UI** | 🔄 In Progress |
-| ├─ Grid card tag badges | 📋 Todo |
-| ├─ Custom tag creation | 📋 Todo |
-| ├─ Tag editing/deletion | 📋 Todo |
-| └─ Bulk tag assignment | 📋 Todo |
+| **Tagging UI** | ✅ Done |
+| ├─ Detail panel tags section | ✅ Done |
+| ├─ Grid card tag badges | ✅ Done |
+| ├─ Tag search integration | ✅ Done |
+| ├─ Custom tag creation | ✅ Done |
+| ├─ Tag editing/deletion | ✅ Done |
+| └─ Bulk tag assignment | ✅ Done |
 | **Duplicate Detection** | ✅ Done |
 | ├─ Pre-install warning | ✅ Done |
 | └─ Badge display in browser | ✅ Done |
@@ -67,6 +69,8 @@ All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
 | Feature | Status |
 |---------|--------|
 | **Add-ons Browser** | 📋 Todo |
+| ├─ Lifebars | 📋 Todo |
+| ├─ Storyboards | 📋 Todo |
 | ├─ Scenes/Endings | 📋 Todo |
 | ├─ Intro Movies | 📋 Todo |
 | ├─ Sound Packs | 📋 Todo |

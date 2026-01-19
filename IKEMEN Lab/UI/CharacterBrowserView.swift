@@ -17,8 +17,11 @@ class CharacterCollectionView: NSCollectionView {
     private func showContextMenu(for event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         
-        if let indexPath = indexPathForItem(at: point),
-           let menu = menuProvider?(indexPath) {
+        if let indexPath = indexPathForItem(at: point) {
+            if !selectionIndexPaths.contains(indexPath) {
+                selectItems(at: [indexPath], scrollPosition: [])
+            }
+            guard let menu = menuProvider?(indexPath) else { return }
             NSMenu.popUpContextMenu(menu, with: event, for: self)
         }
     }
@@ -57,6 +60,16 @@ class CharacterClipView: NSClipView {
     }
 }
 
+private final class TagActionContext: NSObject {
+    let tag: String
+    let characterIds: [String]
+    
+    init(tag: String, characterIds: [String]) {
+        self.tag = tag
+        self.characterIds = characterIds
+    }
+}
+
 /// A visual browser for viewing installed characters with thumbnails
 /// Uses shared design system from UIHelpers.swift
 class CharacterBrowserView: NSView {
@@ -69,6 +82,7 @@ class CharacterBrowserView: NSView {
     private var allCharacters: [CharacterInfo] = []  // All characters from data source
     private var characters: [CharacterInfo] = []     // Filtered characters for display
     private var portraitCache: [String: NSImage] = [:]
+    private var customTagsById: [String: [String]] = [:]
     private var cancellables = Set<AnyCancellable>()
     private var activeScreenpackSlotLimit: Int = 0
     private var duplicateIds: Set<String> = []       // IDs of characters that have duplicates
@@ -95,6 +109,7 @@ class CharacterBrowserView: NSView {
     private let sectionInset = BrowserLayout.sectionInset
     
     var onCharacterSelected: ((CharacterInfo) -> Void)?
+    var onSelectionChanged: (([CharacterInfo]) -> Void)?
     var onCharacterDoubleClicked: ((CharacterInfo) -> Void)?
     var onCharacterRevealInFinder: ((CharacterInfo) -> Void)?
     var onCharacterRemove: ((CharacterInfo) -> Void)?
@@ -149,7 +164,7 @@ class CharacterBrowserView: NSView {
         collectionView.dataSource = self
         collectionView.backgroundColors = [.clear]
         collectionView.isSelectable = true
-        collectionView.allowsMultipleSelection = false
+        collectionView.allowsMultipleSelection = true
         
         // Enable drag-and-drop reordering
         collectionView.registerForDraggedTypes([.characterDrag])
@@ -236,6 +251,13 @@ class CharacterBrowserView: NSView {
                 self?.collectionView.reloadData()
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .customTagsChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.reloadCustomTags()
+            }
+            .store(in: &cancellables)
     }
     
     /// Set characters directly (used for search filtering)
@@ -249,11 +271,22 @@ class CharacterBrowserView: NSView {
         
         // Compute duplicate IDs
         computeDuplicates()
+
+        // Refresh custom tags for the new character set
+        reloadCustomTags(shouldReloadView: false)
         
         applyFilters()
         
         // Load portraits in background
         loadPortraitsAsync()
+    }
+
+    private func reloadCustomTags(shouldReloadView: Bool = true) {
+        let ids = allCharacters.map { $0.id }
+        customTagsById = (try? MetadataStore.shared.customTagsMap(for: ids)) ?? [:]
+        if shouldReloadView {
+            collectionView.reloadData()
+        }
     }
     
     /// Compute which characters are duplicates and store their IDs
@@ -364,20 +397,11 @@ class CharacterBrowserView: NSView {
     // MARK: - Context Menu
     
     private func buildContextMenu(for indexPath: IndexPath) -> NSMenu? {
-        // Calculate actual character index based on section
-        let characterIndex: Int
-        if shouldShowCutoffDivider() {
-            if indexPath.section == 0 {
-                characterIndex = indexPath.item
-            } else {
-                characterIndex = activeScreenpackSlotLimit + indexPath.item
-            }
-        } else {
-            characterIndex = indexPath.item
-        }
-        
-        guard characterIndex < characters.count else { return nil }
+        guard let characterIndex = characterIndex(for: indexPath) else { return nil }
         let character = characters[characterIndex]
+        let selected = selectedCharacters()
+        let tagTargets = selected.isEmpty ? [character] : selected
+        let tagTargetIds = tagTargets.map { $0.id }
         
         let menu = NSMenu()
         
@@ -401,6 +425,61 @@ class CharacterBrowserView: NSView {
         addToCollectionItem.submenu = buildCollectionsSubmenu(for: character)
         menu.addItem(addToCollectionItem)
         
+        menu.addItem(NSMenuItem.separator())
+
+        // Tags submenu
+        let tagsMenu = NSMenu()
+        let addTagTitle = tagTargets.count > 1 ? "Add Tag to Selected…" : "Add Tag…"
+        let addTagItem = NSMenuItem(title: addTagTitle, action: #selector(addCustomTagAction(_:)), keyEquivalent: "")
+        addTagItem.representedObject = tagTargetIds
+        addTagItem.target = self
+        tagsMenu.addItem(addTagItem)
+
+        let tagSet = Set(tagTargetIds.flatMap { customTagsById[$0] ?? [] })
+        let removableTags = tagSet.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        if !removableTags.isEmpty {
+            let removeTitle = tagTargets.count > 1 ? "Remove Tag from Selected" : "Remove Tag"
+            let removeItem = NSMenuItem(title: removeTitle, action: nil, keyEquivalent: "")
+            let removeMenu = NSMenu()
+            for tag in removableTags {
+                let item = NSMenuItem(title: tag, action: #selector(removeCustomTagAction(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = TagActionContext(tag: tag, characterIds: tagTargetIds)
+                removeMenu.addItem(item)
+            }
+            removeItem.submenu = removeMenu
+            tagsMenu.addItem(removeItem)
+        }
+
+        let allTags = (try? MetadataStore.shared.allCustomTags()) ?? []
+        if !allTags.isEmpty {
+            let renameItem = NSMenuItem(title: "Rename Tag…", action: nil, keyEquivalent: "")
+            let renameMenu = NSMenu()
+            for tag in allTags {
+                let item = NSMenuItem(title: tag, action: #selector(renameCustomTagAction(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = TagActionContext(tag: tag, characterIds: [])
+                renameMenu.addItem(item)
+            }
+            renameItem.submenu = renameMenu
+            tagsMenu.addItem(renameItem)
+
+            let deleteItem = NSMenuItem(title: "Delete Tag…", action: nil, keyEquivalent: "")
+            let deleteMenu = NSMenu()
+            for tag in allTags {
+                let item = NSMenuItem(title: tag, action: #selector(deleteCustomTagAction(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = TagActionContext(tag: tag, characterIds: [])
+                deleteMenu.addItem(item)
+            }
+            deleteItem.submenu = deleteMenu
+            tagsMenu.addItem(deleteItem)
+        }
+
+        let tagsMenuItem = NSMenuItem(title: "Tags", action: nil, keyEquivalent: "")
+        tagsMenuItem.submenu = tagsMenu
+        menu.addItem(tagsMenuItem)
+
         menu.addItem(NSMenuItem.separator())
         
         // Enable/Disable toggle (only for registered characters)
@@ -537,6 +616,99 @@ class CharacterBrowserView: NSView {
         
         ToastManager.shared.showSuccess(title: "Created \(name) with \(character.displayName)")
     }
+
+    @objc private func addCustomTagAction(_ sender: NSMenuItem) {
+        guard let characterIds = sender.representedObject as? [String] else { return }
+        
+        let alert = NSAlert()
+        alert.messageText = characterIds.count > 1 ? "Add Tag to Selected" : "Add Tag"
+        alert.informativeText = "Enter a custom tag name:"
+        alert.addButton(withTitle: "Add")
+        alert.addButton(withTitle: "Cancel")
+        
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
+        input.placeholderString = "Tag name"
+        alert.accessoryView = input
+        
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else { return }
+        
+        let tag = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !tag.isEmpty else {
+            ToastManager.shared.showError(title: "Tag cannot be empty")
+            return
+        }
+        
+        do {
+            try MetadataStore.shared.assignCustomTag(tag, to: characterIds)
+            let title = characterIds.count > 1 ? "Added tag to selected" : "Tag added"
+            ToastManager.shared.showSuccess(title: title, subtitle: tag)
+        } catch {
+            ToastManager.shared.showError(title: "Failed to add tag", subtitle: error.localizedDescription)
+        }
+    }
+
+    @objc private func removeCustomTagAction(_ sender: NSMenuItem) {
+        guard let context = sender.representedObject as? TagActionContext else { return }
+        
+        do {
+            try MetadataStore.shared.removeCustomTag(context.tag, from: context.characterIds)
+            ToastManager.shared.showSuccess(title: "Removed tag", subtitle: context.tag)
+        } catch {
+            ToastManager.shared.showError(title: "Failed to remove tag", subtitle: error.localizedDescription)
+        }
+    }
+
+    @objc private func renameCustomTagAction(_ sender: NSMenuItem) {
+        guard let context = sender.representedObject as? TagActionContext else { return }
+        
+        let alert = NSAlert()
+        alert.messageText = "Rename Tag"
+        alert.informativeText = "Enter a new name for \"\(context.tag)\":"
+        alert.addButton(withTitle: "Rename")
+        alert.addButton(withTitle: "Cancel")
+        
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
+        input.stringValue = context.tag
+        alert.accessoryView = input
+        
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else { return }
+        
+        let newTag = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !newTag.isEmpty else {
+            ToastManager.shared.showError(title: "Tag cannot be empty")
+            return
+        }
+        
+        do {
+            try MetadataStore.shared.renameCustomTag(context.tag, to: newTag)
+            ToastManager.shared.showSuccess(title: "Renamed tag", subtitle: "\(context.tag) → \(newTag)")
+        } catch {
+            ToastManager.shared.showError(title: "Failed to rename tag", subtitle: error.localizedDescription)
+        }
+    }
+
+    @objc private func deleteCustomTagAction(_ sender: NSMenuItem) {
+        guard let context = sender.representedObject as? TagActionContext else { return }
+        
+        let alert = NSAlert()
+        alert.messageText = "Delete Tag"
+        alert.informativeText = "Delete \"\(context.tag)\" from all characters?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else { return }
+        
+        do {
+            try MetadataStore.shared.deleteCustomTag(context.tag)
+            ToastManager.shared.showSuccess(title: "Deleted tag", subtitle: context.tag)
+        } catch {
+            ToastManager.shared.showError(title: "Failed to delete tag", subtitle: error.localizedDescription)
+        }
+    }
     
     @objc private func toggleDisableCharacter(_ sender: NSMenuItem) {
         guard let character = sender.representedObject as? CharacterInfo else { return }
@@ -619,6 +791,10 @@ class CharacterBrowserView: NSView {
         } else {
             indexPath = IndexPath(item: index, section: 0)
         }
+
+        if !collectionView.selectionIndexPaths.contains(indexPath) {
+            collectionView.selectItems(at: [indexPath], scrollPosition: [])
+        }
         
         guard let menu = buildContextMenu(for: indexPath) else { return }
         
@@ -672,7 +848,8 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
         
         if viewMode == .grid {
             let item = collectionView.makeItem(withIdentifier: CharacterCollectionViewItem.identifier, for: indexPath) as! CharacterCollectionViewItem
-            item.configure(with: character, isDuplicate: isDuplicate)
+            let tags = mergedTags(for: character)
+            item.configure(with: character, tags: tags, isDuplicate: isDuplicate)
             
             if let cachedPortrait = portraitCache[character.id] {
                 item.setPortrait(cachedPortrait)
@@ -735,6 +912,49 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
         // 2. The number of characters exceeds the slot limit
         return activeScreenpackSlotLimit > 0 && characters.count > activeScreenpackSlotLimit
     }
+
+    private func characterIndex(for indexPath: IndexPath) -> Int? {
+        let index: Int
+        if shouldShowCutoffDivider() {
+            if indexPath.section == 0 {
+                index = indexPath.item
+            } else {
+                index = activeScreenpackSlotLimit + indexPath.item
+            }
+        } else {
+            index = indexPath.item
+        }
+        return index < characters.count ? index : nil
+    }
+
+    private func selectedCharacters() -> [CharacterInfo] {
+        let selected = collectionView.selectionIndexPaths.compactMap { indexPath -> (Int, CharacterInfo)? in
+            guard let index = characterIndex(for: indexPath) else { return nil }
+            return (index, characters[index])
+        }
+        return selected.sorted { $0.0 < $1.0 }.map { $0.1 }
+    }
+
+    private func mergedTags(for character: CharacterInfo) -> [String] {
+        let customTags = customTagsById[character.id] ?? []
+        var merged: [String] = []
+        var seen = Set<String>()
+        for tag in customTags + character.inferredTags {
+            let key = tag.lowercased()
+            if seen.contains(key) { continue }
+            seen.insert(key)
+            merged.append(tag)
+        }
+        return merged
+    }
+
+    private func notifySelectionChanged() {
+        let selected = selectedCharacters()
+        onSelectionChanged?(selected)
+        if selected.count == 1 {
+            onCharacterSelected?(selected[0])
+        }
+    }
 }
 
 // MARK: - NSCollectionViewDelegate
@@ -742,22 +962,11 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
 extension CharacterBrowserView: NSCollectionViewDelegate {
     
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
-        guard let indexPath = indexPaths.first else { return }
-        
-        // Calculate actual character index based on section
-        let characterIndex: Int
-        if shouldShowCutoffDivider() {
-            if indexPath.section == 0 {
-                characterIndex = indexPath.item
-            } else {
-                characterIndex = activeScreenpackSlotLimit + indexPath.item
-            }
-        } else {
-            characterIndex = indexPath.item
-        }
-        
-        let character = characters[characterIndex]
-        onCharacterSelected?(character)
+        notifySelectionChanged()
+    }
+
+    func collectionView(_ collectionView: NSCollectionView, didDeselectItemsAt indexPaths: Set<IndexPath>) {
+        notifySelectionChanged()
     }
     
     // MARK: - Drag and Drop
@@ -767,17 +976,7 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
     }
     
     func collectionView(_ collectionView: NSCollectionView, pasteboardWriterForItemAt indexPath: IndexPath) -> NSPasteboardWriting? {
-        // Calculate actual character index based on section
-        let characterIndex: Int
-        if shouldShowCutoffDivider() {
-            if indexPath.section == 0 {
-                characterIndex = indexPath.item
-            } else {
-                characterIndex = activeScreenpackSlotLimit + indexPath.item
-            }
-        } else {
-            characterIndex = indexPath.item
-        }
+        guard let characterIndex = characterIndex(for: indexPath) else { return nil }
         
         let item = NSPasteboardItem()
         // Store the actual character index as string data
@@ -1249,7 +1448,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         CATransaction.commit()
     }
     
-    func configure(with character: CharacterInfo, isDuplicate: Bool = false) {
+    func configure(with character: CharacterInfo, tags: [String], isDuplicate: Bool = false) {
         nameLabel.stringValue = character.displayName
         let formattedDate = VersionDateFormatter.formatToStandard(character.versionDate)
         authorLabel.stringValue = "\(character.author) • \(formattedDate.isEmpty ? "v1.0" : formattedDate)"
@@ -1280,7 +1479,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         }
         
         // Update tags (show up to 3)
-        updateTags(character.inferredTags)
+        updateTags(tags)
     }
     
     private func updateTags(_ tags: [String]) {
@@ -1302,15 +1501,15 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         let badge = NSView()
         badge.translatesAutoresizingMaskIntoConstraints = false
         badge.wantsLayer = true
-        badge.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.6).cgColor
+        badge.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.8).cgColor
         badge.layer?.cornerRadius = 4
         badge.layer?.borderWidth = 1
-        badge.layer?.borderColor = NSColor.white.withAlphaComponent(0.15).cgColor
+        badge.layer?.borderColor = DesignColors.borderHover.cgColor
         
         let label = NSTextField(labelWithString: text)
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = DesignFonts.caption(size: 9)
-        label.textColor = NSColor.white.withAlphaComponent(0.9)
+        label.textColor = DesignColors.zinc200
         label.isBordered = false
         label.drawsBackground = false
         label.isEditable = false

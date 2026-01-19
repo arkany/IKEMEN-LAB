@@ -45,6 +45,7 @@ class CharacterDetailsView: NSView {
     // Tags section
     private var tagsHeader: NSTextField!
     private var tagsContainerView: NSView!
+    private var addTagButton: NSButton!
     
     // Attributes section
     private var attributesHeader: NSTextField!
@@ -76,6 +77,7 @@ class CharacterDetailsView: NSView {
     private var tagsTopConstraint: NSLayoutConstraint?
     
     private var currentCharacter: CharacterInfo?
+    private var tagsObserver: NSObjectProtocol?
     
     /// Callback when name is changed
     var onNameChanged: ((CharacterInfo, String) -> Void)?
@@ -88,6 +90,9 @@ class CharacterDetailsView: NSView {
     
     /// Callback when delete is clicked
     var onDeleteCharacter: ((CharacterInfo) -> Void)?
+
+    /// Callback when add tag is clicked
+    var onAddTag: ((CharacterInfo) -> Void)?
     
     // MARK: - Initialization
     
@@ -109,6 +114,7 @@ class CharacterDetailsView: NSView {
         
         setupScrollView()
         setupContent()
+        setupObservers()
     }
     
     // MARK: - Event Handling
@@ -299,6 +305,19 @@ class CharacterDetailsView: NSView {
         tagsContainerView = NSView()
         tagsContainerView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(tagsContainerView)
+
+        addTagButton = NSButton(title: "Add Tag", target: self, action: #selector(addTagClicked))
+        addTagButton.translatesAutoresizingMaskIntoConstraints = false
+        addTagButton.bezelStyle = .inline
+        addTagButton.isBordered = false
+        addTagButton.attributedTitle = NSAttributedString(
+            string: "Add Tag",
+            attributes: [
+                .font: DesignFonts.caption(size: 11),
+                .foregroundColor: DesignColors.zinc400
+            ]
+        )
+        contentView.addSubview(addTagButton)
         
         // === Attributes Section ===
         let attributesContainer = NSView()
@@ -465,6 +484,9 @@ class CharacterDetailsView: NSView {
             
             // Tags section - leadingAnchor only (topAnchor set dynamically)
             tagsHeader.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            tagsHeader.trailingAnchor.constraint(lessThanOrEqualTo: addTagButton.leadingAnchor, constant: -8),
+            addTagButton.centerYAnchor.constraint(equalTo: tagsHeader.centerYAnchor),
+            addTagButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
             
             tagsContainerView.topAnchor.constraint(equalTo: tagsHeader.bottomAnchor, constant: 12),
             tagsContainerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
@@ -534,6 +556,17 @@ class CharacterDetailsView: NSView {
         
         // Set up tracking area for hero hover
         setupHeroTracking()
+    }
+
+    private func setupObservers() {
+        tagsObserver = NotificationCenter.default.addObserver(
+            forName: .customTagsChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self, let character = self.currentCharacter else { return }
+            self.updateTags(for: character)
+        }
     }
     
     override func layout() {
@@ -779,11 +812,18 @@ class CharacterDetailsView: NSView {
             onDeleteCharacter?(character)
         }
     }
+
+    @objc private func addTagClicked() {
+        if let character = currentCharacter {
+            onAddTag?(character)
+        }
+    }
     
     // MARK: - Public Methods
     
     func configure(with character: CharacterInfo) {
         currentCharacter = character
+        addTagButton.isHidden = false
         
         // Hero
         heroNameLabel.stringValue = character.displayName
@@ -904,11 +944,19 @@ class CharacterDetailsView: NSView {
         // Clear existing tags
         tagsContainerView.subviews.forEach { $0.removeFromSuperview() }
         
-        let tags = character.inferredTags
+        let customTags = (try? MetadataStore.shared.customTags(for: character.id)) ?? []
+        var tags: [String] = []
+        var seen = Set<String>()
+        for tag in customTags + character.inferredTags {
+            let key = tag.lowercased()
+            if seen.contains(key) { continue }
+            seen.insert(key)
+            tags.append(tag)
+        }
         
         if tags.isEmpty {
             // Show "No tags detected" message
-            let noTagsLabel = NSTextField(labelWithString: "No tags detected")
+            let noTagsLabel = NSTextField(labelWithString: "No tags yet")
             noTagsLabel.translatesAutoresizingMaskIntoConstraints = false
             noTagsLabel.font = DesignFonts.caption(size: 11)
             noTagsLabel.textColor = DesignColors.zinc500
@@ -1138,6 +1186,14 @@ class CharacterDetailsView: NSView {
     
     /// Show placeholder when no character is selected
     func showPlaceholder() {
+        showPlaceholder(message: "Select a character to view details")
+    }
+
+    func showMultiSelection(count: Int) {
+        showPlaceholder(message: "Selected \(count) characters")
+    }
+
+    private func showPlaceholder(message: String) {
         currentCharacter = nil
         heroNameLabel.stringValue = "Select a Character"
         heroDateLabel.stringValue = ""
@@ -1155,9 +1211,10 @@ class CharacterDetailsView: NSView {
         
         // Clear tags
         tagsContainerView.subviews.forEach { $0.removeFromSuperview() }
+        addTagButton.isHidden = true
         
         moveListStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        let placeholderLabel = NSTextField(labelWithString: "Select a character to view details")
+        let placeholderLabel = NSTextField(labelWithString: message)
         placeholderLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
         placeholderLabel.textColor = DesignColors.zinc500
         moveListStackView.addArrangedSubview(placeholderLabel)
@@ -1165,6 +1222,12 @@ class CharacterDetailsView: NSView {
         // Clear definition file
         defFileNameLabel.stringValue = ""
         defFileCodeView.string = ""
+    }
+
+    deinit {
+        if let observer = tagsObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 }
 

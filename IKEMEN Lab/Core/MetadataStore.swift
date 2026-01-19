@@ -75,6 +75,15 @@ public struct ScrapedMetadata: Codable, FetchableRecord, PersistableRecord {
     }
 }
 
+/// Custom tags assigned by users
+public struct CharacterCustomTag: Codable, FetchableRecord, PersistableRecord {
+    public static let databaseTableName = "character_custom_tags"
+    
+    public var characterId: String
+    public var tag: String
+    public var createdAt: Date
+}
+
 // MARK: - Metadata Store
 
 /// SQLite-backed metadata index for characters and stages
@@ -155,6 +164,15 @@ public final class MetadataStore {
             t.column("sourceUrl", .text).notNull()
             t.column("scrapedAt", .datetime).notNull()
         }
+
+        // Custom tags assigned to characters
+        try db.create(table: "character_custom_tags", ifNotExists: true) { t in
+            t.column("characterId", .text).notNull()
+                .indexed()
+                .references("characters", onDelete: .cascade)
+            t.column("tag", .text).notNull()
+            t.column("createdAt", .datetime).notNull()
+        }
         
         // Add tags column if it doesn't exist (migration)
         let characterColumns = try db.columns(in: "characters").map { $0.name }
@@ -173,6 +191,16 @@ public final class MetadataStore {
         try db.execute(sql: """
             CREATE INDEX IF NOT EXISTS idx_characters_tags 
             ON characters(tags COLLATE NOCASE)
+        """)
+
+        try db.execute(sql: """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_character_custom_tags_unique
+            ON character_custom_tags(characterId, tag COLLATE NOCASE)
+        """)
+
+        try db.execute(sql: """
+            CREATE INDEX IF NOT EXISTS idx_character_custom_tags_tag
+            ON character_custom_tags(tag COLLATE NOCASE)
         """)
         
         try db.execute(sql: """
@@ -234,14 +262,18 @@ public final class MetadataStore {
         
         let pattern = "%\(query)%"
         return try dbQueue?.read { db in
-            try CharacterRecord
-                .filter(
-                    Column("name").like(pattern) || 
-                    Column("author").like(pattern) ||
-                    Column("tags").like(pattern)
-                )
-                .order(Column("name").collating(.localizedCaseInsensitiveCompare))
-                .fetchAll(db)
+            let sql = """
+                SELECT DISTINCT characters.*
+                FROM characters
+                LEFT JOIN character_custom_tags
+                    ON characters.id = character_custom_tags.characterId
+                WHERE characters.name LIKE ?
+                   OR characters.author LIKE ?
+                   OR characters.tags LIKE ?
+                   OR character_custom_tags.tag LIKE ?
+                ORDER BY characters.name COLLATE NOCASE
+            """
+            return try CharacterRecord.fetchAll(db, sql: sql, arguments: [pattern, pattern, pattern, pattern])
         } ?? []
     }
     
@@ -421,6 +453,156 @@ public final class MetadataStore {
         try reindexCharacters(from: workingDir)
         try reindexStages(from: workingDir)
     }
+
+    // MARK: - Custom Tag Operations
+
+    private func normalizeTag(_ tag: String) -> String {
+        tag.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Get all custom tags (distinct)
+    public func allCustomTags() throws -> [String] {
+        try dbQueue?.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT DISTINCT tag
+                FROM character_custom_tags
+                ORDER BY tag COLLATE NOCASE
+            """)
+            return rows.compactMap { $0["tag"] as String? }
+        } ?? []
+    }
+
+    /// Get custom tags for a character
+    public func customTags(for characterId: String) throws -> [String] {
+        try dbQueue?.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT tag
+                    FROM character_custom_tags
+                    WHERE characterId = ?
+                    ORDER BY tag COLLATE NOCASE
+                """,
+                arguments: [characterId]
+            )
+            return rows.compactMap { $0["tag"] as String? }
+        } ?? []
+    }
+
+    /// Get custom tags map for multiple characters
+    public func customTagsMap(for characterIds: [String]) throws -> [String: [String]] {
+        guard !characterIds.isEmpty else { return [:] }
+        return try dbQueue?.read { db in
+            let placeholders = Array(repeating: "?", count: characterIds.count).joined(separator: ",")
+            let sql = """
+                SELECT characterId, tag
+                FROM character_custom_tags
+                WHERE characterId IN (\(placeholders))
+                ORDER BY tag COLLATE NOCASE
+            """
+            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(characterIds))
+            var result: [String: [String]] = [:]
+            for row in rows {
+                guard let id = row["characterId"] as String?,
+                      let tag = row["tag"] as String? else { continue }
+                result[id, default: []].append(tag)
+            }
+            return result
+        } ?? [:]
+    }
+
+    /// Assign a custom tag to characters
+    public func assignCustomTag(_ tag: String, to characterIds: [String]) throws {
+        let normalized = normalizeTag(tag)
+        guard !normalized.isEmpty else { return }
+        guard !characterIds.isEmpty else { return }
+
+        try dbQueue?.write { db in
+            for id in characterIds {
+                try db.execute(
+                    sql: """
+                        INSERT OR IGNORE INTO character_custom_tags
+                        (characterId, tag, createdAt)
+                        VALUES (?, ?, ?)
+                    """,
+                    arguments: [id, normalized, Date()]
+                )
+            }
+        }
+
+        NotificationCenter.default.post(name: .customTagsChanged, object: nil)
+    }
+
+    /// Remove a custom tag from characters
+    public func removeCustomTag(_ tag: String, from characterIds: [String]) throws {
+        let normalized = normalizeTag(tag)
+        guard !normalized.isEmpty else { return }
+        guard !characterIds.isEmpty else { return }
+
+        try dbQueue?.write { db in
+            let placeholders = Array(repeating: "?", count: characterIds.count).joined(separator: ",")
+            let sql = """
+                DELETE FROM character_custom_tags
+                WHERE tag = ? COLLATE NOCASE
+                  AND characterId IN (\(placeholders))
+            """
+            var args: [DatabaseValueConvertible] = [normalized]
+            for id in characterIds {
+                args.append(id)
+            }
+            try db.execute(sql: sql, arguments: StatementArguments(args))
+        }
+
+        NotificationCenter.default.post(name: .customTagsChanged, object: nil)
+    }
+
+    /// Rename a custom tag (affects all characters)
+    public func renameCustomTag(_ tag: String, to newTag: String) throws {
+        let normalizedOld = normalizeTag(tag)
+        let normalizedNew = normalizeTag(newTag)
+        guard !normalizedOld.isEmpty, !normalizedNew.isEmpty else { return }
+        guard normalizedOld.caseInsensitiveCompare(normalizedNew) != .orderedSame else { return }
+
+        try dbQueue?.write { db in
+            try db.execute(
+                sql: """
+                    INSERT OR IGNORE INTO character_custom_tags
+                    (characterId, tag, createdAt)
+                    SELECT characterId, ?, createdAt
+                    FROM character_custom_tags
+                    WHERE tag = ? COLLATE NOCASE
+                """,
+                arguments: [normalizedNew, normalizedOld]
+            )
+            try db.execute(
+                sql: """
+                    DELETE FROM character_custom_tags
+                    WHERE tag = ? COLLATE NOCASE
+                """,
+                arguments: [normalizedOld]
+            )
+        }
+
+        NotificationCenter.default.post(name: .customTagsChanged, object: nil)
+    }
+
+    /// Delete a custom tag entirely
+    public func deleteCustomTag(_ tag: String) throws {
+        let normalized = normalizeTag(tag)
+        guard !normalized.isEmpty else { return }
+
+        try dbQueue?.write { db in
+            try db.execute(
+                sql: """
+                    DELETE FROM character_custom_tags
+                    WHERE tag = ? COLLATE NOCASE
+                """,
+                arguments: [normalized]
+            )
+        }
+
+        NotificationCenter.default.post(name: .customTagsChanged, object: nil)
+    }
     
     // MARK: - Scraped Metadata Operations
     
@@ -466,3 +648,7 @@ public final class MetadataStore {
 // MARK: - Protocol Conformance
 
 extension MetadataStore: MetadataStoreProtocol {}
+
+public extension Notification.Name {
+    static let customTagsChanged = Notification.Name("CustomTagsChanged")
+}
