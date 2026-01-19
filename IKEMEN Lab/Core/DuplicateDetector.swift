@@ -99,13 +99,19 @@ public final class DuplicateDetector {
         
         // 1. Exact name matches
         let nameGroups = Dictionary(grouping: characters) { char in
-            char.displayName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            normalizedName(char.displayName)
         }
         
         for (name, items) in nameGroups where items.count > 1 && !name.isEmpty {
-            let group = DuplicateGroup(items: items, reason: .exactNameMatch)
-            groups.append(group)
-            items.forEach { processed.insert($0.id) }
+            let authorGroups = Dictionary(grouping: items) { char in
+                normalizedAuthorKey(char.author)
+            }
+            
+            for (_, authorItems) in authorGroups where authorItems.count > 1 {
+                let group = DuplicateGroup(items: authorItems, reason: .exactNameMatch)
+                groups.append(group)
+                authorItems.forEach { processed.insert($0.id) }
+            }
         }
         
         // 2. Similar name detection (Levenshtein distance)
@@ -114,7 +120,7 @@ public final class DuplicateDetector {
         
         for similarIds in similarGroups {
             let items = characters.filter { similarIds.contains($0.id) }
-            if items.count > 1 {
+            if items.count > 1 && authorsCompatible(items) {
                 let group = DuplicateGroup(items: items, reason: .similarName)
                 groups.append(group)
                 items.forEach { processed.insert($0.id) }
@@ -357,6 +363,20 @@ public final class DuplicateDetector {
         }
         
         return groups
+    }
+
+    private static func normalizedAuthorKey(_ author: String) -> String? {
+        let normalized = author.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized.isEmpty { return nil }
+        if normalized == "unknown" || normalized == "n/a" || normalized == "na" {
+            return nil
+        }
+        return normalized
+    }
+
+    private static func authorsCompatible(_ items: [CharacterInfo]) -> Bool {
+        let authorKeys = Set(items.compactMap { normalizedAuthorKey($0.author) })
+        return authorKeys.count <= 1
     }
     
     /// Normalize a name for comparison (remove version numbers, special chars, etc.)
