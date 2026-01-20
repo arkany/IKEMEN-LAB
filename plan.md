@@ -26,6 +26,15 @@
 
 ## Current Focus
 
+### 🐛 Known Bugs
+- [ ] **Collections: Character names incorrect** — Showing folder names instead of display names from DEF files
+- [ ] **Collections: Stage thumbnails not loading** — All stages showing placeholder icon instead of preview images
+- [ ] **Characters: "UNREGISTERED" badge is confusing** — Users think something is broken
+  - Replace with section dividers: "In Roster" / "Available"
+  - Only show when a collection is active
+  - Add green **+** button on "Available" characters to quick-add to roster
+  - Makes it clear these are just not in the current roster, not broken
+
 ### ✅ Recently Completed (January 2026)
 - [x] **Collections UI Polish**
   - [x] Removed max-height constraints on roster/stages sections
@@ -43,9 +52,19 @@
   - [x] "Launch" button on collection activation toast
 
 ### 🔄 In Progress
-- [ ] Screenpack Browser UI overhaul (match Character Browser design)
+- [ ] **Import Collection from Project Folder** — NEXT SESSION
+  - Test folder: `~/Downloads/motu_masters_project_v2a`
+  - Scan folder for chars/, stages/, data/, fonts/, plugins/, sound/
+  - Create new collection with all characters and stages
+  - Option to copy/link assets to main IKEMEN GO installation
+  - Import screenpack from data/ if present
+  - Import custom fonts, plugins, sound packs
 
 ### 📋 Up Next
+- [ ] **Drag & Drop to Collections** — Drag characters from Characters view onto a Collection in sidebar
+- [ ] **Bulk Add to Collection** — Multi-select characters, right-click "Add to Collection" (respects selection count)
+- [ ] **Smart Collections** — Auto-populated collections based on tags (e.g., "All Marvel characters")
+- [ ] Screenpack Browser UI overhaul (match Character Browser design)
 - [ ] Existing installation import
 - [ ] Add-ons Browser
 

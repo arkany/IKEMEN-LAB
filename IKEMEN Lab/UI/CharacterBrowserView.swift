@@ -1584,6 +1584,29 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
             }
         }
         
+        // Hover zoom effect on portrait (scale-105 centered)
+        if isHovered || isSelected {
+            let bounds = portraitImageView.bounds
+            var transform = CATransform3DIdentity
+            transform = CATransform3DTranslate(transform, bounds.width/2, bounds.height/2, 0)
+            transform = CATransform3DScale(transform, 1.05, 1.05, 1)
+            transform = CATransform3DTranslate(transform, -bounds.width/2, -bounds.height/2, 0)
+            
+            let animation = CABasicAnimation(keyPath: "transform")
+            animation.toValue = transform
+            animation.duration = duration
+            animation.fillMode = .forwards
+            animation.isRemovedOnCompletion = false
+            portraitImageView.layer?.add(animation, forKey: "scaleUp")
+        } else {
+            let animation = CABasicAnimation(keyPath: "transform")
+            animation.toValue = CATransform3DIdentity
+            animation.duration = duration
+            animation.fillMode = .forwards
+            animation.isRemovedOnCompletion = false
+            portraitImageView.layer?.add(animation, forKey: "scaleDown")
+        }
+        
         // Placeholder text color change on hover
         CATransaction.begin()
         CATransaction.setAnimationDuration(duration)
