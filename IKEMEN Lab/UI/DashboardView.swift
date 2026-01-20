@@ -570,6 +570,7 @@ class DashboardView: NSView {
         // Build right column content
         setupQuickSettings()
         setupTools()
+        setupBrowserExtensionCard()
     }
     
     // MARK: - Drop Zone
@@ -1195,6 +1196,120 @@ class DashboardView: NSView {
         // Make card fill width of right column
         healthCard.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor).isActive = true
         healthCard.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor).isActive = true
+    }
+    
+    // MARK: - Browser Extension Card
+    
+    private func setupBrowserExtensionCard() {
+        let sectionLabel = NSTextField(labelWithString: "BROWSER EXTENSION")
+        sectionLabel.font = DesignFonts.caption(size: 11)
+        tagThemeLabel(sectionLabel, role: .tertiary)
+        rightColumn.addArrangedSubview(sectionLabel)
+        
+        let card = NSView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.wantsLayer = true
+        tagThemeBackground(card, role: .cardTransparent)
+        card.layer?.cornerRadius = 12
+        card.layer?.borderWidth = 1
+        tagThemeBorder(card, role: .subtle)
+        
+        let cardStack = NSStackView()
+        cardStack.translatesAutoresizingMaskIntoConstraints = false
+        cardStack.orientation = .vertical
+        cardStack.spacing = 12
+        cardStack.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        card.addSubview(cardStack)
+        
+        NSLayoutConstraint.activate([
+            cardStack.topAnchor.constraint(equalTo: card.topAnchor),
+            cardStack.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            cardStack.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            cardStack.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+        ])
+        
+        // Header row with icon and title
+        let headerRow = NSStackView()
+        headerRow.orientation = .horizontal
+        headerRow.spacing = 12
+        headerRow.alignment = .centerY
+        
+        let iconContainer = NSView()
+        iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.wantsLayer = true
+        tagThemeBackground(iconContainer, role: .card)
+        iconContainer.layer?.cornerRadius = 8
+        iconContainer.layer?.borderWidth = 1
+        tagThemeBorder(iconContainer, role: .subtle)
+        
+        let iconView = NSImageView()
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.image = NSImage(systemSymbolName: "safari.fill", accessibilityDescription: "Safari")
+        iconView.contentTintColor = DesignColors.emerald500
+        iconView.symbolConfiguration = .init(pointSize: 18, weight: .medium)
+        iconContainer.addSubview(iconView)
+        
+        NSLayoutConstraint.activate([
+            iconContainer.widthAnchor.constraint(equalToConstant: 36),
+            iconContainer.heightAnchor.constraint(equalToConstant: 36),
+            iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+        ])
+        
+        let titleLabel = NSTextField(labelWithString: "One-Click Installs")
+        titleLabel.font = DesignFonts.body(size: 14)
+        tagThemeLabel(titleLabel, role: .primary)
+        
+        headerRow.addArrangedSubview(iconContainer)
+        headerRow.addArrangedSubview(titleLabel)
+        cardStack.addArrangedSubview(headerRow)
+        
+        // Description
+        let descLabel = NSTextField(wrappingLabelWithString: "Install characters and stages from MUGEN Archive directly into your library with one click.")
+        descLabel.font = DesignFonts.body(size: 13)
+        tagThemeLabel(descLabel, role: .secondary)
+        descLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        cardStack.addArrangedSubview(descLabel)
+        
+        // Supported sites
+        let sitesRow = NSStackView()
+        sitesRow.orientation = .horizontal
+        sitesRow.spacing = 8
+        sitesRow.alignment = .centerY
+        
+        let checkIcon = NSImageView()
+        checkIcon.translatesAutoresizingMaskIntoConstraints = false
+        checkIcon.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
+        checkIcon.contentTintColor = NSColor.systemGreen
+        checkIcon.symbolConfiguration = .init(pointSize: 12, weight: .medium)
+        
+        let siteLabel = NSTextField(labelWithString: "mugenarchive.com")
+        siteLabel.font = DesignFonts.caption(size: 12)
+        tagThemeLabel(siteLabel, role: .secondary)
+        
+        sitesRow.addArrangedSubview(checkIcon)
+        sitesRow.addArrangedSubview(siteLabel)
+        cardStack.addArrangedSubview(sitesRow)
+        
+        // Enable button
+        let enableButton = NSButton(title: "Enable in Safari Settings →", target: self, action: #selector(openSafariExtensionSettings))
+        enableButton.bezelStyle = .rounded
+        enableButton.font = DesignFonts.body(size: 13)
+        cardStack.addArrangedSubview(enableButton)
+        
+        rightColumn.addArrangedSubview(card)
+        
+        // Make card fill width of right column
+        card.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor).isActive = true
+        card.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor).isActive = true
+    }
+    
+    @objc private func openSafariExtensionSettings() {
+        // Open Safari Extensions preferences
+        // This URL opens Safari and navigates to the Extensions tab in Settings
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Safari-Extensions-Preferences") {
+            NSWorkspace.shared.open(url)
+        }
     }
     
     // Store last validation results for Fix All

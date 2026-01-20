@@ -3,7 +3,7 @@
 # Configuration
 APP_NAME="IKEMEN Lab"
 SCHEME="IKEMEN Lab"
-VERSION="v0.2.0"
+VERSION="v0.3.0"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 BUILD_DIR="build"
 
