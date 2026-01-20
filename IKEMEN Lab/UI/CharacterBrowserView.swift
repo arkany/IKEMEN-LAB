@@ -651,14 +651,19 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
         alert.addButton(withTitle: "Add")
         alert.addButton(withTitle: "Cancel")
         
-        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
-        input.placeholderString = "Tag name"
-        alert.accessoryView = input
+        // Use TagInputView with auto-suggest
+        let inputView = TagInputView(frame: NSRect(x: 0, y: 0, width: 250, height: 170))
+        alert.accessoryView = inputView
+        
+        // Focus the text field after alert is shown
+        DispatchQueue.main.async {
+            inputView.focus()
+        }
         
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn else { return }
         
-        let tag = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tag = inputView.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !tag.isEmpty else {
             ToastManager.shared.showError(title: "Tag cannot be empty")
             return
