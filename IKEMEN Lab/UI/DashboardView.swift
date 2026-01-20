@@ -568,9 +568,16 @@ class DashboardView: NSView {
         setupRecentlyInstalled()
         
         // Build right column content
+        setupBrowserExtensionCard()
         setupQuickSettings()
         setupTools()
-        setupBrowserExtensionCard()
+        
+        // Add flexible spacer to absorb extra vertical space
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.setContentHuggingPriority(.defaultLow, for: .vertical)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        rightColumn.addArrangedSubview(spacer)
     }
     
     // MARK: - Drop Zone
@@ -1209,7 +1216,7 @@ class DashboardView: NSView {
         let card = NSView()
         card.translatesAutoresizingMaskIntoConstraints = false
         card.wantsLayer = true
-        tagThemeBackground(card, role: .cardTransparent)
+        card.layer?.backgroundColor = DesignColors.zinc950.cgColor
         card.layer?.cornerRadius = 12
         card.layer?.borderWidth = 1
         tagThemeBorder(card, role: .subtle)
@@ -1217,8 +1224,9 @@ class DashboardView: NSView {
         let cardStack = NSStackView()
         cardStack.translatesAutoresizingMaskIntoConstraints = false
         cardStack.orientation = .vertical
-        cardStack.spacing = 12
-        cardStack.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        cardStack.spacing = 16
+        cardStack.alignment = .centerX
+        cardStack.edgeInsets = NSEdgeInsets(top: 24, left: 24, bottom: 24, right: 24)
         card.addSubview(cardStack)
         
         NSLayoutConstraint.activate([
@@ -1228,50 +1236,51 @@ class DashboardView: NSView {
             cardStack.bottomAnchor.constraint(equalTo: card.bottomAnchor),
         ])
         
-        // Header row with icon and title
+        // Header row with icon and title (centered)
         let headerRow = NSStackView()
         headerRow.orientation = .horizontal
-        headerRow.spacing = 12
+        headerRow.spacing = 16
         headerRow.alignment = .centerY
         
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
-        tagThemeBackground(iconContainer, role: .card)
-        iconContainer.layer?.cornerRadius = 8
+        iconContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        iconContainer.layer?.cornerRadius = 12
         iconContainer.layer?.borderWidth = 1
         tagThemeBorder(iconContainer, role: .subtle)
         
         let iconView = NSImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.image = NSImage(systemSymbolName: "safari.fill", accessibilityDescription: "Safari")
-        iconView.contentTintColor = DesignColors.emerald500
-        iconView.symbolConfiguration = .init(pointSize: 18, weight: .medium)
+        iconView.contentTintColor = DesignColors.emerald400
+        iconView.symbolConfiguration = .init(pointSize: 20, weight: .medium)
         iconContainer.addSubview(iconView)
         
         NSLayoutConstraint.activate([
-            iconContainer.widthAnchor.constraint(equalToConstant: 36),
-            iconContainer.heightAnchor.constraint(equalToConstant: 36),
+            iconContainer.widthAnchor.constraint(equalToConstant: 44),
+            iconContainer.heightAnchor.constraint(equalToConstant: 44),
             iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
             iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
         ])
         
         let titleLabel = NSTextField(labelWithString: "One-Click Installs")
-        titleLabel.font = DesignFonts.body(size: 14)
+        titleLabel.font = DesignFonts.header(size: 16)
         tagThemeLabel(titleLabel, role: .primary)
         
         headerRow.addArrangedSubview(iconContainer)
         headerRow.addArrangedSubview(titleLabel)
         cardStack.addArrangedSubview(headerRow)
         
-        // Description
+        // Description (centered)
         let descLabel = NSTextField(wrappingLabelWithString: "Install characters and stages from MUGEN Archive directly into your library with one click.")
         descLabel.font = DesignFonts.body(size: 13)
+        descLabel.alignment = .center
         tagThemeLabel(descLabel, role: .secondary)
         descLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         cardStack.addArrangedSubview(descLabel)
         
-        // Supported sites
+        // Supported sites (centered)
         let sitesRow = NSStackView()
         sitesRow.orientation = .horizontal
         sitesRow.spacing = 8
@@ -1280,28 +1289,45 @@ class DashboardView: NSView {
         let checkIcon = NSImageView()
         checkIcon.translatesAutoresizingMaskIntoConstraints = false
         checkIcon.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
-        checkIcon.contentTintColor = NSColor.systemGreen
-        checkIcon.symbolConfiguration = .init(pointSize: 12, weight: .medium)
+        checkIcon.contentTintColor = DesignColors.emerald500
+        checkIcon.symbolConfiguration = .init(pointSize: 14, weight: .medium)
         
         let siteLabel = NSTextField(labelWithString: "mugenarchive.com")
-        siteLabel.font = DesignFonts.caption(size: 12)
-        tagThemeLabel(siteLabel, role: .secondary)
+        siteLabel.font = DesignFonts.caption(size: 13)
+        tagThemeLabel(siteLabel, role: .tertiary)
         
         sitesRow.addArrangedSubview(checkIcon)
         sitesRow.addArrangedSubview(siteLabel)
         cardStack.addArrangedSubview(sitesRow)
         
-        // Enable button
-        let enableButton = NSButton(title: "Enable in Safari Settings →", target: self, action: #selector(openSafariExtensionSettings))
-        enableButton.bezelStyle = .rounded
+        // Enable button (full width, styled, 42px height) - matches HTML: bg-zinc-800, rounded-lg, border-white/5
+        let enableButton = NSButton(title: "Enable in Safari Settings  →", target: self, action: #selector(openSafariExtensionSettings))
+        enableButton.bezelStyle = .smallSquare
+        enableButton.isBordered = false
+        enableButton.wantsLayer = true
+        enableButton.layer?.cornerRadius = 8
+        enableButton.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        enableButton.layer?.borderWidth = 1
+        enableButton.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         enableButton.font = DesignFonts.body(size: 13)
+        enableButton.contentTintColor = .white
+        enableButton.translatesAutoresizingMaskIntoConstraints = false
+        let heightConstraint = enableButton.heightAnchor.constraint(equalToConstant: 42)
+        heightConstraint.priority = .required
+        heightConstraint.isActive = true
         cardStack.addArrangedSubview(enableButton)
+        
+        // Make button fill width
+        enableButton.leadingAnchor.constraint(equalTo: cardStack.leadingAnchor, constant: 24).isActive = true
+        enableButton.trailingAnchor.constraint(equalTo: cardStack.trailingAnchor, constant: -24).isActive = true
         
         rightColumn.addArrangedSubview(card)
         
-        // Make card fill width of right column
+        // Make card fill width but NOT stretch vertically
         card.leadingAnchor.constraint(equalTo: rightColumn.leadingAnchor).isActive = true
         card.trailingAnchor.constraint(equalTo: rightColumn.trailingAnchor).isActive = true
+        card.setContentHuggingPriority(.required, for: .vertical)
+        card.setContentCompressionResistancePriority(.required, for: .vertical)
     }
     
     @objc private func openSafariExtensionSettings() {
