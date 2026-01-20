@@ -67,6 +67,7 @@ class CharacterDetailsView: NSView {
     private var defFileNameLabel: NSTextField!
     private var defFileCodeView: NSTextView!
     private var defFileScrollView: NSScrollView!
+    private var defFileContainer: NSView!
     
     // Scroll view
     private var scrollView: NSScrollView!
@@ -74,6 +75,9 @@ class CharacterDetailsView: NSView {
     
     // Dynamic constraints
     private var tagsTopConstraint: NSLayoutConstraint?
+    
+    // Theme observer
+    private var themeObserver: NSObjectProtocol?
     
     private var currentCharacter: CharacterInfo?
     
@@ -109,6 +113,84 @@ class CharacterDetailsView: NSView {
         
         setupScrollView()
         setupContent()
+        
+        // Observe theme changes
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: .themeChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.applyTheme()
+        }
+    }
+    
+    deinit {
+        if let observer = themeObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+    
+    private func applyTheme() {
+        // Main view
+        layer?.backgroundColor = DesignColors.panelBackground.cgColor
+        layer?.borderColor = DesignColors.borderSubtle.cgColor
+        
+        // Hero section
+        heroContainerView?.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        heroSeriesBadge?.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
+        heroSeriesLabel?.textColor = DesignColors.textPrimary
+        
+        // Update gradient colors
+        heroGradientLayer?.colors = [
+            DesignColors.panelBackground.withAlphaComponent(0.8).cgColor,
+            DesignColors.panelBackground.cgColor
+        ]
+        
+        // Source info section
+        sourceInfoContainer?.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        sourceInfoContainer?.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        
+        // Stat cards
+        authorStatView?.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        authorStatView?.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        versionStatView?.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        versionStatView?.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        
+        // Definition file container
+        defFileContainer?.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        defFileContainer?.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        defFileCodeView?.textColor = DesignColors.textSecondary
+        
+        // Update text colors
+        heroNameLabel?.textColor = DesignColors.textPrimary
+        heroDateLabel?.textColor = DesignColors.textSecondary
+        sourceInfoHeader?.textColor = DesignColors.textSecondary
+        sourceUrlLabel?.textColor = NSColor.systemBlue
+        scrapedDescriptionLabel?.textColor = DesignColors.textSecondary
+        tagsHeader?.textColor = DesignColors.textSecondary
+        attributesHeader?.textColor = DesignColors.textPrimary
+        attributesSubtitle?.textColor = DesignColors.textTertiary
+        palettesHeader?.textColor = DesignColors.textPrimary
+        moveListHeader?.textColor = DesignColors.textPrimary
+        defFileHeader?.textColor = DesignColors.textPrimary
+        defFileNameLabel?.textColor = DesignColors.textTertiary
+        authorValueLabel?.textColor = DesignColors.textPrimary
+        versionValueLabel?.textColor = DesignColors.textPrimary
+        
+        // Update tag badges in tagsContainerView
+        for subview in tagsContainerView?.subviews ?? [] {
+            subview.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+            subview.layer?.borderColor = DesignColors.borderSubtle.cgColor
+            if let label = subview.subviews.first as? NSTextField {
+                label.textColor = DesignColors.textSecondary
+            }
+        }
+        
+        // Update attribute bars
+        lifeBar?.applyTheme()
+        atkBar?.applyTheme()
+        defBar?.applyTheme()
+        powBar?.applyTheme()
     }
     
     // MARK: - Event Handling
@@ -202,13 +284,13 @@ class CharacterDetailsView: NSView {
         heroSeriesBadge.translatesAutoresizingMaskIntoConstraints = false
         heroSeriesBadge.wantsLayer = true
         heroSeriesBadge.layer?.cornerRadius = 4
-        heroSeriesBadge.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        heroSeriesBadge.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
         badgeRow.addArrangedSubview(heroSeriesBadge)
         
         heroSeriesLabel = NSTextField(labelWithString: "MUGEN")
         heroSeriesLabel.translatesAutoresizingMaskIntoConstraints = false
         heroSeriesLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .medium)
-        heroSeriesLabel.textColor = .white
+        heroSeriesLabel.textColor = DesignColors.textPrimary
         heroSeriesBadge.addSubview(heroSeriesLabel)
         
         heroDateLabel = NSTextField(labelWithString: "")
@@ -386,13 +468,13 @@ class CharacterDetailsView: NSView {
         defFileHeaderRow.addArrangedSubview(defFileNameLabel)
         
         // Code view container
-        let defFileContainer = NSView()
+        defFileContainer = NSView()
         defFileContainer.translatesAutoresizingMaskIntoConstraints = false
         defFileContainer.wantsLayer = true
         defFileContainer.layer?.cornerRadius = 8
-        defFileContainer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.4).cgColor
+        defFileContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         defFileContainer.layer?.borderWidth = 1
-        defFileContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        defFileContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
         contentView.addSubview(defFileContainer)
         
         defFileScrollView = NSScrollView()
@@ -631,9 +713,9 @@ class CharacterDetailsView: NSView {
         card.translatesAutoresizingMaskIntoConstraints = false
         card.wantsLayer = true
         card.layer?.cornerRadius = 8
-        card.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.3).cgColor
+        card.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         card.layer?.borderWidth = 1
-        card.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        card.layer?.borderColor = DesignColors.borderSubtle.cgColor
         
         let titleLabel = NSTextField(labelWithString: title.uppercased())
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -668,12 +750,12 @@ class CharacterDetailsView: NSView {
         badge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         badge.layer?.cornerRadius = 6
         badge.layer?.borderWidth = 1
-        badge.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        badge.layer?.borderColor = DesignColors.borderSubtle.cgColor
         
         let label = NSTextField(labelWithString: text)
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = DesignFonts.caption(size: 11)
-        label.textColor = DesignColors.textPrimary
+        label.textColor = DesignColors.textSecondary
         label.isBordered = false
         label.drawsBackground = false
         label.isEditable = false
@@ -860,7 +942,7 @@ class CharacterDetailsView: NSView {
             dot.layer?.cornerRadius = 12
             dot.layer?.backgroundColor = colors[i % colors.count].cgColor
             dot.layer?.borderWidth = 1
-            dot.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+            dot.layer?.borderColor = DesignColors.borderSubtle.cgColor
             
             NSLayoutConstraint.activate([
                 dot.widthAnchor.constraint(equalToConstant: 24),
@@ -1179,6 +1261,7 @@ class AttributeBarView: NSView {
     private var barFillView: NSView!
     private var barTrack: NSView!
     private var valueLabel: NSTextField!
+    private var nameLabel: NSTextField!
     private var barFillWidthConstraint: NSLayoutConstraint?
     
     init(label: String, value: Int, maxValue: Int, color: NSColor) {
@@ -1198,11 +1281,11 @@ class AttributeBarView: NSView {
         translatesAutoresizingMaskIntoConstraints = false
         
         // Label (fixed width)
-        let label = NSTextField(labelWithString: labelText)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = DesignFonts.caption(size: 12)
-        label.textColor = DesignColors.textTertiary
-        addSubview(label)
+        nameLabel = NSTextField(labelWithString: labelText)
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        nameLabel.font = DesignFonts.caption(size: 12)
+        nameLabel.textColor = DesignColors.textTertiary
+        addSubview(nameLabel)
         
         // Bar track
         barTrack = NSView()
@@ -1234,11 +1317,11 @@ class AttributeBarView: NSView {
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 20),
             
-            label.leadingAnchor.constraint(equalTo: leadingAnchor),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor),
-            label.widthAnchor.constraint(equalToConstant: 48),
+            nameLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
+            nameLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            nameLabel.widthAnchor.constraint(equalToConstant: 48),
             
-            barTrack.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 12),
+            barTrack.leadingAnchor.constraint(equalTo: nameLabel.trailingAnchor, constant: 12),
             barTrack.centerYAnchor.constraint(equalTo: centerYAnchor),
             barTrack.trailingAnchor.constraint(equalTo: valueLabel.leadingAnchor, constant: -12),
             barTrack.heightAnchor.constraint(equalToConstant: 6),
@@ -1273,6 +1356,12 @@ class AttributeBarView: NSView {
             context.duration = 0.3
             self.layoutSubtreeIfNeeded()
         }
+    }
+    
+    func applyTheme() {
+        nameLabel.textColor = DesignColors.textTertiary
+        valueLabel.textColor = DesignColors.textPrimary
+        barTrack.layer?.backgroundColor = DesignColors.cardBackground.cgColor
     }
 }
 

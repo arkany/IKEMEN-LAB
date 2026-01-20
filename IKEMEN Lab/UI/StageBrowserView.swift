@@ -63,6 +63,7 @@ class StageBrowserView: NSView {
     private var allStages: [StageInfo] = []  // All stages from data source
     private var stages: [StageInfo] = []     // Filtered stages for display
     private var cancellables = Set<AnyCancellable>()
+    private var themeObserver: NSObjectProtocol?
     
     // Registration status filter
     var registrationFilter: RegistrationFilter = .all {
@@ -175,6 +176,14 @@ class StageBrowserView: NSView {
                 self?.updateStages(stages)
             }
             .store(in: &cancellables)
+
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: .themeChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.collectionView.reloadData()
+        }
     }
     
     /// Set stages directly (used for search filtering)
@@ -205,6 +214,12 @@ class StageBrowserView: NSView {
     func refresh() {
         updateStages(IkemenBridge.shared.stages)
     }
+
+    deinit {
+        if let themeObserver = themeObserver {
+            NotificationCenter.default.removeObserver(themeObserver)
+        }
+    }
 }
 
 // MARK: - NSCollectionViewDataSource
@@ -231,7 +246,25 @@ extension StageBrowserView: NSCollectionViewDataSource {
             self?.onStageDisableToggle?(stage)
         }
         
+        // Wire up the more button callback
+        item.onMoreClicked = { [weak self] stage, sourceView in
+            self?.showContextMenuForListItem(stage, sourceView: sourceView)
+        }
+        
         return item
+    }
+    
+    /// Show context menu from the more button in list view
+    private func showContextMenuForListItem(_ stage: StageInfo, sourceView: NSView) {
+        guard let index = stages.firstIndex(where: { $0.id == stage.id }) else { return }
+        let indexPath = IndexPath(item: index, section: 0)
+        
+        guard let menu = buildContextMenu(for: indexPath) else { return }
+        
+        // Position menu below the button
+        let buttonBounds = sourceView.bounds
+        let menuLocation = NSPoint(x: buttonBounds.midX, y: buttonBounds.minY)
+        menu.popUp(positioning: nil, at: menuLocation, in: sourceView)
     }
 }
 
@@ -479,7 +512,7 @@ class StageListItem: NSCollectionViewItem {
         let borderLine = NSView()
         borderLine.translatesAutoresizingMaskIntoConstraints = false
         borderLine.wantsLayer = true
-        borderLine.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        borderLine.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
         containerView.addSubview(borderLine)
         
         // Preview container with rounded corners and border
@@ -488,7 +521,7 @@ class StageListItem: NSCollectionViewItem {
         previewContainer.wantsLayer = true
         previewContainer.layer?.cornerRadius = 6
         previewContainer.layer?.borderWidth = 1
-        previewContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        previewContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
         previewContainer.layer?.masksToBounds = true
         previewContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         containerView.addSubview(previewContainer)
@@ -505,7 +538,7 @@ class StageListItem: NSCollectionViewItem {
         disabledOverlay = NSView()
         disabledOverlay.translatesAutoresizingMaskIntoConstraints = false
         disabledOverlay.wantsLayer = true
-        disabledOverlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.2).cgColor
+        disabledOverlay.layer?.backgroundColor = DesignColors.overlayDim.withAlphaComponent(0.2).cgColor
         disabledOverlay.isHidden = true
         previewContainer.addSubview(disabledOverlay)
         
@@ -513,7 +546,7 @@ class StageListItem: NSCollectionViewItem {
         disabledIcon = NSImageView()
         disabledIcon.translatesAutoresizingMaskIntoConstraints = false
         disabledIcon.image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: nil)
-        disabledIcon.contentTintColor = NSColor.white.withAlphaComponent(0.5)
+        disabledIcon.contentTintColor = DesignColors.textDisabled
         disabledIcon.isHidden = true
         previewContainer.addSubview(disabledIcon)
         
@@ -721,13 +754,13 @@ class StageListItem: NSCollectionViewItem {
             
             if isHovered {
                 // Show hover state
-                containerView.animator().layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.hoverBackground.cgColor
                 moreButton.animator().alphaValue = 1.0
                 
                 // If not disabled, brighten image and text
                 if currentStage?.isDisabled != true {
                     previewImageView.animator().alphaValue = 1.0
-                    nameLabel.animator().textColor = .white
+                    nameLabel.animator().textColor = DesignColors.textPrimary
                 }
             } else {
                 // Return to normal
@@ -819,18 +852,18 @@ class StageListItem: NSCollectionViewItem {
     private func configureAudioBadge(hasMusic: Bool) {
         if hasMusic {
             // BGM badge - emerald/green style
-            audioBadge.layer?.backgroundColor = DesignColors.emerald500.withAlphaComponent(0.1).cgColor
+            audioBadge.layer?.backgroundColor = DesignColors.positiveBackground.cgColor
             audioBadge.layer?.borderWidth = 1
-            audioBadge.layer?.borderColor = DesignColors.emerald500.withAlphaComponent(0.2).cgColor
+            audioBadge.layer?.borderColor = DesignColors.positive.withAlphaComponent(0.3).cgColor
             audioBadgeIcon.image = NSImage(systemSymbolName: "music.note", accessibilityDescription: nil)
-            audioBadgeIcon.contentTintColor = DesignColors.emerald400
+            audioBadgeIcon.contentTintColor = DesignColors.positive
             audioBadgeLabel.stringValue = "BGM"
-            audioBadgeLabel.textColor = DesignColors.emerald400
+            audioBadgeLabel.textColor = DesignColors.positive
         } else {
             // No audio badge - gray style
-            audioBadge.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
+            audioBadge.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
             audioBadge.layer?.borderWidth = 1
-            audioBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            audioBadge.layer?.borderColor = DesignColors.borderSubtle.cgColor
             audioBadgeIcon.image = NSImage(systemSymbolName: "speaker.slash", accessibilityDescription: nil)
             audioBadgeIcon.contentTintColor = DesignColors.textTertiary
             audioBadgeLabel.stringValue = "None"

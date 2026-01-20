@@ -45,7 +45,7 @@ class ScreenpackPickerSheet: NSViewController {
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 500))
         view.wantsLayer = true
-        view.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        view.layer?.backgroundColor = DesignColors.pickerBackground.cgColor
     }
     
     override func viewDidLoad() {
@@ -107,7 +107,7 @@ class ScreenpackPickerSheet: NSViewController {
         scrollView.backgroundColor = .clear
         scrollView.drawsBackground = false
         scrollView.wantsLayer = true
-        scrollView.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        scrollView.layer?.backgroundColor = DesignColors.pickerScrollBackground.cgColor
         scrollView.layer?.cornerRadius = 8
         view.addSubview(scrollView)
         
@@ -304,7 +304,7 @@ class ScreenpackPickerItem: NSCollectionViewItem {
         containerView = NSView()
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = DesignColors.zinc700.cgColor
+        containerView.layer?.backgroundColor = DesignColors.pickerItemBackground.cgColor
         containerView.layer?.cornerRadius = 6
         view.addSubview(containerView)
         
@@ -312,7 +312,7 @@ class ScreenpackPickerItem: NSCollectionViewItem {
         radioView = NSImageView()
         radioView.translatesAutoresizingMaskIntoConstraints = false
         radioView.image = NSImage(systemSymbolName: "circle", accessibilityDescription: nil)
-        radioView.contentTintColor = DesignColors.zinc500
+        radioView.contentTintColor = DesignColors.textTertiary
         containerView.addSubview(radioView)
         
         nameLabel = NSTextField(labelWithString: "")
@@ -364,11 +364,11 @@ class ScreenpackPickerItem: NSCollectionViewItem {
         if selected {
             radioView.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
             radioView.contentTintColor = DesignColors.positive
-            containerView.layer?.backgroundColor = DesignColors.zinc600.cgColor
+            containerView.layer?.backgroundColor = DesignColors.pickerItemSelectedBackground.cgColor
         } else {
             radioView.image = NSImage(systemSymbolName: "circle", accessibilityDescription: nil)
-            radioView.contentTintColor = DesignColors.zinc500
-            containerView.layer?.backgroundColor = DesignColors.zinc700.cgColor
+            radioView.contentTintColor = DesignColors.textTertiary
+            containerView.layer?.backgroundColor = DesignColors.pickerItemBackground.cgColor
         }
     }
     

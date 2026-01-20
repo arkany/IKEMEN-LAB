@@ -65,21 +65,21 @@ public struct DesignColors {
     
     // MARK: - Zinc Palette (Tailwind)
     
-    public static var zinc950: NSColor { DarkThemeColors.zinc950 }
-    public static var zinc900: NSColor { DarkThemeColors.zinc900 }
-    public static var zinc800: NSColor { DarkThemeColors.zinc800 }
-    public static var zinc700: NSColor { DarkThemeColors.zinc700 }
-    public static var zinc600: NSColor { DarkThemeColors.zinc600 }
-    public static var zinc500: NSColor { DarkThemeColors.zinc500 }
-    public static var zinc400: NSColor { DarkThemeColors.zinc400 }
-    public static var zinc300: NSColor { DarkThemeColors.zinc300 }
-    public static var zinc200: NSColor { DarkThemeColors.zinc200 }
-    public static var zinc100: NSColor { DarkThemeColors.zinc100 }
+    public static var zinc950: NSColor { isLight ? LightThemeColors.zinc950 : DarkThemeColors.zinc950 }
+    public static var zinc900: NSColor { isLight ? LightThemeColors.zinc900 : DarkThemeColors.zinc900 }
+    public static var zinc800: NSColor { isLight ? LightThemeColors.zinc800 : DarkThemeColors.zinc800 }
+    public static var zinc700: NSColor { isLight ? LightThemeColors.zinc700 : DarkThemeColors.zinc700 }
+    public static var zinc600: NSColor { isLight ? LightThemeColors.zinc600 : DarkThemeColors.zinc600 }
+    public static var zinc500: NSColor { isLight ? LightThemeColors.zinc500 : DarkThemeColors.zinc500 }
+    public static var zinc400: NSColor { isLight ? LightThemeColors.zinc400 : DarkThemeColors.zinc400 }
+    public static var zinc300: NSColor { isLight ? LightThemeColors.zinc300 : DarkThemeColors.zinc300 }
+    public static var zinc200: NSColor { isLight ? LightThemeColors.zinc200 : DarkThemeColors.zinc200 }
+    public static var zinc100: NSColor { isLight ? LightThemeColors.zinc100 : DarkThemeColors.zinc100 }
     
     // MARK: - Emerald Palette (Tailwind)
     
-    public static var emerald500: NSColor { DarkThemeColors.emerald500 }
-    public static var emerald400: NSColor { DarkThemeColors.emerald400 }
+    public static var emerald500: NSColor { isLight ? LightThemeColors.emerald500 : DarkThemeColors.emerald500 }
+    public static var emerald400: NSColor { isLight ? LightThemeColors.emerald500 : DarkThemeColors.emerald400 }
     
     // MARK: - Core Backgrounds
     
@@ -96,7 +96,7 @@ public struct DesignColors {
     }
     
     public static var cardBackgroundTransparent: NSColor {
-        isLight ? LightThemeColors.zinc100.withAlphaComponent(0.5) : DarkThemeColors.zinc900.withAlphaComponent(0.2)
+        isLight ? NSColor.white.withAlphaComponent(0.8) : DarkThemeColors.zinc900.withAlphaComponent(0.2)
     }
     
     public static var panelBackground: NSColor {
@@ -104,11 +104,11 @@ public struct DesignColors {
     }
     
     public static var inputBackground: NSColor {
-        isLight ? LightThemeColors.zinc100 : DarkThemeColors.zinc900.withAlphaComponent(0.5)
+        isLight ? LightThemeColors.zinc50 : DarkThemeColors.zinc900.withAlphaComponent(0.5)
     }
     
     public static var headerBackground: NSColor {
-        isLight ? NSColor.white : DarkThemeColors.zinc950
+        isLight ? NSColor.white.withAlphaComponent(0.85) : DarkThemeColors.zinc950
     }
     
     // MARK: - Text Colors
@@ -142,23 +142,27 @@ public struct DesignColors {
     public static var borderHover: NSColor {
         isLight ? LightThemeColors.zinc300 : NSColor.white.withAlphaComponent(0.10)
     }
+
+    public static var borderStrong: NSColor {
+        isLight ? LightThemeColors.zinc300 : NSColor.white.withAlphaComponent(0.20)
+    }
     
     public static var borderActive: NSColor {
-        isLight ? LightThemeColors.zinc400 : DarkThemeColors.zinc700
+        isLight ? LightThemeColors.zinc300 : DarkThemeColors.zinc700
     }
     
     public static var borderDashed: NSColor {
-        isLight ? LightThemeColors.zinc300 : DarkThemeColors.zinc800
+        isLight ? LightThemeColors.zinc200 : DarkThemeColors.zinc800
     }
     
     // MARK: - Interactive States
     
     public static var hoverBackground: NSColor {
-        isLight ? LightThemeColors.zinc100 : DarkThemeColors.zinc900.withAlphaComponent(0.5)
+        isLight ? LightThemeColors.zinc200.withAlphaComponent(0.5) : DarkThemeColors.zinc900.withAlphaComponent(0.5)
     }
     
     public static var selectedBackground: NSColor {
-        isLight ? LightThemeColors.zinc100 : DarkThemeColors.zinc900
+        isLight ? NSColor.white : DarkThemeColors.zinc900
     }
     
     public static var toggleOn: NSColor {
@@ -225,6 +229,62 @@ public struct DesignColors {
     public static var buttonPrimaryText: NSColor {
         isLight ? NSColor.white : DarkThemeColors.zinc950
     }
+
+    public static var textOnAccent: NSColor {
+        NSColor.white
+    }
+
+    public static var iconOnLightSurface: NSColor {
+        DarkThemeColors.zinc900
+    }
+
+    // MARK: - Picker Surfaces
+
+    public static var pickerBackground: NSColor {
+        isLight ? LightThemeColors.zinc50 : DarkThemeColors.zinc900
+    }
+
+    public static var pickerScrollBackground: NSColor {
+        isLight ? LightThemeColors.zinc100 : DarkThemeColors.zinc800
+    }
+
+    public static var pickerItemBackground: NSColor {
+        isLight ? LightThemeColors.zinc200 : DarkThemeColors.zinc700
+    }
+
+    public static var pickerItemSelectedBackground: NSColor {
+        isLight ? LightThemeColors.zinc300 : DarkThemeColors.zinc600
+    }
+
+    // MARK: - Overlays & Media
+
+    public static var overlayDim: NSColor {
+        isLight ? NSColor.black.withAlphaComponent(0.35) : NSColor.black.withAlphaComponent(0.8)
+    }
+
+    public static var overlayHighlight: NSColor {
+        isLight ? LightThemeColors.zinc100.withAlphaComponent(0.7) : NSColor.white.withAlphaComponent(0.05)
+    }
+
+    public static var overlayHighlightStrong: NSColor {
+        isLight ? LightThemeColors.zinc100.withAlphaComponent(0.95) : NSColor.white.withAlphaComponent(0.1)
+    }
+
+    public static var imageOverlay: NSColor {
+        isLight ? NSColor.black.withAlphaComponent(0.7) : NSColor.black.withAlphaComponent(0.9)
+    }
+
+    public static var imageLabelBackground: NSColor {
+        isLight ? NSColor.black.withAlphaComponent(0.45) : NSColor.black.withAlphaComponent(0.6)
+    }
+
+    public static var buttonSecondaryBackground: NSColor {
+        isLight ? LightThemeColors.zinc100 : NSColor.white.withAlphaComponent(0.05)
+    }
+
+    public static var buttonSecondaryBackgroundHover: NSColor {
+        isLight ? LightThemeColors.zinc200 : NSColor.white.withAlphaComponent(0.1)
+    }
     
     // MARK: - Legacy Colors (for compatibility)
     
@@ -262,8 +322,8 @@ public struct DesignColors {
         let gradient = CAGradientLayer()
         if isLight {
             gradient.colors = [
-                NSColor.black.withAlphaComponent(0.02).cgColor,
-                NSColor.black.withAlphaComponent(0.0).cgColor
+                NSColor.white.withAlphaComponent(0.6).cgColor,
+                NSColor.white.withAlphaComponent(0.2).cgColor
             ]
         } else {
             gradient.colors = [

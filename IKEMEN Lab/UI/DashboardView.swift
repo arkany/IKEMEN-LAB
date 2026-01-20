@@ -1,5 +1,115 @@
 import Cocoa
 
+fileprivate enum ThemeTextRole: String {
+    case primary
+    case secondary
+    case tertiary
+}
+
+fileprivate enum ThemeBackgroundRole: String {
+    case card
+    case cardTransparent
+    case panel
+    case zinc900
+    case zinc800
+    case borderSubtle
+}
+
+fileprivate enum ThemeBorderRole: String {
+    case subtle
+    case hover
+}
+
+fileprivate var themeLabelRoleKey: UInt8 = 0
+fileprivate var themeBackgroundRoleKey: UInt8 = 0
+fileprivate var themeBorderRoleKey: UInt8 = 0
+
+fileprivate func themeTextColor(for role: ThemeTextRole) -> NSColor {
+    switch role {
+    case .primary:
+        return DesignColors.textPrimary
+    case .secondary:
+        return DesignColors.textSecondary
+    case .tertiary:
+        return DesignColors.textTertiary
+    }
+}
+
+fileprivate func themeBackgroundColor(for role: ThemeBackgroundRole) -> NSColor {
+    switch role {
+    case .card:
+        return DesignColors.cardBackground
+    case .cardTransparent:
+        return DesignColors.cardBackgroundTransparent
+    case .panel:
+        return DesignColors.panelBackground
+    case .zinc900:
+        return DesignColors.zinc900
+    case .zinc800:
+        return DesignColors.zinc800
+    case .borderSubtle:
+        return DesignColors.borderSubtle
+    }
+}
+
+fileprivate func themeBorderColor(for role: ThemeBorderRole) -> NSColor {
+    switch role {
+    case .subtle:
+        return DesignColors.borderSubtle
+    case .hover:
+        return DesignColors.borderHover
+    }
+}
+
+fileprivate func tagThemeLabel(_ label: NSTextField, role: ThemeTextRole) {
+    objc_setAssociatedObject(label, &themeLabelRoleKey, role.rawValue, .OBJC_ASSOCIATION_COPY_NONATOMIC)
+    label.textColor = themeTextColor(for: role)
+}
+
+fileprivate func tagThemeBackground(_ view: NSView, role: ThemeBackgroundRole) {
+    objc_setAssociatedObject(view, &themeBackgroundRoleKey, role.rawValue, .OBJC_ASSOCIATION_COPY_NONATOMIC)
+    view.wantsLayer = true
+    view.layer?.backgroundColor = themeBackgroundColor(for: role).cgColor
+}
+
+fileprivate func tagThemeBorder(_ view: NSView, role: ThemeBorderRole) {
+    objc_setAssociatedObject(view, &themeBorderRoleKey, role.rawValue, .OBJC_ASSOCIATION_COPY_NONATOMIC)
+    view.wantsLayer = true
+    view.layer?.borderColor = themeBorderColor(for: role).cgColor
+}
+
+fileprivate func refreshThemeLabels(in view: NSView) {
+    if let label = view as? NSTextField,
+       let rawRole = objc_getAssociatedObject(label, &themeLabelRoleKey) as? String,
+       let role = ThemeTextRole(rawValue: rawRole) {
+        label.textColor = themeTextColor(for: role)
+    }
+    
+    for subview in view.subviews {
+        refreshThemeLabels(in: subview)
+    }
+}
+
+fileprivate func refreshThemeLayers(in view: NSView) {
+    if let rawRole = objc_getAssociatedObject(view, &themeBackgroundRoleKey) as? String,
+       let role = ThemeBackgroundRole(rawValue: rawRole) {
+        view.layer?.backgroundColor = themeBackgroundColor(for: role).cgColor
+    }
+    
+    if let rawRole = objc_getAssociatedObject(view, &themeBorderRoleKey) as? String,
+       let role = ThemeBorderRole(rawValue: rawRole) {
+        view.layer?.borderColor = themeBorderColor(for: role).cgColor
+    }
+    
+    for subview in view.subviews {
+        refreshThemeLayers(in: subview)
+    }
+}
+
+fileprivate protocol ThemeApplicable: AnyObject {
+    func applyTheme()
+}
+
 /// A flipped NSView that draws content from top-left instead of bottom-left
 /// Used for scroll view document views to align content to top
 private class FlippedView: NSView {
@@ -28,6 +138,7 @@ class DashboardView: NSView {
     private var storageLabel: NSTextField!
     private var lastPlayedLabel: NSTextField!
     private var launchIconView: NSImageView!
+    private var launchIconContainer: NSView!
     private var launchTitleLabel: NSTextField!
     
     // Drop zone
@@ -53,6 +164,7 @@ class DashboardView: NSView {
     private var healthCardBottomConstraint: NSLayoutConstraint!
     private var healthDetailHeightConstraint: NSLayoutConstraint!
     private var isHealthDetailExpanded = false
+    private var themeObserver: NSObjectProtocol?
     
     // MARK: - Initialization
     
@@ -101,6 +213,7 @@ class DashboardView: NSView {
         setupTwoColumnLayout()
         setupObservers()
         updateLaunchCardUI() // Initial state
+        applyTheme()
         
         // Layout
         NSLayoutConstraint.activate([
@@ -127,6 +240,10 @@ class DashboardView: NSView {
         NotificationCenter.default.addObserver(forName: .gameStatusChanged, object: nil, queue: .main) { [weak self] _ in
             self?.updateLaunchCardUI()
         }
+        
+        themeObserver = NotificationCenter.default.addObserver(forName: .themeChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.applyTheme()
+        }
     }
     
     private func updateLaunchCardUI() {
@@ -150,6 +267,34 @@ class DashboardView: NSView {
         }
     }
     
+    private func applyTheme() {
+        refreshThemeLabels(in: self)
+        refreshThemeLayers(in: self)
+        applyThemeToSubviews(in: self)
+        
+        launchIconContainer?.layer?.backgroundColor = DesignColors.borderStrong.cgColor
+        launchIconContainer?.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        launchIconContainer?.layer?.shadowColor = DesignColors.borderStrong.cgColor
+        launchIconView?.contentTintColor = DesignColors.textPrimary
+        
+        if healthStatusLabel.textColor != NSColor.systemGreen &&
+           healthStatusLabel.textColor != NSColor.systemRed &&
+           healthStatusLabel.textColor != NSColor.systemOrange {
+            healthStatusLabel.textColor = themeTextColor(for: .tertiary)
+        }
+        
+        updateLaunchCardUI()
+    }
+    
+    private func applyThemeToSubviews(in view: NSView) {
+        for subview in view.subviews {
+            if let themedView = subview as? ThemeApplicable {
+                themedView.applyTheme()
+            }
+            applyThemeToSubviews(in: subview)
+        }
+    }
+    
     // MARK: - Header
     
     private func setupHeader() {
@@ -160,12 +305,12 @@ class DashboardView: NSView {
         
         let titleLabel = NSTextField(labelWithString: "Dashboard")
         titleLabel.font = DesignFonts.header(size: 28)
-        titleLabel.textColor = DesignColors.textPrimary
+        tagThemeLabel(titleLabel, role: .primary)
         headerStack.addArrangedSubview(titleLabel)
         
         let subtitleLabel = NSTextField(labelWithString: "Manage your local IKEMEN GO assets and configuration")
         subtitleLabel.font = DesignFonts.body(size: 14)
-        subtitleLabel.textColor = DesignColors.textSecondary
+        tagThemeLabel(subtitleLabel, role: .secondary)
         headerStack.addArrangedSubview(subtitleLabel)
         
         contentStack.addArrangedSubview(headerStack)
@@ -241,10 +386,10 @@ class DashboardView: NSView {
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
-        iconContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor  // zinc-900 #18181b
+        tagThemeBackground(iconContainer, role: .card)
         iconContainer.layer?.cornerRadius = 4  // rounded (not rounded-lg)
         iconContainer.layer?.borderWidth = 1
-        iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor  // white/5
+        tagThemeBorder(iconContainer, role: .subtle)
         iconContainer.identifier = NSUserInterfaceItemIdentifier("iconContainer")
         stack.addArrangedSubview(iconContainer)
         
@@ -272,13 +417,13 @@ class DashboardView: NSView {
         // Value - text-2xl (24px) font-montserrat font-semibold tracking-wider
         let valueLabel = NSTextField(labelWithString: value)
         valueLabel.font = DesignFonts.header(size: 24)
-        valueLabel.textColor = DesignColors.textPrimary
+        tagThemeLabel(valueLabel, role: .primary)
         stack.addArrangedSubview(valueLabel)
         
         // Title - text-xs (12px) text-zinc-500
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = DesignFonts.caption(size: 12)
-        titleLabel.textColor = DesignColors.textTertiary  // zinc-500
+        tagThemeLabel(titleLabel, role: .tertiary)
         stack.addArrangedSubview(titleLabel)
         
         NSLayoutConstraint.activate([
@@ -303,25 +448,25 @@ class DashboardView: NSView {
         stack.alignment = .leading
         card.addSubview(stack)
         
-        // Icon container - w-8 h-8 rounded bg-white text-zinc-950 with glow
+        // Icon container - w-8 h-8 rounded with glow
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
-        iconContainer.layer?.backgroundColor = NSColor.white.cgColor
+        iconContainer.layer?.backgroundColor = DesignColors.borderStrong.cgColor
         iconContainer.layer?.cornerRadius = 4
         iconContainer.layer?.borderWidth = 1
-        iconContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
-        // shadow-[0_0_15px_rgba(255,255,255,0.15)]
-        iconContainer.layer?.shadowColor = NSColor.white.cgColor
+        iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        iconContainer.layer?.shadowColor = DesignColors.borderStrong.cgColor
         iconContainer.layer?.shadowOpacity = 0.15
         iconContainer.layer?.shadowRadius = 15
         iconContainer.layer?.shadowOffset = .zero
         stack.addArrangedSubview(iconContainer)
+        self.launchIconContainer = iconContainer
         
         let iconView = NSImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: nil)
-        iconView.contentTintColor = DesignColors.background  // zinc-950
+        iconView.contentTintColor = DesignColors.textPrimary
         iconView.symbolConfiguration = .init(pointSize: 14, weight: .regular)
         iconContainer.addSubview(iconView)
         self.launchIconView = iconView
@@ -342,14 +487,14 @@ class DashboardView: NSView {
         // Title - text-lg font-medium tracking-tight
         let titleLabel = NSTextField(labelWithString: "Launch Game")
         titleLabel.font = DesignFonts.body(size: 16)
-        titleLabel.textColor = DesignColors.textPrimary
+        tagThemeLabel(titleLabel, role: .primary)
         stack.addArrangedSubview(titleLabel)
         self.launchTitleLabel = titleLabel
         
         // Last played - text-xs text-zinc-500
         lastPlayedLabel = NSTextField(labelWithString: "Ready to play")
         lastPlayedLabel.font = DesignFonts.caption(size: 12)
-        lastPlayedLabel.textColor = DesignColors.textTertiary
+        tagThemeLabel(lastPlayedLabel, role: .tertiary)
         stack.addArrangedSubview(lastPlayedLabel)
         
         NSLayoutConstraint.activate([
@@ -432,7 +577,7 @@ class DashboardView: NSView {
     private func setupDropZone() {
         let sectionLabel = NSTextField(labelWithString: "INSTALL CONTENT")
         sectionLabel.font = DesignFonts.caption(size: 11)
-        sectionLabel.textColor = DesignColors.textTertiary
+        tagThemeLabel(sectionLabel, role: .tertiary)
         leftColumn.addArrangedSubview(sectionLabel)
         
         dropZoneView = DashboardDropZone(frame: .zero)
@@ -460,17 +605,17 @@ class DashboardView: NSView {
     private func setupRecentlyInstalled() {
         let sectionLabel = NSTextField(labelWithString: "RECENTLY INSTALLED")
         sectionLabel.font = DesignFonts.caption(size: 11)
-        sectionLabel.textColor = DesignColors.textTertiary
+        tagThemeLabel(sectionLabel, role: .tertiary)
         leftColumn.addArrangedSubview(sectionLabel)
         
         // Container card - transparent background (zinc-900/20)
         let card = NSView()
         card.translatesAutoresizingMaskIntoConstraints = false
         card.wantsLayer = true
-        card.layer?.backgroundColor = DesignColors.cardBackgroundTransparent.cgColor
+        tagThemeBackground(card, role: .cardTransparent)
         card.layer?.cornerRadius = 12
         card.layer?.borderWidth = 1
-        card.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        tagThemeBorder(card, role: .subtle)
         
         // Table header row
         let headerRow = createRecentlyInstalledHeader()
@@ -487,7 +632,7 @@ class DashboardView: NSView {
         // Empty state label (shown when no recent installs)
         let emptyLabel = NSTextField(labelWithString: "No recent installations")
         emptyLabel.font = DesignFonts.body(size: 13)
-        emptyLabel.textColor = DesignColors.textTertiary
+        tagThemeLabel(emptyLabel, role: .tertiary)
         emptyLabel.alignment = .center
         emptyLabel.identifier = NSUserInterfaceItemIdentifier("emptyLabel")
         emptyLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -525,7 +670,7 @@ class DashboardView: NSView {
         let border = NSView()
         border.translatesAutoresizingMaskIntoConstraints = false
         border.wantsLayer = true
-        border.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        tagThemeBackground(border, role: .borderSubtle)
         header.addSubview(border)
         
         // Column headers - matching HTML: Name | Type | Date | Status
@@ -569,7 +714,7 @@ class DashboardView: NSView {
         let label = NSTextField(labelWithString: title)
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        label.textColor = DesignColors.zinc500
+        tagThemeLabel(label, role: .tertiary)
         return label
     }
     
@@ -634,16 +779,16 @@ class DashboardView: NSView {
     private func setupQuickSettings() {
         let sectionLabel = NSTextField(labelWithString: "QUICK SETTINGS")
         sectionLabel.font = DesignFonts.caption(size: 11)
-        sectionLabel.textColor = DesignColors.textTertiary
+        tagThemeLabel(sectionLabel, role: .tertiary)
         rightColumn.addArrangedSubview(sectionLabel)
         
         let settingsCard = NSView()
         settingsCard.translatesAutoresizingMaskIntoConstraints = false
         settingsCard.wantsLayer = true
-        settingsCard.layer?.backgroundColor = DesignColors.cardBackgroundTransparent.cgColor
+        tagThemeBackground(settingsCard, role: .cardTransparent)
         settingsCard.layer?.cornerRadius = 12
         settingsCard.layer?.borderWidth = 1
-        settingsCard.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        tagThemeBorder(settingsCard, role: .subtle)
         
         let settingsStack = NSStackView()
         settingsStack.translatesAutoresizingMaskIntoConstraints = false
@@ -694,7 +839,7 @@ class DashboardView: NSView {
         
         let labelField = NSTextField(labelWithString: label)
         labelField.font = DesignFonts.body(size: 14)
-        labelField.textColor = DesignColors.textPrimary
+        tagThemeLabel(labelField, role: .primary)
         row.addArrangedSubview(labelField)
         
         let spacer = NSView()
@@ -717,7 +862,7 @@ class DashboardView: NSView {
         
         let labelField = NSTextField(labelWithString: "Master Volume")
         labelField.font = DesignFonts.body(size: 14)
-        labelField.textColor = DesignColors.textPrimary
+        tagThemeLabel(labelField, role: .primary)
         row.addArrangedSubview(labelField)
         
         volumeSlider = NSSlider()
@@ -732,7 +877,7 @@ class DashboardView: NSView {
         
         volumeLabel = NSTextField(labelWithString: "100%")
         volumeLabel.font = DesignFonts.caption(size: 12)
-        volumeLabel.textColor = DesignColors.textSecondary
+        tagThemeLabel(volumeLabel, role: .secondary)
         volumeLabel.widthAnchor.constraint(equalToConstant: 40).isActive = true
         row.addArrangedSubview(volumeLabel)
         
@@ -840,16 +985,16 @@ class DashboardView: NSView {
     private func setupTools() {
         let sectionLabel = NSTextField(labelWithString: "CONTENT HEALTH")
         sectionLabel.font = DesignFonts.caption(size: 11)
-        sectionLabel.textColor = DesignColors.textTertiary
+        tagThemeLabel(sectionLabel, role: .tertiary)
         rightColumn.addArrangedSubview(sectionLabel)
         
         let healthCard = NSView()
         healthCard.translatesAutoresizingMaskIntoConstraints = false
         healthCard.wantsLayer = true
-        healthCard.layer?.backgroundColor = DesignColors.cardBackgroundTransparent.cgColor
+        tagThemeBackground(healthCard, role: .cardTransparent)
         healthCard.layer?.cornerRadius = 12
         healthCard.layer?.borderWidth = 1
-        healthCard.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        tagThemeBorder(healthCard, role: .subtle)
         
         // Vertical container for header + details
         let cardStack = NSStackView()
@@ -877,10 +1022,10 @@ class DashboardView: NSView {
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
-        iconContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        tagThemeBackground(iconContainer, role: .card)
         iconContainer.layer?.cornerRadius = 8
         iconContainer.layer?.borderWidth = 1
-        iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        tagThemeBorder(iconContainer, role: .subtle)
         iconWrapper.addSubview(iconContainer)
         
         let iconView = NSImageView()
@@ -938,12 +1083,12 @@ class DashboardView: NSView {
         
         let titleLabel = NSTextField(labelWithString: "Content Validator")
         titleLabel.font = DesignFonts.body(size: 14)
-        titleLabel.textColor = DesignColors.textPrimary
+        tagThemeLabel(titleLabel, role: .primary)
         textStack.addArrangedSubview(titleLabel)
         
         healthStatusLabel = NSTextField(labelWithString: "Click 'Scan' to check for issues")
         healthStatusLabel.font = DesignFonts.caption(size: 12)
-        healthStatusLabel.textColor = DesignColors.textTertiary
+        healthStatusLabel.textColor = themeTextColor(for: .tertiary)
         textStack.addArrangedSubview(healthStatusLabel)
         
         mainStack.addArrangedSubview(textStack)
@@ -985,14 +1130,14 @@ class DashboardView: NSView {
         healthDetailContainer = NSView()
         healthDetailContainer.translatesAutoresizingMaskIntoConstraints = false
         healthDetailContainer.wantsLayer = true
-        healthDetailContainer.layer?.backgroundColor = DesignColors.panelBackground.cgColor
+        tagThemeBackground(healthDetailContainer, role: .panel)
         healthDetailContainer.isHidden = true
         
         // Separator line
         let separator = NSView()
         separator.translatesAutoresizingMaskIntoConstraints = false
         separator.wantsLayer = true
-        separator.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        tagThemeBackground(separator, role: .borderSubtle)
         healthDetailContainer.addSubview(separator)
         
         // Scrollable stack for issues
@@ -1167,14 +1312,14 @@ class DashboardView: NSView {
             
             let nameLabel = NSTextField(labelWithString: result.contentName)
             nameLabel.font = DesignFonts.body(size: 13)
-            nameLabel.textColor = DesignColors.textPrimary
+            tagThemeLabel(nameLabel, role: .primary)
             headerStack.addArrangedSubview(nameLabel)
             
             let typeBadge = NSTextField(labelWithString: result.contentType.uppercased())
             typeBadge.font = DesignFonts.caption(size: 9)
-            typeBadge.textColor = DesignColors.textTertiary
+            tagThemeLabel(typeBadge, role: .tertiary)
             typeBadge.wantsLayer = true
-            typeBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+            tagThemeBackground(typeBadge, role: .card)
             typeBadge.layer?.cornerRadius = 3
             // Add padding via alignment rect insets
             headerStack.addArrangedSubview(typeBadge)
@@ -1228,14 +1373,14 @@ class DashboardView: NSView {
         
         let messageLabel = NSTextField(wrappingLabelWithString: issue.message)
         messageLabel.font = DesignFonts.caption(size: 11)
-        messageLabel.textColor = DesignColors.textSecondary
+        tagThemeLabel(messageLabel, role: .secondary)
         messageLabel.preferredMaxLayoutWidth = 400
         textStack.addArrangedSubview(messageLabel)
         
         if let suggestion = issue.suggestion {
             let suggestionLabel = NSTextField(wrappingLabelWithString: "→ \(suggestion)")
             suggestionLabel.font = DesignFonts.caption(size: 10)
-            suggestionLabel.textColor = DesignColors.textTertiary
+            tagThemeLabel(suggestionLabel, role: .tertiary)
             suggestionLabel.preferredMaxLayoutWidth = 400
             textStack.addArrangedSubview(suggestionLabel)
         }
@@ -1316,11 +1461,17 @@ class DashboardView: NSView {
     func refreshStats() {
         onRefreshStats?()
     }
+    
+    deinit {
+        if let themeObserver = themeObserver {
+            NotificationCenter.default.removeObserver(themeObserver)
+        }
+    }
 }
 
 // MARK: - Dashboard Drop Zone
 
-class DashboardDropZone: NSView {
+class DashboardDropZone: NSView, ThemeApplicable {
     
     var onFilesDropped: (([URL]) -> Void)?
     var onClick: (() -> Void)?
@@ -1412,7 +1563,7 @@ class DashboardDropZone: NSView {
         label = NSTextField(labelWithString: "Install Content")
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = DesignFonts.body(size: 14)
-        label.textColor = DesignColors.textSecondary  // zinc-200
+        tagThemeLabel(label, role: .secondary)
         label.alignment = .center
         addSubview(label)
         
@@ -1420,7 +1571,7 @@ class DashboardDropZone: NSView {
         subLabel = NSTextField(labelWithString: "Drag and drop .zip, .rar, or .def files here to automatically\ninstall characters or stages.")
         subLabel.translatesAutoresizingMaskIntoConstraints = false
         subLabel.font = DesignFonts.caption(size: 12)
-        subLabel.textColor = DesignColors.textTertiary  // zinc-500
+        tagThemeLabel(subLabel, role: .tertiary)
         subLabel.alignment = .center
         subLabel.maximumNumberOfLines = 2
         addSubview(subLabel)
@@ -1509,6 +1660,16 @@ class DashboardDropZone: NSView {
             CATransaction.commit()
         }
     }
+
+    func applyTheme() {
+        layer?.backgroundColor = bgDefault.cgColor
+        dashedBorderLayer?.strokeColor = borderDefault.cgColor
+        iconContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        iconView.contentTintColor = DesignColors.textSecondary
+        refreshThemeLabels(in: self)
+        updateAppearance(animated: false)
+    }
     
     // MARK: - Cursor (pointer on hover)
     
@@ -1593,7 +1754,7 @@ class DashboardDropZone: NSView {
 
 /// A stats card with hover effect matching CSS:
 /// glass-panel p-5 rounded-lg border border-white/5 hover:border-white/10 transition-colors
-class HoverableStatCard: NSView {
+class HoverableStatCard: NSView, ThemeApplicable {
     
     var onClick: (() -> Void)?  // Click callback for navigation
     
@@ -1620,13 +1781,13 @@ class HoverableStatCard: NSView {
         wantsLayer = true
         layer?.cornerRadius = 8  // rounded-lg
         layer?.borderWidth = 1
-        layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor  // border-white/5
+        layer?.borderColor = DesignColors.borderSubtle.cgColor  // border-white/5
         
         // Glass panel gradient: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)
         let gradient = CAGradientLayer()
         gradient.colors = [
-            NSColor.white.withAlphaComponent(0.03).cgColor,
-            NSColor.white.withAlphaComponent(0.0).cgColor
+            DesignColors.overlayHighlightStrong.cgColor,
+            DesignColors.overlayHighlight.cgColor
         ]
         gradient.locations = [0.0, 1.0]
         gradient.cornerRadius = 8
@@ -1650,9 +1811,9 @@ class HoverableStatCard: NSView {
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1))
         
         if isHovered {
-            layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor  // hover:border-white/10
+            layer?.borderColor = DesignColors.borderHover.cgColor  // hover:border-white/10
         } else {
-            layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor  // border-white/5
+            layer?.borderColor = DesignColors.borderSubtle.cgColor  // border-white/5
         }
         
         CATransaction.commit()
@@ -1688,6 +1849,16 @@ class HoverableStatCard: NSView {
             }
         }
         return nil
+    }
+    
+    func applyTheme() {
+        gradientLayer?.colors = [
+            DesignColors.overlayHighlightStrong.cgColor,
+            DesignColors.overlayHighlight.cgColor
+        ]
+        updateAppearance(animated: false)
+        refreshThemeLayers(in: self)
+        refreshThemeLabels(in: self)
     }
     
     private func findInSubviews(of view: NSView, identifier: String) -> NSView? {
@@ -1756,7 +1927,7 @@ class HoverableStatCard: NSView {
 // MARK: - Hoverable Tool Button
 
 /// Tool button with hover effect for the Tools section
-class HoverableToolButton: NSView {
+class HoverableToolButton: NSView, ThemeApplicable {
     
     var target: AnyObject?
     var action: Selector?
@@ -1795,7 +1966,7 @@ class HoverableToolButton: NSView {
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1))
         
         if isHovered {
-            layer?.borderColor = NSColor.white.withAlphaComponent(0.15).cgColor
+            layer?.borderColor = DesignColors.borderHover.cgColor
             layer?.backgroundColor = DesignColors.zinc800.cgColor
         } else {
             layer?.borderColor = DesignColors.borderSubtle.cgColor
@@ -1849,13 +2020,19 @@ class HoverableToolButton: NSView {
     override func resetCursorRects() {
         addCursorRect(bounds, cursor: .pointingHand)
     }
+    
+    func applyTheme() {
+        layer?.backgroundColor = DesignColors.zinc900.cgColor
+        layer?.borderColor = DesignColors.borderSubtle.cgColor
+        updateAppearance(animated: false)
+    }
 }
 
 // MARK: - Hoverable Launch Card
 
 /// Launch card with special hover effect - adds gradient overlay on hover
 /// CSS: glass-panel with bg-gradient-to-br from-white/5 to-transparent on hover
-class HoverableLaunchCard: NSView {
+class HoverableLaunchCard: NSView, ThemeApplicable {
     
     private var trackingArea: NSTrackingArea?
     private var gradientLayer: CAGradientLayer?
@@ -1949,13 +2126,13 @@ class HoverableLaunchCard: NSView {
         wantsLayer = true
         layer?.cornerRadius = 8
         layer?.borderWidth = 1
-        layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        layer?.borderColor = DesignColors.borderSubtle.cgColor
         
         // Base glass gradient
         let gradient = CAGradientLayer()
         gradient.colors = [
-            NSColor.white.withAlphaComponent(0.03).cgColor,
-            NSColor.white.withAlphaComponent(0.0).cgColor
+            DesignColors.overlayHighlightStrong.cgColor,
+            DesignColors.overlayHighlight.cgColor
         ]
         gradient.locations = [0.0, 1.0]
         gradient.cornerRadius = 8
@@ -1966,8 +2143,8 @@ class HoverableLaunchCard: NSView {
         // bg-gradient-to-br from-white/5 to-transparent
         let hoverGrad = CAGradientLayer()
         hoverGrad.colors = [
-            NSColor.white.withAlphaComponent(0.05).cgColor,
-            NSColor.white.withAlphaComponent(0.0).cgColor
+            DesignColors.overlayHighlightStrong.cgColor,
+            DesignColors.overlayHighlight.cgColor
         ]
         hoverGrad.startPoint = CGPoint(x: 0, y: 0)
         hoverGrad.endPoint = CGPoint(x: 1, y: 1)
@@ -1993,10 +2170,10 @@ class HoverableLaunchCard: NSView {
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1))
         
         if isHovered {
-            layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor
+            layer?.borderColor = DesignColors.borderHover.cgColor
             hoverGradientLayer?.opacity = 1.0
         } else {
-            layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            layer?.borderColor = DesignColors.borderSubtle.cgColor
             hoverGradientLayer?.opacity = 0.0
         }
         
@@ -2027,13 +2204,25 @@ class HoverableLaunchCard: NSView {
     override func mouseExited(with event: NSEvent) {
         isHovered = false
     }
+    
+    func applyTheme() {
+        gradientLayer?.colors = [
+            DesignColors.overlayHighlightStrong.cgColor,
+            DesignColors.overlayHighlight.cgColor
+        ]
+        hoverGradientLayer?.colors = [
+            DesignColors.overlayHighlightStrong.cgColor,
+            DesignColors.overlayHighlight.cgColor
+        ]
+        updateAppearance(animated: false)
+    }
 }
 
 // MARK: - Recent Install Row
 
 /// A table row for recently installed content
 /// Matches HTML: hover:bg-white/5 transition-colors cursor-pointer
-class RecentInstallRow: NSView {
+class RecentInstallRow: NSView, ThemeApplicable {
     
     var onClick: (() -> Void)?
     var onStatusChanged: ((Bool) -> Void)?
@@ -2080,7 +2269,7 @@ class RecentInstallRow: NSView {
             let border = NSView()
             border.translatesAutoresizingMaskIntoConstraints = false
             border.wantsLayer = true
-            border.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            tagThemeBackground(border, role: .borderSubtle)
             addSubview(border)
             
             NSLayoutConstraint.activate([
@@ -2096,9 +2285,9 @@ class RecentInstallRow: NSView {
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.wantsLayer = true
         iconView.layer?.cornerRadius = 6
-        iconView.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        tagThemeBackground(iconView, role: .zinc900)
         iconView.layer?.borderWidth = 1
-        iconView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        tagThemeBorder(iconView, role: .subtle)
         iconView.layer?.masksToBounds = true  // Clip thumbnail to rounded corners
         addSubview(iconView)
         
@@ -2114,7 +2303,7 @@ class RecentInstallRow: NSView {
         iconLabel = NSTextField(labelWithString: initial)
         iconLabel.translatesAutoresizingMaskIntoConstraints = false
         iconLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
-        iconLabel.textColor = DesignColors.zinc500
+        tagThemeLabel(iconLabel, role: .tertiary)
         iconLabel.alignment = .center
         iconView.addSubview(iconLabel)
         
@@ -2129,14 +2318,14 @@ class RecentInstallRow: NSView {
         // Name label
         nameLabel = NSTextField(labelWithString: install.name)
         nameLabel.font = DesignFonts.body(size: 14)
-        nameLabel.textColor = DesignColors.textPrimary
+        tagThemeLabel(nameLabel, role: .primary)
         nameLabel.lineBreakMode = .byTruncatingTail
         nameStack.addArrangedSubview(nameLabel)
         
         // Author label (from metadata)
         authorLabel = NSTextField(labelWithString: install.author)
         authorLabel.font = DesignFonts.body(size: 12)
-        authorLabel.textColor = DesignColors.zinc500
+        tagThemeLabel(authorLabel, role: .tertiary)
         authorLabel.lineBreakMode = .byTruncatingTail
         nameStack.addArrangedSubview(authorLabel)
         
@@ -2173,7 +2362,7 @@ class RecentInstallRow: NSView {
         dateLabel = NSTextField(labelWithString: dateText)
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
         dateLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
-        dateLabel.textColor = DesignColors.zinc400
+        tagThemeLabel(dateLabel, role: .tertiary)
         dateLabel.alignment = .left
         addSubview(dateLabel)
         
@@ -2384,12 +2573,18 @@ class RecentInstallRow: NSView {
         CATransaction.setAnimationDuration(duration)
         
         if isHovered {
-            layer?.backgroundColor = NSColor.white.withAlphaComponent(0.03).cgColor
+            layer?.backgroundColor = DesignColors.overlayHighlightStrong.cgColor
         } else {
             layer?.backgroundColor = NSColor.clear.cgColor
         }
         
         CATransaction.commit()
+    }
+    
+    func applyTheme() {
+        refreshThemeLabels(in: self)
+        refreshThemeLayers(in: self)
+        updateAppearance(animated: false)
     }
     
     override func updateTrackingAreas() {

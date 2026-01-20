@@ -62,6 +62,7 @@ class ScreenpackBrowserView: NSView {
     private var activeScreenpacks: [ScreenpackInfo] = []
     private var inactiveScreenpacks: [ScreenpackInfo] = []
     private var cancellables = Set<AnyCancellable>()
+    private var themeObserver: NSObjectProtocol?
     
     // View mode
     var viewMode: BrowserViewMode = .grid {
@@ -200,6 +201,14 @@ class ScreenpackBrowserView: NSView {
                 self?.updateScreenpacks(screenpacks)
             }
             .store(in: &cancellables)
+        
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: .themeChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.collectionView.reloadData()
+        }
     }
     
     /// Set screenpacks directly (used for search filtering)
@@ -246,6 +255,12 @@ class ScreenpackBrowserView: NSView {
     
     func refresh() {
         updateScreenpacks(IkemenBridge.shared.screenpacks)
+    }
+
+    deinit {
+        if let themeObserver = themeObserver {
+            NotificationCenter.default.removeObserver(themeObserver)
+        }
     }
 }
 
@@ -387,9 +402,9 @@ class ScreenpackGridItem: NSCollectionViewItem {
         containerView.wantsLayer = true
         containerView.layer?.cornerRadius = 12
         containerView.layer?.masksToBounds = true
-        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.2).cgColor
         containerView.layer?.borderWidth = 1
-        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
         view.addSubview(containerView)
         
         // Preview image - fills container
@@ -397,14 +412,14 @@ class ScreenpackGridItem: NSCollectionViewItem {
         previewImageView.translatesAutoresizingMaskIntoConstraints = false
         previewImageView.imageScaling = .scaleProportionallyUpOrDown
         previewImageView.wantsLayer = true
-        previewImageView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
+        previewImageView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
         containerView.addSubview(previewImageView)
         
         // Placeholder text (shows when no preview)
         placeholderLabel = NSTextField(labelWithString: "")
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.font = DesignFonts.header(size: 32)
-        placeholderLabel.textColor = NSColor.white.withAlphaComponent(0.05)
+        placeholderLabel.textColor = DesignColors.textDisabled.withAlphaComponent(0.3)
         placeholderLabel.alignment = .center
         containerView.addSubview(placeholderLabel)
         
@@ -413,7 +428,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
         gradientLayer.colors = [
             NSColor.clear.cgColor,
             NSColor.clear.cgColor,
-            DesignColors.zinc900.withAlphaComponent(0.9).cgColor
+            DesignColors.imageOverlay.cgColor
         ]
         gradientLayer.locations = [0.0, 0.4, 1.0]
         gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
@@ -437,7 +452,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
         resolutionBadge = NSView()
         resolutionBadge.translatesAutoresizingMaskIntoConstraints = false
         resolutionBadge.wantsLayer = true
-        resolutionBadge.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.7).cgColor
+        resolutionBadge.layer?.backgroundColor = DesignColors.imageOverlay.withAlphaComponent(0.6).cgColor
         resolutionBadge.layer?.cornerRadius = 4
         containerView.addSubview(resolutionBadge)
         
@@ -472,7 +487,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = DesignFonts.body(size: 14)
-        nameLabel.textColor = .white
+        nameLabel.textColor = DesignColors.textOnAccent
         nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.maximumNumberOfLines = 1
         containerView.addSubview(nameLabel)
@@ -582,27 +597,27 @@ class ScreenpackGridItem: NSCollectionViewItem {
             
             if isSelected {
                 // Selected: bright border, subtle glow
-                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.4).cgColor
-                containerView.layer?.shadowColor = NSColor.white.cgColor
+                containerView.animator().layer?.borderColor = DesignColors.borderStrong.cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.4).cgColor
+                containerView.layer?.shadowColor = DesignColors.textPrimary.cgColor
                 containerView.layer?.shadowOffset = .zero
                 containerView.layer?.shadowRadius = 8
                 containerView.layer?.shadowOpacity = 0.15
             } else if isHovered {
                 // Hovered: medium border
-                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+                containerView.animator().layer?.borderColor = DesignColors.borderHover.cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.3).cgColor
                 containerView.layer?.shadowOpacity = 0
             } else if isActive {
                 // Active (not hovered/selected): emerald tint
                 containerView.animator().layer?.borderColor = DesignColors.positive.withAlphaComponent(0.3).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.1).cgColor
                 containerView.layer?.shadowColor = DesignColors.positive.cgColor
                 containerView.layer?.shadowOpacity = 0.1
             } else {
                 // Default: subtle border
-                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+                containerView.animator().layer?.borderColor = DesignColors.borderSubtle.cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.1).cgColor
                 containerView.layer?.shadowOpacity = 0
             }
         }
@@ -679,8 +694,8 @@ class ScreenpackGridItem: NSCollectionViewItem {
         onActivate = nil
         
         // Reset appearance
-        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
-        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.1).cgColor
+        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.1).cgColor
         containerView.layer?.shadowOpacity = 0
     }
 }
@@ -727,9 +742,9 @@ class ScreenpackListItem: NSCollectionViewItem {
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
         containerView.layer?.cornerRadius = 8
-        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.2).cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.2).cgColor
         containerView.layer?.borderWidth = 1
-        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
         view.addSubview(containerView)
         
         // Thumbnail (80x48 - matches HTML w-20 h-12)
@@ -739,9 +754,9 @@ class ScreenpackListItem: NSCollectionViewItem {
         thumbnailView.wantsLayer = true
         thumbnailView.layer?.cornerRadius = 6
         thumbnailView.layer?.masksToBounds = true
-        thumbnailView.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        thumbnailView.layer?.backgroundColor = DesignColors.inputBackground.cgColor
         thumbnailView.layer?.borderWidth = 1
-        thumbnailView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        thumbnailView.layer?.borderColor = DesignColors.borderSubtle.cgColor
         containerView.addSubview(thumbnailView)
         
         // Thumbnail overlay for active items (emerald tint)
@@ -757,7 +772,7 @@ class ScreenpackListItem: NSCollectionViewItem {
         placeholderLabel = NSTextField(labelWithString: "")
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.font = DesignFonts.header(size: 18)
-        placeholderLabel.textColor = NSColor.white.withAlphaComponent(0.15)
+        placeholderLabel.textColor = DesignColors.textDisabled.withAlphaComponent(0.4)
         placeholderLabel.alignment = .center
         containerView.addSubview(placeholderLabel)
         
@@ -765,7 +780,7 @@ class ScreenpackListItem: NSCollectionViewItem {
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = DesignFonts.body(size: 14)
-        nameLabel.textColor = .white
+        nameLabel.textColor = DesignColors.textPrimary
         nameLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(nameLabel)
         
@@ -800,7 +815,7 @@ class ScreenpackListItem: NSCollectionViewItem {
         dotLabel = NSTextField(labelWithString: "•")
         dotLabel.translatesAutoresizingMaskIntoConstraints = false
         dotLabel.font = DesignFonts.caption(size: 10)
-        dotLabel.textColor = DesignColors.zinc600
+        dotLabel.textColor = DesignColors.textTertiary
         containerView.addSubview(dotLabel)
         
         // Description label
@@ -841,7 +856,7 @@ class ScreenpackListItem: NSCollectionViewItem {
         resolutionLabel = NSTextField(labelWithString: "")
         resolutionLabel.translatesAutoresizingMaskIntoConstraints = false
         resolutionLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
-        resolutionLabel.textColor = DesignColors.zinc600
+        resolutionLabel.textColor = DesignColors.textTertiary
         resolutionLabel.alignment = .right
         containerView.addSubview(resolutionLabel)
         
@@ -853,10 +868,10 @@ class ScreenpackListItem: NSCollectionViewItem {
         actionButton.wantsLayer = true
         actionButton.font = DesignFonts.caption(size: 10)
         (actionButton.cell as? NSButtonCell)?.backgroundColor = .clear
-        actionButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        actionButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
         actionButton.layer?.cornerRadius = 4
         actionButton.layer?.borderWidth = 1
-        actionButton.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        actionButton.layer?.borderColor = DesignColors.borderSubtle.cgColor
         actionButton.contentTintColor = DesignColors.textSecondary
         containerView.addSubview(actionButton)
         
@@ -977,24 +992,24 @@ class ScreenpackListItem: NSCollectionViewItem {
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             
             if isSelected {
-                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
-                containerView.layer?.shadowColor = NSColor.white.cgColor
+                containerView.animator().layer?.borderColor = DesignColors.borderStrong.cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
+                containerView.layer?.shadowColor = DesignColors.textPrimary.cgColor
                 containerView.layer?.shadowOffset = .zero
                 containerView.layer?.shadowRadius = 6
                 containerView.layer?.shadowOpacity = 0.1
             } else if isHovered {
-                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.6).cgColor
+                containerView.animator().layer?.borderColor = DesignColors.borderHover.cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.6).cgColor
                 containerView.layer?.shadowOpacity = 0
                 
                 // Hover button effect
-                actionButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.1).cgColor
-                actionButton.contentTintColor = .white
+                actionButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackgroundHover.cgColor
+                actionButton.contentTintColor = DesignColors.textPrimary
             } else if isActive {
                 // Active item: emerald border with subtle ring
                 containerView.animator().layer?.borderColor = DesignColors.positive.withAlphaComponent(0.2).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.4).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.4).cgColor
                 containerView.layer?.shadowColor = DesignColors.positive.cgColor
                 containerView.layer?.shadowOpacity = 0.05
                 containerView.layer?.shadowRadius = 4
@@ -1002,18 +1017,20 @@ class ScreenpackListItem: NSCollectionViewItem {
                 actionButton.layer?.backgroundColor = NSColor.clear.cgColor
                 actionButton.contentTintColor = DesignColors.textSecondary
             } else {
-                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
-                containerView.animator().layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.2).cgColor
+                containerView.animator().layer?.borderColor = DesignColors.borderSubtle.cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.2).cgColor
                 containerView.layer?.shadowOpacity = 0
                 
-                actionButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+                actionButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
                 actionButton.contentTintColor = DesignColors.textSecondary
             }
         }
         
         // Update name color on hover
-        nameLabel.textColor = isHovered && isActive ? DesignColors.positive : (isHovered ? .white : (isActive ? DesignColors.positive : DesignColors.zinc300))
-        descriptionLabel.textColor = isHovered ? DesignColors.textTertiary : DesignColors.zinc600
+        nameLabel.textColor = isHovered && isActive
+            ? DesignColors.positive
+            : (isHovered ? DesignColors.textPrimary : (isActive ? DesignColors.positive : DesignColors.textPrimary))
+        descriptionLabel.textColor = isHovered ? DesignColors.textSecondary : DesignColors.textTertiary
         
         // Update image opacity/saturation on hover for inactive items
         if !isActive {
@@ -1105,10 +1122,10 @@ class ScreenpackListItem: NSCollectionViewItem {
         placeholderLabel.stringValue = ""
         placeholderLabel.isHidden = false
         nameLabel.stringValue = ""
-        nameLabel.textColor = DesignColors.zinc300
+        nameLabel.textColor = DesignColors.textPrimary
         typeLabel.stringValue = ""
         descriptionLabel.stringValue = ""
-        descriptionLabel.textColor = DesignColors.zinc600
+        descriptionLabel.textColor = DesignColors.textTertiary
         versionLabel.stringValue = ""
         resolutionLabel.stringValue = ""
         activeBadge.isHidden = true
@@ -1121,10 +1138,10 @@ class ScreenpackListItem: NSCollectionViewItem {
         onActivate = nil
         
         // Reset appearance
-        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
-        containerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.2).cgColor
+        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.2).cgColor
         containerView.layer?.shadowOpacity = 0
-        actionButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        actionButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
         actionButton.contentTintColor = DesignColors.textSecondary
     }
 }

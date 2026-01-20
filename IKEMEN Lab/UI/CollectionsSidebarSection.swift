@@ -20,6 +20,7 @@ class CollectionsSidebarSection: NSView {
     private var collectionsStack: NSStackView!
     private var collectionButtons: [UUID: NSButton] = [:]
     private var selectedCollectionId: UUID?
+    private var themeObserver: NSObjectProtocol?
     
     // Layout constants
     private let itemHeight: CGFloat = 32
@@ -71,6 +72,15 @@ class CollectionsSidebarSection: NSView {
             collectionsStack.trailingAnchor.constraint(equalTo: trailingAnchor),
             collectionsStack.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
+        
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: .themeChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.headerLabel.textColor = DesignColors.textDisabled
+            self?.rebuildCollectionsList()
+        }
     }
     
     private func bindToStore() {
@@ -458,6 +468,12 @@ class CollectionsSidebarSection: NSView {
         selectedCollectionId = nil
         for (_, button) in collectionButtons {
             updateButtonAppearance(button, isHovered: false)
+        }
+    }
+
+    deinit {
+        if let themeObserver = themeObserver {
+            NotificationCenter.default.removeObserver(themeObserver)
         }
     }
 }

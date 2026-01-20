@@ -19,7 +19,7 @@ class DashedBorderView: NSView {
         let borderLayer = CAShapeLayer()
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 12, yRadius: 12)
         borderLayer.path = path.cgPath
-        borderLayer.strokeColor = DesignColors.zinc700.cgColor
+        borderLayer.strokeColor = DesignColors.borderDashed.cgColor
         borderLayer.fillColor = nil
         borderLayer.lineDashPattern = [6, 4]
         borderLayer.lineWidth = 1
@@ -145,7 +145,7 @@ class FirstRunView: NSView {
         wantsLayer = true
         
         // Semi-transparent black overlay with blur effect
-        layer?.backgroundColor = NSColor.black.withAlphaComponent(0.8).cgColor
+        layer?.backgroundColor = DesignColors.overlayDim.cgColor
         
         setupCard()
         setupProgressHeader()
@@ -161,11 +161,11 @@ class FirstRunView: NSView {
         cardView = NSView()
         cardView.translatesAutoresizingMaskIntoConstraints = false
         cardView.wantsLayer = true
-        cardView.layer?.backgroundColor = DesignColors.zinc950.cgColor
+        cardView.layer?.backgroundColor = DesignColors.background.cgColor
         cardView.layer?.cornerRadius = 16
         cardView.layer?.borderWidth = 1
-        cardView.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
-        cardView.layer?.shadowColor = NSColor.black.cgColor
+        cardView.layer?.borderColor = DesignColors.borderHover.cgColor
+        cardView.layer?.shadowColor = DesignColors.overlayDim.cgColor
         cardView.layer?.shadowOpacity = 0.5
         cardView.layer?.shadowOffset = CGSize(width: 0, height: -10)
         cardView.layer?.shadowRadius = 40
@@ -174,7 +174,7 @@ class FirstRunView: NSView {
         // Background decorative gradient
         backgroundGradient = CAGradientLayer()
         backgroundGradient.colors = [
-            NSColor.white.withAlphaComponent(0.05).cgColor,
+            DesignColors.overlayHighlight.cgColor,
             NSColor.clear.cgColor
         ]
         backgroundGradient.locations = [0.0, 1.0]
@@ -213,7 +213,7 @@ class FirstRunView: NSView {
             dot.translatesAutoresizingMaskIntoConstraints = false
             dot.wantsLayer = true
             dot.layer?.cornerRadius = 4
-            dot.layer?.backgroundColor = (i == 1 ? NSColor.white : DesignColors.zinc800).cgColor
+            dot.layer?.backgroundColor = (i == 1 ? DesignColors.textPrimary : DesignColors.textDisabled).cgColor
             dotsStack.addArrangedSubview(dot)
             progressDots.append(dot)
             
@@ -228,7 +228,7 @@ class FirstRunView: NSView {
         skipButton.translatesAutoresizingMaskIntoConstraints = false
         skipButton.isBordered = false
         skipButton.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        skipButton.contentTintColor = DesignColors.zinc500
+        skipButton.contentTintColor = DesignColors.textTertiary
         headerView.addSubview(skipButton)
         
         NSLayoutConstraint.activate([
@@ -271,10 +271,10 @@ class FirstRunView: NSView {
         iconContainer.wantsLayer = true
         iconContainer.layer?.cornerRadius = 16
         iconContainer.layer?.borderWidth = 1
-        iconContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        iconContainer.layer?.borderColor = DesignColors.borderHover.cgColor
         
         let iconGradient = CAGradientLayer()
-        iconGradient.colors = [DesignColors.zinc800.cgColor, DesignColors.zinc950.cgColor]
+        iconGradient.colors = [DesignColors.panelBackground.cgColor, DesignColors.background.cgColor]
         iconGradient.startPoint = CGPoint(x: 0, y: 0)
         iconGradient.endPoint = CGPoint(x: 1, y: 1)
         iconGradient.cornerRadius = 16
@@ -288,7 +288,7 @@ class FirstRunView: NSView {
             let config = NSImage.SymbolConfiguration(pointSize: 40, weight: .light)
             iconImageView.image = flaskImage.withSymbolConfiguration(config)
         }
-        iconImageView.contentTintColor = .white
+        iconImageView.contentTintColor = DesignColors.textOnAccent
         iconContainer.addSubview(iconImageView)
         
         // Green dot indicator
@@ -298,14 +298,14 @@ class FirstRunView: NSView {
         greenDot.layer?.cornerRadius = 6
         greenDot.layer?.backgroundColor = DesignColors.positive.cgColor
         greenDot.layer?.borderWidth = 2
-        greenDot.layer?.borderColor = DesignColors.zinc900.cgColor
+        greenDot.layer?.borderColor = DesignColors.background.cgColor
         iconContainer.addSubview(greenDot)
         
         // Title
         let titleLabel = NSTextField(labelWithString: "Welcome to IKEMEN Lab")
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = DesignFonts.header(size: 24)
-        titleLabel.textColor = .white
+        titleLabel.textColor = DesignColors.textPrimary
         titleLabel.alignment = .center
         container.addSubview(titleLabel)
         
@@ -313,7 +313,7 @@ class FirstRunView: NSView {
         let descLabel = NSTextField(wrappingLabelWithString: "The easiest way to manage your IKEMEN GO characters, stages, and screenpacks directly on your Mac.")
         descLabel.translatesAutoresizingMaskIntoConstraints = false
         descLabel.font = NSFont.systemFont(ofSize: 16, weight: .regular)
-        descLabel.textColor = DesignColors.zinc400
+        descLabel.textColor = DesignColors.textSecondary
         descLabel.alignment = .center
         container.addSubview(descLabel)
         
@@ -373,14 +373,14 @@ class FirstRunView: NSView {
         let titleLabel = NSTextField(labelWithString: "First, you'll need IKEMEN GO")
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = DesignFonts.header(size: 20)
-        titleLabel.textColor = .white
+        titleLabel.textColor = DesignColors.textPrimary
         container.addSubview(titleLabel)
         
         // Description
         let descLabel = NSTextField(wrappingLabelWithString: "IKEMEN Lab manages content for the IKEMEN GO engine. Do you have the game installed on this Mac?")
         descLabel.translatesAutoresizingMaskIntoConstraints = false
         descLabel.font = NSFont.systemFont(ofSize: 16, weight: .regular)
-        descLabel.textColor = DesignColors.zinc400
+        descLabel.textColor = DesignColors.textSecondary
         container.addSubview(descLabel)
         
         // Options stack
@@ -422,7 +422,7 @@ class FirstRunView: NSView {
         footerStack.addArrangedSubview(backButton)
         
         let continueWhenInstalledButton = createTextButton(title: "Continue when installed", action: #selector(step2AlreadyHaveIt))
-        continueWhenInstalledButton.contentTintColor = DesignColors.zinc400
+        continueWhenInstalledButton.contentTintColor = DesignColors.textSecondary
         footerStack.addArrangedSubview(continueWhenInstalledButton)
         
         NSLayoutConstraint.activate([
@@ -461,7 +461,7 @@ class FirstRunView: NSView {
         let titleLabel = NSTextField(labelWithString: "Where is IKEMEN GO installed?")
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = DesignFonts.header(size: 20)
-        titleLabel.textColor = .white
+        titleLabel.textColor = DesignColors.textPrimary
         container.addSubview(titleLabel)
         
         // Description with code span
@@ -470,17 +470,17 @@ class FirstRunView: NSView {
         let descAttr = NSMutableAttributedString(string: "Locate your ")
         descAttr.append(NSAttributedString(string: "Ikemen_GO_MacOS", attributes: [
             .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular),
-            .foregroundColor: DesignColors.zinc300,
-            .backgroundColor: NSColor.white.withAlphaComponent(0.1)
+            .foregroundColor: DesignColors.textSecondary,
+            .backgroundColor: DesignColors.overlayHighlightStrong
         ]))
         descAttr.append(NSAttributedString(string: " folder."))
         descAttr.addAttributes([
             .font: NSFont.systemFont(ofSize: 16, weight: .regular),
-            .foregroundColor: DesignColors.zinc400
+            .foregroundColor: DesignColors.textSecondary
         ], range: NSRange(location: 0, length: 12))
         descAttr.addAttributes([
             .font: NSFont.systemFont(ofSize: 16, weight: .regular),
-            .foregroundColor: DesignColors.zinc400
+            .foregroundColor: DesignColors.textSecondary
         ], range: NSRange(location: descAttr.length - 8, length: 8))
         descLabel.attributedStringValue = descAttr
         container.addSubview(descLabel)
@@ -504,9 +504,9 @@ class FirstRunView: NSView {
         pathContainer.translatesAutoresizingMaskIntoConstraints = false
         pathContainer.wantsLayer = true
         pathContainer.layer?.cornerRadius = 8
-        pathContainer.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
+        pathContainer.layer?.backgroundColor = DesignColors.inputBackground.cgColor
         pathContainer.layer?.borderWidth = 1
-        pathContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        pathContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
         container.addSubview(pathContainer)
         
         let pathIcon = NSImageView()
@@ -514,14 +514,14 @@ class FirstRunView: NSView {
         if let driveImage = NSImage(systemSymbolName: "externaldrive", accessibilityDescription: nil) {
             pathIcon.image = driveImage
         }
-        pathIcon.contentTintColor = DesignColors.zinc600
+        pathIcon.contentTintColor = DesignColors.textDisabled
         pathContainer.addSubview(pathIcon)
         
         pathTextField = NSTextField()
         pathTextField.translatesAutoresizingMaskIntoConstraints = false
         pathTextField.placeholderString = "/Users/username/Games/Ikemen-GO"
         pathTextField.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        pathTextField.textColor = DesignColors.zinc300
+        pathTextField.textColor = DesignColors.textSecondary
         pathTextField.backgroundColor = .clear
         pathTextField.isBordered = false
         pathTextField.focusRingType = .none
@@ -545,9 +545,9 @@ class FirstRunView: NSView {
         continueButton.isBordered = false
         continueButton.wantsLayer = true
         continueButton.layer?.cornerRadius = 8
-        continueButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        continueButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
         continueButton.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        continueButton.contentTintColor = DesignColors.zinc500
+        continueButton.contentTintColor = DesignColors.textTertiary
         continueButton.isEnabled = false
         footerStack.addArrangedSubview(continueButton)
         
@@ -608,14 +608,14 @@ class FirstRunView: NSView {
         zone.translatesAutoresizingMaskIntoConstraints = false
         zone.wantsLayer = true
         zone.layer?.cornerRadius = 12
-        zone.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+        zone.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.3).cgColor
         
         // Icon
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
         iconContainer.layer?.cornerRadius = 24
-        iconContainer.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        iconContainer.layer?.backgroundColor = DesignColors.inputBackground.cgColor
         zone.addSubview(iconContainer)
         
         let iconView = NSImageView()
@@ -623,20 +623,20 @@ class FirstRunView: NSView {
         if let folderImage = NSImage(systemSymbolName: "folder.badge.questionmark", accessibilityDescription: nil) {
             iconView.image = folderImage
         }
-        iconView.contentTintColor = DesignColors.zinc400
+        iconView.contentTintColor = DesignColors.textSecondary
         iconContainer.addSubview(iconView)
         
         // Labels
         let mainLabel = NSTextField(labelWithString: "Click to browse or drag folder here")
         mainLabel.translatesAutoresizingMaskIntoConstraints = false
         mainLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
-        mainLabel.textColor = .white
+        mainLabel.textColor = DesignColors.textPrimary
         zone.addSubview(mainLabel)
         
         let subLabel = NSTextField(labelWithString: "Usually in /Applications/Ikemen-GO/")
         subLabel.translatesAutoresizingMaskIntoConstraints = false
         subLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        subLabel.textColor = DesignColors.zinc500
+        subLabel.textColor = DesignColors.textTertiary
         zone.addSubview(subLabel)
         
         // Click gesture
@@ -672,7 +672,7 @@ class FirstRunView: NSView {
         state.translatesAutoresizingMaskIntoConstraints = false
         state.wantsLayer = true
         state.layer?.cornerRadius = 12
-        state.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        state.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         state.layer?.borderWidth = 1
         state.layer?.borderColor = DesignColors.positive.withAlphaComponent(0.3).cgColor
         
@@ -698,7 +698,7 @@ class FirstRunView: NSView {
         let pathLabel = NSTextField(labelWithString: "/Applications/Ikemen-GO/")
         pathLabel.translatesAutoresizingMaskIntoConstraints = false
         pathLabel.font = NSFont.systemFont(ofSize: 14, weight: .medium)
-        pathLabel.textColor = .white
+        pathLabel.textColor = DesignColors.textPrimary
         pathLabel.tag = 100 // For updating later
         state.addSubview(pathLabel)
         
@@ -723,14 +723,14 @@ class FirstRunView: NSView {
         
         let validatedLabel = NSTextField(labelWithString: "Validated")
         validatedLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
-        validatedLabel.textColor = DesignColors.zinc400
+        validatedLabel.textColor = DesignColors.textSecondary
         validatedStack.addArrangedSubview(validatedLabel)
         statusStack.addArrangedSubview(validatedStack)
         
         // Version label (will be updated with detected version)
         let versionLabel = NSTextField(labelWithString: "")
         versionLabel.font = NSFont.systemFont(ofSize: 10, weight: .regular)
-        versionLabel.textColor = DesignColors.zinc500
+        versionLabel.textColor = DesignColors.textTertiary
         versionLabel.tag = 101 // For updating later with detected version
         statusStack.addArrangedSubview(versionLabel)
         
@@ -739,7 +739,7 @@ class FirstRunView: NSView {
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         closeButton.bezelStyle = .inline
         closeButton.isBordered = false
-        closeButton.contentTintColor = DesignColors.zinc500
+        closeButton.contentTintColor = DesignColors.textTertiary
         state.addSubview(closeButton)
         
         NSLayoutConstraint.activate([
@@ -783,7 +783,7 @@ class FirstRunView: NSView {
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
         iconContainer.layer?.cornerRadius = 24
-        iconContainer.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        iconContainer.layer?.backgroundColor = DesignColors.inputBackground.cgColor
         container.addSubview(iconContainer)
         
         let iconView = NSImageView()
@@ -792,21 +792,21 @@ class FirstRunView: NSView {
             let config = NSImage.SymbolConfiguration(pointSize: 32, weight: .light)
             iconView.image = magnifyImage.withSymbolConfiguration(config)
         }
-        iconView.contentTintColor = DesignColors.zinc400
+        iconView.contentTintColor = DesignColors.textSecondary
         iconContainer.addSubview(iconView)
         
         // Title
         let titleLabel = NSTextField(labelWithString: "Library Detected")
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = DesignFonts.header(size: 20)
-        titleLabel.textColor = .white
+        titleLabel.textColor = DesignColors.textPrimary
         container.addSubview(titleLabel)
         
         // Scanning state label
         let label = NSTextField(labelWithString: "Scanning your library...")
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = NSFont.systemFont(ofSize: 14, weight: .regular)
-        label.textColor = DesignColors.zinc400
+        label.textColor = DesignColors.textSecondary
         container.addSubview(label)
         scanningLabel = label
         
@@ -847,7 +847,7 @@ class FirstRunView: NSView {
         let msgLabel = NSTextField(labelWithString: "")
         msgLabel.translatesAutoresizingMaskIntoConstraints = false
         msgLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
-        msgLabel.textColor = DesignColors.zinc400
+        msgLabel.textColor = DesignColors.textSecondary
         msgLabel.alignment = .center
         msgLabel.isHidden = true
         container.addSubview(msgLabel)
@@ -907,29 +907,29 @@ class FirstRunView: NSView {
         card.translatesAutoresizingMaskIntoConstraints = false
         card.wantsLayer = true
         card.layer?.cornerRadius = 12
-        card.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
+        card.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
         card.layer?.borderWidth = 1
-        card.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        card.layer?.borderColor = DesignColors.borderSubtle.cgColor
         
         let iconView = NSImageView()
         iconView.translatesAutoresizingMaskIntoConstraints = false
         if let image = NSImage(systemSymbolName: icon, accessibilityDescription: nil) {
             iconView.image = image
         }
-        iconView.contentTintColor = DesignColors.zinc500
+        iconView.contentTintColor = DesignColors.textTertiary
         card.addSubview(iconView)
         
         let valueLabel = NSTextField(labelWithString: value)
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
         valueLabel.font = DesignFonts.stat(size: 28)
-        valueLabel.textColor = .white
+        valueLabel.textColor = DesignColors.textPrimary
         valueLabel.alignment = .center
         card.addSubview(valueLabel)
         
         let labelField = NSTextField(labelWithString: label)
         labelField.translatesAutoresizingMaskIntoConstraints = false
         labelField.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        labelField.textColor = DesignColors.zinc400
+        labelField.textColor = DesignColors.textSecondary
         labelField.alignment = .center
         card.addSubview(labelField)
         
@@ -968,7 +968,7 @@ class FirstRunView: NSView {
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
         iconContainer.layer?.cornerRadius = 24
-        iconContainer.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        iconContainer.layer?.backgroundColor = DesignColors.inputBackground.cgColor
         container.addSubview(iconContainer)
         
         let iconView = NSImageView()
@@ -977,21 +977,21 @@ class FirstRunView: NSView {
             let config = NSImage.SymbolConfiguration(pointSize: 28, weight: .light)
             iconView.image = gearImage.withSymbolConfiguration(config)
         }
-        iconView.contentTintColor = DesignColors.zinc400
+        iconView.contentTintColor = DesignColors.textSecondary
         iconContainer.addSubview(iconView)
         
         // Title
         let titleLabel = NSTextField(labelWithString: "How should we manage this?")
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = DesignFonts.header(size: 20)
-        titleLabel.textColor = .white
+        titleLabel.textColor = DesignColors.textPrimary
         container.addSubview(titleLabel)
         
         // Description
         let descLabel = NSTextField(wrappingLabelWithString: "We found an existing library. Choose how IKEMEN Lab should work with your content.")
         descLabel.translatesAutoresizingMaskIntoConstraints = false
         descLabel.font = NSFont.systemFont(ofSize: 14, weight: .regular)
-        descLabel.textColor = DesignColors.zinc400
+        descLabel.textColor = DesignColors.textSecondary
         descLabel.alignment = .center
         container.addSubview(descLabel)
         
@@ -1034,7 +1034,7 @@ class FirstRunView: NSView {
         let infoLabel = NSTextField(wrappingLabelWithString: "You can change this later in Settings.")
         infoLabel.translatesAutoresizingMaskIntoConstraints = false
         infoLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        infoLabel.textColor = DesignColors.zinc500
+        infoLabel.textColor = DesignColors.textTertiary
         infoLabel.alignment = .center
         container.addSubview(infoLabel)
         
@@ -1086,11 +1086,11 @@ class FirstRunView: NSView {
         card.layer?.borderWidth = 2
         
         if isSelected {
-            card.layer?.backgroundColor = DesignColors.zinc800.withAlphaComponent(0.5).cgColor
-            card.layer?.borderColor = NSColor.white.withAlphaComponent(0.3).cgColor
+            card.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
+            card.layer?.borderColor = DesignColors.borderStrong.cgColor
         } else {
-            card.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
-            card.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+            card.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.3).cgColor
+            card.layer?.borderColor = DesignColors.borderHover.cgColor
         }
         
         // Icon container
@@ -1098,7 +1098,7 @@ class FirstRunView: NSView {
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
         iconContainer.layer?.cornerRadius = 8
-        iconContainer.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        iconContainer.layer?.backgroundColor = DesignColors.inputBackground.cgColor
         card.addSubview(iconContainer)
         
         let iconView = NSImageView()
@@ -1106,21 +1106,21 @@ class FirstRunView: NSView {
         if let image = NSImage(systemSymbolName: icon, accessibilityDescription: nil) {
             iconView.image = image
         }
-        iconView.contentTintColor = isSelected ? .white : DesignColors.zinc400
+        iconView.contentTintColor = isSelected ? DesignColors.textOnAccent : DesignColors.textSecondary
         iconContainer.addSubview(iconView)
         
         // Title
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
-        titleLabel.textColor = .white
+        titleLabel.textColor = DesignColors.textPrimary
         card.addSubview(titleLabel)
         
         // Subtitle
         let subtitleLabel = NSTextField(labelWithString: subtitle)
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
         subtitleLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        subtitleLabel.textColor = DesignColors.zinc500
+        subtitleLabel.textColor = DesignColors.textTertiary
         card.addSubview(subtitleLabel)
         
         // Selection indicator (checkmark)
@@ -1131,11 +1131,11 @@ class FirstRunView: NSView {
         checkContainer.layer?.borderWidth = 2
         
         if isSelected {
-            checkContainer.layer?.backgroundColor = NSColor.white.cgColor
-            checkContainer.layer?.borderColor = NSColor.white.cgColor
+            checkContainer.layer?.backgroundColor = DesignColors.textOnAccent.cgColor
+            checkContainer.layer?.borderColor = DesignColors.textOnAccent.cgColor
         } else {
             checkContainer.layer?.backgroundColor = NSColor.clear.cgColor
-            checkContainer.layer?.borderColor = DesignColors.zinc600.cgColor
+            checkContainer.layer?.borderColor = DesignColors.textDisabled.cgColor
         }
         card.addSubview(checkContainer)
         
@@ -1145,7 +1145,7 @@ class FirstRunView: NSView {
             let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .bold)
             checkIcon.image = checkImage.withSymbolConfiguration(config)
         }
-        checkIcon.contentTintColor = DesignColors.zinc900
+        checkIcon.contentTintColor = DesignColors.iconOnLightSurface
         checkIcon.isHidden = !isSelected
         checkContainer.addSubview(checkIcon)
         
@@ -1188,22 +1188,26 @@ class FirstRunView: NSView {
     private func updateImportModeSelection(freshStart: Bool) {
         // Update Fresh Start card
         if let card = freshStartOption {
-            card.layer?.backgroundColor = freshStart ? DesignColors.zinc800.withAlphaComponent(0.5).cgColor : DesignColors.zinc900.withAlphaComponent(0.3).cgColor
-            card.layer?.borderColor = freshStart ? NSColor.white.withAlphaComponent(0.3).cgColor : NSColor.white.withAlphaComponent(0.1).cgColor
+            card.layer?.backgroundColor = freshStart
+                ? DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
+                : DesignColors.cardBackground.withAlphaComponent(0.3).cgColor
+            card.layer?.borderColor = freshStart ? DesignColors.borderStrong.cgColor : DesignColors.borderHover.cgColor
         }
-        freshStartIconView?.contentTintColor = freshStart ? .white : DesignColors.zinc400
-        freshStartCheckContainer?.layer?.backgroundColor = freshStart ? NSColor.white.cgColor : NSColor.clear.cgColor
-        freshStartCheckContainer?.layer?.borderColor = freshStart ? NSColor.white.cgColor : DesignColors.zinc600.cgColor
+        freshStartIconView?.contentTintColor = freshStart ? DesignColors.textOnAccent : DesignColors.textSecondary
+        freshStartCheckContainer?.layer?.backgroundColor = freshStart ? DesignColors.textOnAccent.cgColor : NSColor.clear.cgColor
+        freshStartCheckContainer?.layer?.borderColor = freshStart ? DesignColors.textOnAccent.cgColor : DesignColors.textDisabled.cgColor
         freshStartCheckIcon?.isHidden = !freshStart
         
         // Update Existing Setup card
         if let card = existingSetupOption {
-            card.layer?.backgroundColor = !freshStart ? DesignColors.zinc800.withAlphaComponent(0.5).cgColor : DesignColors.zinc900.withAlphaComponent(0.3).cgColor
-            card.layer?.borderColor = !freshStart ? NSColor.white.withAlphaComponent(0.3).cgColor : NSColor.white.withAlphaComponent(0.1).cgColor
+            card.layer?.backgroundColor = !freshStart
+                ? DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
+                : DesignColors.cardBackground.withAlphaComponent(0.3).cgColor
+            card.layer?.borderColor = !freshStart ? DesignColors.borderStrong.cgColor : DesignColors.borderHover.cgColor
         }
-        existingSetupIconView?.contentTintColor = !freshStart ? .white : DesignColors.zinc400
-        existingSetupCheckContainer?.layer?.backgroundColor = !freshStart ? NSColor.white.cgColor : NSColor.clear.cgColor
-        existingSetupCheckContainer?.layer?.borderColor = !freshStart ? NSColor.white.cgColor : DesignColors.zinc600.cgColor
+        existingSetupIconView?.contentTintColor = !freshStart ? DesignColors.textOnAccent : DesignColors.textSecondary
+        existingSetupCheckContainer?.layer?.backgroundColor = !freshStart ? DesignColors.textOnAccent.cgColor : NSColor.clear.cgColor
+        existingSetupCheckContainer?.layer?.borderColor = !freshStart ? DesignColors.textOnAccent.cgColor : DesignColors.textDisabled.cgColor
         existingSetupCheckIcon?.isHidden = freshStart
     }
     
@@ -1238,7 +1242,7 @@ class FirstRunView: NSView {
         let titleLabel = NSTextField(labelWithString: "You're all set!")
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = DesignFonts.header(size: 24)
-        titleLabel.textColor = .white
+        titleLabel.textColor = DesignColors.textPrimary
         titleLabel.alignment = .center
         container.addSubview(titleLabel)
         
@@ -1246,7 +1250,7 @@ class FirstRunView: NSView {
         let descLabel = NSTextField(labelWithString: "IKEMEN Lab is now synced with your installation.")
         descLabel.translatesAutoresizingMaskIntoConstraints = false
         descLabel.font = NSFont.systemFont(ofSize: 14, weight: .regular)
-        descLabel.textColor = DesignColors.zinc400
+        descLabel.textColor = DesignColors.textSecondary
         descLabel.alignment = .center
         container.addSubview(descLabel)
         
@@ -1255,9 +1259,9 @@ class FirstRunView: NSView {
         tipsCard.translatesAutoresizingMaskIntoConstraints = false
         tipsCard.wantsLayer = true
         tipsCard.layer?.cornerRadius = 12
-        tipsCard.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.5).cgColor
+        tipsCard.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
         tipsCard.layer?.borderWidth = 1
-        tipsCard.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        tipsCard.layer?.borderColor = DesignColors.borderSubtle.cgColor
         container.addSubview(tipsCard)
         
         let tipsStack = NSStackView()
@@ -1334,12 +1338,12 @@ class FirstRunView: NSView {
         button.isBordered = false
         button.wantsLayer = true
         button.layer?.cornerRadius = 8
-        button.layer?.backgroundColor = NSColor.white.cgColor
+        button.layer?.backgroundColor = DesignColors.buttonPrimary.cgColor
         button.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
-        button.contentTintColor = NSColor.black
+        button.contentTintColor = DesignColors.buttonPrimaryText
         
         // Add shadow
-        button.layer?.shadowColor = NSColor.white.cgColor
+        button.layer?.shadowColor = DesignColors.textPrimary.cgColor
         button.layer?.shadowOpacity = 0.1
         button.layer?.shadowOffset = CGSize(width: 0, height: 0)
         button.layer?.shadowRadius = 20
@@ -1353,7 +1357,7 @@ class FirstRunView: NSView {
         button.bezelStyle = .inline
         button.isBordered = false
         button.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        button.contentTintColor = DesignColors.zinc500
+        button.contentTintColor = DesignColors.textTertiary
         return button
     }
     
@@ -1362,18 +1366,18 @@ class FirstRunView: NSView {
         container.translatesAutoresizingMaskIntoConstraints = false
         container.wantsLayer = true
         container.layer?.cornerRadius = 12
-        container.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.02).cgColor
+        container.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.2).cgColor
         container.layer?.borderWidth = 1
-        container.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        container.layer?.borderColor = DesignColors.borderHover.cgColor
         
         // Icon container
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
         iconContainer.layer?.cornerRadius = 8
-        iconContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        iconContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         iconContainer.layer?.borderWidth = 1
-        iconContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        iconContainer.layer?.borderColor = DesignColors.borderHover.cgColor
         container.addSubview(iconContainer)
         
         let iconView = NSImageView()
@@ -1381,20 +1385,20 @@ class FirstRunView: NSView {
         if let image = NSImage(systemSymbolName: icon, accessibilityDescription: nil) {
             iconView.image = image
         }
-        iconView.contentTintColor = DesignColors.zinc400
+        iconView.contentTintColor = DesignColors.textSecondary
         iconContainer.addSubview(iconView)
         
         // Labels
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
-        titleLabel.textColor = .white
+        titleLabel.textColor = DesignColors.textPrimary
         container.addSubview(titleLabel)
         
         let subtitleLabel = NSTextField(labelWithString: subtitle)
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
         subtitleLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        subtitleLabel.textColor = DesignColors.zinc500
+        subtitleLabel.textColor = DesignColors.textTertiary
         container.addSubview(subtitleLabel)
         
         // Chevron or external link icon
@@ -1404,7 +1408,7 @@ class FirstRunView: NSView {
         if let image = NSImage(systemSymbolName: trailingIconName, accessibilityDescription: nil) {
             trailingIcon.image = image
         }
-        trailingIcon.contentTintColor = DesignColors.zinc600
+        trailingIcon.contentTintColor = DesignColors.textDisabled
         container.addSubview(trailingIcon)
         
         // Click gesture
@@ -1461,7 +1465,7 @@ class FirstRunView: NSView {
         if let image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: nil) {
             checkIcon.image = image
         }
-        checkIcon.contentTintColor = DesignColors.zinc500
+        checkIcon.contentTintColor = DesignColors.textTertiary
         row.addArrangedSubview(checkIcon)
         
         // Text
@@ -1469,11 +1473,11 @@ class FirstRunView: NSView {
         textLabel.translatesAutoresizingMaskIntoConstraints = false
         let attr = NSMutableAttributedString(string: boldText, attributes: [
             .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
-            .foregroundColor: NSColor.white
+            .foregroundColor: DesignColors.textPrimary
         ])
         attr.append(NSAttributedString(string: regularText, attributes: [
             .font: NSFont.systemFont(ofSize: 13, weight: .regular),
-            .foregroundColor: DesignColors.zinc400
+            .foregroundColor: DesignColors.textSecondary
         ]))
         textLabel.attributedStringValue = attr
         row.addArrangedSubview(textLabel)
@@ -1496,7 +1500,7 @@ class FirstRunView: NSView {
             let isActive = index < step
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = animated ? animationDuration : 0
-                dot.layer?.backgroundColor = (isActive ? NSColor.white : DesignColors.zinc800).cgColor
+                dot.layer?.backgroundColor = (isActive ? DesignColors.textPrimary : DesignColors.textDisabled).cgColor
             }
         }
         
@@ -1524,11 +1528,11 @@ class FirstRunView: NSView {
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.2
             if enabled {
-                continueButton.layer?.backgroundColor = NSColor.white.cgColor
-                continueButton.contentTintColor = NSColor.black
+                continueButton.layer?.backgroundColor = DesignColors.buttonPrimary.cgColor
+                continueButton.contentTintColor = DesignColors.buttonPrimaryText
             } else {
-                continueButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.1).cgColor
-                continueButton.contentTintColor = DesignColors.zinc500
+                continueButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
+                continueButton.contentTintColor = DesignColors.textTertiary
             }
         }
     }
@@ -1844,7 +1848,7 @@ class FirstRunView: NSView {
             if characters == 0 && stages == 0 {
                 // Empty installation
                 messageLabel.stringValue = "Ready to build your library!"
-                messageLabel.textColor = DesignColors.zinc400
+                messageLabel.textColor = DesignColors.textSecondary
             } else if characters >= 100 {
                 // Large library
                 messageLabel.stringValue = "Nice collection! IKEMEN Lab will index everything."
@@ -1852,7 +1856,7 @@ class FirstRunView: NSView {
             } else {
                 // Normal case - show summary
                 messageLabel.stringValue = "Found \(characters) character\(characters == 1 ? "" : "s"), \(stages) stage\(stages == 1 ? "" : "s"), \(screenpacks) screenpack\(screenpacks == 1 ? "" : "s")"
-                messageLabel.textColor = DesignColors.zinc400
+                messageLabel.textColor = DesignColors.textSecondary
             }
         }
         
@@ -1861,8 +1865,8 @@ class FirstRunView: NSView {
             continueBtn.isEnabled = true
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.2
-                continueBtn.layer?.backgroundColor = NSColor.white.cgColor
-                continueBtn.contentTintColor = NSColor.black
+                continueBtn.layer?.backgroundColor = DesignColors.buttonPrimary.cgColor
+                continueBtn.contentTintColor = DesignColors.buttonPrimaryText
             }
         }
     }
@@ -1886,7 +1890,7 @@ extension FirstRunView {
         if currentStep == 3 {
             // Highlight drop zone
             dropZone.layer?.borderColor = DesignColors.positive.cgColor
-            dropZone.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.6).cgColor
+            dropZone.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.6).cgColor
             return .copy
         }
         return []
@@ -1894,8 +1898,8 @@ extension FirstRunView {
     
     override func draggingExited(_ sender: NSDraggingInfo?) {
         if currentStep == 3 {
-            dropZone.layer?.borderColor = DesignColors.zinc700.cgColor
-            dropZone.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+            dropZone.layer?.borderColor = DesignColors.borderHover.cgColor
+            dropZone.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.3).cgColor
         }
     }
     

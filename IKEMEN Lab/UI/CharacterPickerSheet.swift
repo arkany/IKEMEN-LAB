@@ -44,7 +44,7 @@ class CharacterPickerSheet: NSViewController {
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 500))
         view.wantsLayer = true
-        view.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        view.layer?.backgroundColor = DesignColors.pickerBackground.cgColor
     }
     
     override func viewDidLoad() {
@@ -106,7 +106,7 @@ class CharacterPickerSheet: NSViewController {
         scrollView.backgroundColor = .clear
         scrollView.drawsBackground = false
         scrollView.wantsLayer = true
-        scrollView.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        scrollView.layer?.backgroundColor = DesignColors.pickerScrollBackground.cgColor
         scrollView.layer?.cornerRadius = 8
         view.addSubview(scrollView)
         
@@ -306,7 +306,7 @@ class CharacterPickerItem: NSCollectionViewItem {
         containerView = NSView()
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = DesignColors.zinc700.cgColor
+        containerView.layer?.backgroundColor = DesignColors.pickerItemBackground.cgColor
         containerView.layer?.cornerRadius = 6
         view.addSubview(containerView)
         
@@ -323,7 +323,7 @@ class CharacterPickerItem: NSCollectionViewItem {
         emptyCircle.translatesAutoresizingMaskIntoConstraints = false
         emptyCircle.identifier = NSUserInterfaceItemIdentifier("emptyCircle")
         emptyCircle.image = NSImage(systemSymbolName: "circle", accessibilityDescription: nil)
-        emptyCircle.contentTintColor = DesignColors.zinc500
+        emptyCircle.contentTintColor = DesignColors.textTertiary
         containerView.addSubview(emptyCircle)
         
         nameLabel = NSTextField(labelWithString: "")
@@ -373,7 +373,9 @@ class CharacterPickerItem: NSCollectionViewItem {
         }
         
         // Update background
-        containerView.layer?.backgroundColor = selected ? DesignColors.zinc600.cgColor : DesignColors.zinc700.cgColor
+        containerView.layer?.backgroundColor = selected
+            ? DesignColors.pickerItemSelectedBackground.cgColor
+            : DesignColors.pickerItemBackground.cgColor
     }
     
     @objc private func itemClicked() {

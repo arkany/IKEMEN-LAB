@@ -138,27 +138,31 @@ class ViewModeToggle: NSView {
     private func updateAppearance() {
         // Grid button
         if currentMode == .grid {
-            gridButton.contentTintColor = .white
-            gridButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            gridButton.contentTintColor = DesignColors.textPrimary
+            gridButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
         } else if isGridHovered {
-            gridButton.contentTintColor = .white
+            gridButton.contentTintColor = DesignColors.textPrimary
             gridButton.layer?.backgroundColor = NSColor.clear.cgColor
         } else {
-            gridButton.contentTintColor = DesignColors.textTertiary
+            gridButton.contentTintColor = DesignColors.textSecondary
             gridButton.layer?.backgroundColor = NSColor.clear.cgColor
         }
         
         // List button
         if currentMode == .list {
-            listButton.contentTintColor = .white
-            listButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            listButton.contentTintColor = DesignColors.textPrimary
+            listButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
         } else if isListHovered {
-            listButton.contentTintColor = .white
+            listButton.contentTintColor = DesignColors.textPrimary
             listButton.layer?.backgroundColor = NSColor.clear.cgColor
         } else {
-            listButton.contentTintColor = DesignColors.textTertiary
+            listButton.contentTintColor = DesignColors.textSecondary
             listButton.layer?.backgroundColor = NSColor.clear.cgColor
         }
+    }
+
+    func refreshAppearance() {
+        updateAppearance()
     }
     
     @objc private func gridClicked() {
@@ -260,13 +264,12 @@ class StyledSearchField: NSView {
         textField.focusRingType = .none
         textField.font = DesignFonts.caption(size: 12) // text-xs
         // Input text: text-zinc-300 (#d4d4d8) - brighter than secondary text
-        textField.textColor = NSColor(red: 0xd4/255.0, green: 0xd4/255.0, blue: 0xd8/255.0, alpha: 1.0)
+        textField.textColor = DesignColors.textPrimary
         textField.placeholderString = "Search assets..."
         textField.placeholderAttributedString = NSAttributedString(
             string: "Search assets...",
             attributes: [
-                // Placeholder: text-zinc-700 (#3f3f46) per HTML spec
-                .foregroundColor: NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0),
+                .foregroundColor: DesignColors.textTertiary,
                 .font: DesignFonts.caption(size: 12)
             ]
         )
@@ -390,6 +393,20 @@ class StyledSearchField: NSView {
         
         CATransaction.commit()
     }
+
+    func refreshAppearance() {
+        textField.textColor = DesignColors.textPrimary
+        textField.placeholderAttributedString = NSAttributedString(
+            string: "Search assets...",
+            attributes: [
+                .foregroundColor: DesignColors.textTertiary,
+                .font: DesignFonts.caption(size: 12)
+            ]
+        )
+        searchIcon.contentTintColor = DesignColors.textTertiary
+        clearButton.contentTintColor = DesignColors.textTertiary
+        updateAppearance()
+    }
     
     @objc private func textFieldAction(_ sender: NSTextField) {
         clearButton.isHidden = sender.stringValue.isEmpty
@@ -442,6 +459,8 @@ class ContentHeaderView: NSView {
     private var homeButtonRef: NSButton!
     private var chevronImage: NSImageView!
     private var currentPageLabel: NSTextField!
+    private var borderLayer: CALayer?
+    private var themeObserver: NSObjectProtocol?
     
     // Search debounce
     private var searchDebounceTimer: Timer?
@@ -468,14 +487,43 @@ class ContentHeaderView: NSView {
         
         // Border at bottom
         let borderLayer = CALayer()
-        borderLayer.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        borderLayer.backgroundColor = DesignColors.borderSubtle.cgColor
         borderLayer.frame = CGRect(x: 0, y: 0, width: 10000, height: 1)
         layer?.addSublayer(borderLayer)
+        self.borderLayer = borderLayer
         
         setupBreadcrumb()
         setupViewModeToggle()
         setupSearchField()
         setupConstraints()
+        setupThemeObserver()
+        applyTheme()
+    }
+
+    private func setupThemeObserver() {
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: .themeChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.applyTheme()
+        }
+    }
+
+    private func applyTheme() {
+        layer?.backgroundColor = DesignColors.headerBackground.cgColor
+        borderLayer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        chevronImage.contentTintColor = DesignColors.textSecondary
+        currentPageLabel.textColor = DesignColors.textPrimary
+        homeButtonRef?.attributedTitle = NSAttributedString(
+            string: "Home",
+            attributes: [
+                .font: DesignFonts.body(size: 13),
+                .foregroundColor: DesignColors.textSecondary
+            ]
+        )
+        viewModeToggle.refreshAppearance()
+        searchField.refreshAppearance()
     }
     
     private func setupBreadcrumb() {
@@ -658,6 +706,12 @@ class ContentHeaderView: NSView {
                 ]
             )
             NSCursor.arrow.set()
+        }
+    }
+
+    deinit {
+        if let themeObserver = themeObserver {
+            NotificationCenter.default.removeObserver(themeObserver)
         }
     }
 }

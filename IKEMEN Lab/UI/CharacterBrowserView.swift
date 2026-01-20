@@ -72,6 +72,7 @@ class CharacterBrowserView: NSView {
     private var cancellables = Set<AnyCancellable>()
     private var activeScreenpackSlotLimit: Int = 0
     private var duplicateIds: Set<String> = []       // IDs of characters that have duplicates
+    private var themeObserver: NSObjectProtocol?
     
     // View mode
     var viewMode: BrowserViewMode = .grid {
@@ -236,6 +237,14 @@ class CharacterBrowserView: NSView {
                 self?.collectionView.reloadData()
             }
             .store(in: &cancellables)
+
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: .themeChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.collectionView.reloadData()
+        }
     }
     
     /// Set characters directly (used for search filtering)
@@ -359,6 +368,12 @@ class CharacterBrowserView: NSView {
     func refresh() {
         portraitCache.removeAll()
         updateCharacters(IkemenBridge.shared.characters)
+    }
+
+    deinit {
+        if let themeObserver = themeObserver {
+            NotificationCenter.default.removeObserver(themeObserver)
+        }
     }
     
     // MARK: - Context Menu
@@ -985,7 +1000,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         containerView.layer?.masksToBounds = true
         containerView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.1).cgColor
         containerView.layer?.borderWidth = 1
-        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
         view.addSubview(containerView)
         
         // Portrait image - fills container
@@ -1000,7 +1015,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         placeholderLabel = NSTextField(labelWithString: "")
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.font = DesignFonts.header(size: 48)
-        placeholderLabel.textColor = NSColor.white.withAlphaComponent(0.05)
+        placeholderLabel.textColor = DesignColors.textPrimary.withAlphaComponent(0.05)
         placeholderLabel.alignment = .center
         containerView.addSubview(placeholderLabel)
         
@@ -1023,11 +1038,11 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         statusDot.isHidden = true
         containerView.addSubview(statusDot)
         
-        // Name label - bottom-left, white, semibold
+        // Name label - bottom-left, primary color, semibold
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = DesignFonts.body(size: 14)
-        nameLabel.textColor = .white
+        nameLabel.textColor = DesignColors.textPrimary
         nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.maximumNumberOfLines = 1
         containerView.addSubview(nameLabel)
@@ -1212,22 +1227,22 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             
             if isSelected {
-                // Active state: border-white/20, ring-1 ring-white/10, bg-zinc-900/40
-                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor
+                // Active state: strong border, elevated bg
+                containerView.animator().layer?.borderColor = DesignColors.borderStrong.cgColor
                 containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.4).cgColor
                 // Add subtle glow
-                containerView.layer?.shadowColor = NSColor.white.cgColor
+                containerView.layer?.shadowColor = DesignColors.textPrimary.cgColor
                 containerView.layer?.shadowOffset = .zero
                 containerView.layer?.shadowRadius = 8
                 containerView.layer?.shadowOpacity = 0.1
             } else if isHovered {
-                // Hover state: border-white/10, bg-zinc-900/30
-                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+                // Hover state: hover border, medium bg
+                containerView.animator().layer?.borderColor = DesignColors.borderHover.cgColor
                 containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.3).cgColor
                 containerView.layer?.shadowOpacity = 0
             } else {
-                // Default state: border-white/5, bg-zinc-900/10
-                containerView.animator().layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+                // Default state: subtle border, light bg
+                containerView.animator().layer?.borderColor = DesignColors.borderSubtle.cgColor
                 containerView.animator().layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.1).cgColor
                 containerView.layer?.shadowOpacity = 0
             }
@@ -1236,13 +1251,13 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         // Placeholder text color change on hover
         CATransaction.begin()
         CATransaction.setAnimationDuration(duration)
-        placeholderLabel.textColor = isHovered ? NSColor.white.withAlphaComponent(0.1) : NSColor.white.withAlphaComponent(0.05)
+        placeholderLabel.textColor = isHovered ? DesignColors.textPrimary.withAlphaComponent(0.1) : DesignColors.textPrimary.withAlphaComponent(0.05)
         
-        // Name color change: white when selected, zinc-300 on hover, zinc-300 default
+        // Name color change: primary when selected/hovered
         if isSelected {
-            nameLabel.textColor = .white
+            nameLabel.textColor = DesignColors.textPrimary
         } else if isHovered {
-            nameLabel.textColor = .white
+            nameLabel.textColor = DesignColors.textPrimary
         } else {
             nameLabel.textColor = DesignColors.textPrimary
         }
@@ -1456,7 +1471,8 @@ class CharacterListItem: NSCollectionViewItem {
         let borderLine = NSView()
         borderLine.translatesAutoresizingMaskIntoConstraints = false
         borderLine.wantsLayer = true
-        borderLine.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        borderLine.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        borderLine.identifier = NSUserInterfaceItemIdentifier("listBorderLine")
         containerView.addSubview(borderLine)
         
         // Icon container with gradient background
@@ -1465,7 +1481,7 @@ class CharacterListItem: NSCollectionViewItem {
         iconView.wantsLayer = true
         iconView.layer?.cornerRadius = 4
         iconView.layer?.borderWidth = 1
-        iconView.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        iconView.layer?.borderColor = DesignColors.borderSubtle.cgColor
         
         // Create gradient layer for icon bg
         let gradientLayer = CAGradientLayer()
@@ -1546,7 +1562,7 @@ class CharacterListItem: NSCollectionViewItem {
         seriesBadge.layer?.cornerRadius = 4
         seriesBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         seriesBadge.layer?.borderWidth = 1
-        seriesBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        seriesBadge.layer?.borderColor = DesignColors.borderSubtle.cgColor
         containerView.addSubview(seriesBadge)
         
         seriesLabel = NSTextField(labelWithString: "")
@@ -1785,12 +1801,12 @@ class CharacterListItem: NSCollectionViewItem {
             
             if isSelected {
                 // Selected row: subtle bg highlight
-                containerView.animator().layer?.backgroundColor = NSColor.white.withAlphaComponent(0.02).cgColor
-                nameLabel.animator().textColor = .white
+                containerView.animator().layer?.backgroundColor = DesignColors.selectedBackground.withAlphaComponent(0.1).cgColor
+                nameLabel.animator().textColor = DesignColors.textPrimary
             } else if isHovered {
-                // Hover: bg-white/5
-                containerView.animator().layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
-                nameLabel.animator().textColor = .white
+                // Hover: subtle bg
+                containerView.animator().layer?.backgroundColor = DesignColors.hoverBackground.cgColor
+                nameLabel.animator().textColor = DesignColors.textPrimary
                 moreButton.animator().alphaValue = 1.0
             } else {
                 // Default
@@ -1830,7 +1846,7 @@ class CharacterListItem: NSCollectionViewItem {
             seriesLabel.textColor = DesignColors.amber200
         } else {
             seriesBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-            seriesBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            seriesBadge.layer?.borderColor = DesignColors.borderSubtle.cgColor
             seriesLabel.textColor = DesignColors.textSecondary
         }
         
@@ -1933,7 +1949,7 @@ class CharacterListItem: NSCollectionViewItem {
         
         // Reset badge styling to default
         seriesBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        seriesBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        seriesBadge.layer?.borderColor = DesignColors.borderSubtle.cgColor
         seriesLabel.textColor = DesignColors.textSecondary
         view.toolTip = nil
     }
