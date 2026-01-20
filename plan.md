@@ -27,11 +27,11 @@
 ## Current Focus
 
 ### 🔄 In Progress
-- [ ] Smart Collections (tag-based auto-population)
+- [ ] Screenpack Browser UI overhaul (match Character Browser design)
 
 ### 📋 Up Next
-- [ ] Collection export/import (`.ikemencollection` format)
-- [ ] Screenpack Browser UI overhaul (match Character Browser design)
+- [ ] Existing installation import
+- [ ] Add-ons Browser
 
 ---
 
@@ -75,9 +75,6 @@ All alpha tasks complete!
 ### 🧩 v1 — Collections & Curation
 | Feature | Status |
 |---------|--------|
-| **Collections System** | 🔄 In Progress |
-| ├─ Phase 5: Smart Collections | 📋 Todo |
-| └─ Phase 6: Export/Import | 📋 Todo |
 | **Screenpack Browser Overhaul** | 📋 Todo |
 | ├─ Match Character Browser design | 📋 Todo |
 | └─ README/setup notes display | 📋 Todo |
@@ -109,7 +106,6 @@ All alpha tasks complete!
 | ├─ Chrome/Edge/Opera (.crx) | 📋 Todo |
 | ├─ Firefox (.xpi) | 📋 Todo |
 | └─ Update detection (aspirational) | 💭 Future |
-| Random roster generation | 📋 Todo |
 
 ### 🏛️ v3 — Polish & Safety
 | Feature | Status |
@@ -153,6 +149,8 @@ All alpha tasks complete!
 ### 🌌 v5 — Future Ideas
 | Feature | Status |
 |---------|--------|
+| Smart Collections (tag-based auto-population) | 💭 Future |
+| Collection export/import | 💭 Future |
 | Plugin system | 💭 Future |
 | Cloud sync for metadata | 💭 Future |
 | Community-shared collections | 💭 Future |
