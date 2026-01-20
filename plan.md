@@ -27,10 +27,9 @@
 ## Current Focus
 
 ### 🔄 In Progress
-- [ ] Unregistered content visualization (see [agent prompt](docs/agent-prompts/unregistered-content-visualization.md))
+- [ ] Smart Collections (tag-based auto-population)
 
 ### 📋 Up Next
-- [ ] Smart Collections (tag-based auto-population)
 - [ ] Collection export/import (`.ikemencollection` format)
 - [ ] Screenpack Browser UI overhaul (match Character Browser design)
 
@@ -39,7 +38,39 @@
 ## Roadmap
 
 ### 🧪 Alpha Release ✅
-All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
+All alpha tasks complete!
+
+### 🎉 v0.5.0 — Current Release
+| Feature | Status |
+|---------|--------|
+| **Light/Dark Theme** | ✅ Done |
+| ├─ Full theme support across all views | ✅ Done |
+| └─ Theme toggle in Settings | ✅ Done |
+| **Custom Tags System** | ✅ Done |
+| ├─ Add/edit/delete custom tags | ✅ Done |
+| ├─ Recent tags dropdown | ✅ Done |
+| ├─ Case-insensitive matching | ✅ Done |
+| ├─ Tag search integration | ✅ Done |
+| ├─ Grid card tag badges | ✅ Done |
+| └─ Bulk tag assignment | ✅ Done |
+| **Browser Extension** | ✅ Done |
+| ├─ Safari extension bundled | ✅ Done |
+| ├─ One-click install from MUGEN Archive | ✅ Done |
+| ├─ Metadata scraping | ✅ Done |
+| └─ Dashboard CTA for extension | ✅ Done |
+| **Unregistered Content Detection** | ✅ Done |
+| ├─ Visual badges in browsers | ✅ Done |
+| └─ Filter by registration status | ✅ Done |
+| **Character Cutoff Indicator** | ✅ Done |
+| └─ Shows when roster exceeds screenpack slots | ✅ Done |
+| **First-Run Experience** | ✅ Done |
+| └─ Import mode choice | ✅ Done |
+| **Duplicate Detection** | ✅ Done |
+| ├─ Pre-install warning | ✅ Done |
+| ├─ Badge display in browser | ✅ Done |
+| └─ Metadata-based detection | ✅ Done |
+| **Update Checker** | ✅ Done |
+| └─ Custom About window | ✅ Done |
 
 ### 🧩 v1 — Collections & Curation
 | Feature | Status |
@@ -50,19 +81,6 @@ All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
 | **Screenpack Browser Overhaul** | 📋 Todo |
 | ├─ Match Character Browser design | 📋 Todo |
 | └─ README/setup notes display | 📋 Todo |
-| **First-Run Experience** | ✅ Done |
-| └─ Import mode choice | ✅ Done |
-| **Tagging UI** | ✅ Done |
-| ├─ Detail panel tags section | ✅ Done |
-| ├─ Grid card tag badges | ✅ Done |
-| ├─ Tag search integration | ✅ Done |
-| ├─ Custom tag creation | ✅ Done |
-| ├─ Tag editing/deletion | ✅ Done |
-| └─ Bulk tag assignment | ✅ Done |
-| **Duplicate Detection** | ✅ Done |
-| ├─ Pre-install warning | ✅ Done |
-| └─ Badge display in browser | ✅ Done |
-| Character cutoff indicator | 📋 Todo |
 | Existing installation import | 📋 Todo |
 
 ### ⚡ v2 — Smart Features
@@ -87,24 +105,11 @@ All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
 | └─ AI patch detection | 📋 Todo |
 | Hitbox/frame data viewer | 📋 Todo |
 | Similar character suggestions | 📋 Todo |
-| **Browser Extension** | ✅ Done |
-| ├─ "Install to IKEMEN Lab" button | ✅ Done |
-| ├─ Scrape metadata from web | ✅ Done |
-| ├─ Dashboard CTA for extension | 📋 Todo |
-| ├─ Multi-browser packaging | 📋 Todo |
-| │  ├─ Safari (Xcode target) | ✅ Done |
-| │  ├─ Chrome/Edge/Opera (.crx) | 📋 Todo |
-| │  └─ Firefox (.xpi) | 📋 Todo |
+| **Browser Extension Expansion** | 📋 Todo |
+| ├─ Chrome/Edge/Opera (.crx) | 📋 Todo |
+| ├─ Firefox (.xpi) | 📋 Todo |
 | └─ Update detection (aspirational) | 💭 Future |
 | Random roster generation | 📋 Todo |
-| **Light Theme Remaining Fixes** | 📋 Todo |
-| ├─ ScreenpackPickerSheet.swift | 📋 Todo |
-| ├─ CollectionEditorView.swift | 📋 Todo |
-| ├─ AboutWindowController.swift | 📋 Todo |
-| ├─ CharacterPickerSheet.swift | 📋 Todo |
-| ├─ StagePickerSheet.swift | 📋 Todo |
-| ├─ ScreenpackBrowserView.swift | 📋 Todo |
-| └─ FirstRunView.swift | 📋 Todo |
 
 ### 🏛️ v3 — Polish & Safety
 | Feature | Status |
@@ -125,7 +130,6 @@ All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
 | ├─ Auto-backup select.def | 📋 Todo |
 | ├─ Backup collections | 📋 Todo |
 | └─ Restore from backup | 📋 Todo |
-| Light/dark mode support | � In Progress |
 | Export/share curated sets | 📋 Todo |
 | Netplay IP manager | 📋 Todo |
 
