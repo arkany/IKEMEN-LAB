@@ -17,192 +17,338 @@ public enum RegistrationFilter {
     case unregisteredOnly
 }
 
-// MARK: - Design System Colors (Zinc Palette from HTML/Tailwind)
+// MARK: - Dark Theme Raw Colors
 
-/// Modern dark theme design system colors
-/// Based on Tailwind zinc palette with subtle white overlays
+/// Raw dark theme color values - use DesignColors for theme-aware access
+private struct DarkThemeColors {
+    static let zinc950 = NSColor(red: 0x09/255.0, green: 0x09/255.0, blue: 0x0b/255.0, alpha: 1.0)
+    static let zinc900 = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0)
+    static let zinc800 = NSColor(red: 0x27/255.0, green: 0x27/255.0, blue: 0x2a/255.0, alpha: 1.0)
+    static let zinc700 = NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0)
+    static let zinc600 = NSColor(red: 0x52/255.0, green: 0x52/255.0, blue: 0x5b/255.0, alpha: 1.0)
+    static let zinc500 = NSColor(red: 0x71/255.0, green: 0x71/255.0, blue: 0x7a/255.0, alpha: 1.0)
+    static let zinc400 = NSColor(red: 0xa1/255.0, green: 0xa1/255.0, blue: 0xaa/255.0, alpha: 1.0)
+    static let zinc300 = NSColor(red: 0xd4/255.0, green: 0xd4/255.0, blue: 0xd8/255.0, alpha: 1.0)
+    static let zinc200 = NSColor(red: 0xe4/255.0, green: 0xe4/255.0, blue: 0xe7/255.0, alpha: 1.0)
+    static let zinc100 = NSColor(red: 0xf4/255.0, green: 0xf4/255.0, blue: 0xf5/255.0, alpha: 1.0)
+    static let emerald500 = NSColor(red: 0x10/255.0, green: 0xb9/255.0, blue: 0x81/255.0, alpha: 1.0)
+    static let emerald400 = NSColor(red: 0x34/255.0, green: 0xd3/255.0, blue: 0x99/255.0, alpha: 1.0)
+}
+
+// MARK: - Light Theme Raw Colors
+
+/// Raw light theme color values - use DesignColors for theme-aware access
+private struct LightThemeColors {
+    static let zinc950 = NSColor(red: 0x09/255.0, green: 0x09/255.0, blue: 0x0b/255.0, alpha: 1.0)
+    static let zinc900 = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0)
+    static let zinc800 = NSColor(red: 0x27/255.0, green: 0x27/255.0, blue: 0x2a/255.0, alpha: 1.0)
+    static let zinc700 = NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0)
+    static let zinc600 = NSColor(red: 0x52/255.0, green: 0x52/255.0, blue: 0x5b/255.0, alpha: 1.0)
+    static let zinc500 = NSColor(red: 0x71/255.0, green: 0x71/255.0, blue: 0x7a/255.0, alpha: 1.0)
+    static let zinc400 = NSColor(red: 0xa1/255.0, green: 0xa1/255.0, blue: 0xaa/255.0, alpha: 1.0)
+    static let zinc300 = NSColor(red: 0xd4/255.0, green: 0xd4/255.0, blue: 0xd8/255.0, alpha: 1.0)
+    static let zinc200 = NSColor(red: 0xe4/255.0, green: 0xe4/255.0, blue: 0xe7/255.0, alpha: 1.0)
+    static let zinc100 = NSColor(red: 0xf4/255.0, green: 0xf4/255.0, blue: 0xf5/255.0, alpha: 1.0)
+    static let zinc50 = NSColor(red: 0xfa/255.0, green: 0xfa/255.0, blue: 0xfa/255.0, alpha: 1.0)
+    static let emerald600 = NSColor(red: 0x05/255.0, green: 0x96/255.0, blue: 0x69/255.0, alpha: 1.0)
+    static let emerald500 = NSColor(red: 0x10/255.0, green: 0xb9/255.0, blue: 0x81/255.0, alpha: 1.0)
+}
+
+// MARK: - Design System Colors (Theme-Aware)
+
+/// Theme-aware design system colors
+/// Automatically returns dark or light theme colors based on AppSettings.shared.useLightTheme
 public struct DesignColors {
+    
+    /// Check if currently using light theme
+    private static var isLight: Bool { AppSettings.shared.useLightTheme }
     
     // MARK: - Zinc Palette (Tailwind)
     
-    /// zinc-950 (#09090b)
-    public static let zinc950 = NSColor(red: 0x09/255.0, green: 0x09/255.0, blue: 0x0b/255.0, alpha: 1.0)
-    
-    /// zinc-900 (#18181b)
-    public static let zinc900 = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0)
-    
-    /// zinc-800 (#27272a)
-    public static let zinc800 = NSColor(red: 0x27/255.0, green: 0x27/255.0, blue: 0x2a/255.0, alpha: 1.0)
-    
-    /// zinc-700 (#3f3f46)
-    public static let zinc700 = NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0)
-    
-    /// zinc-600 (#52525b)
-    public static let zinc600 = NSColor(red: 0x52/255.0, green: 0x52/255.0, blue: 0x5b/255.0, alpha: 1.0)
-    
-    /// zinc-500 (#71717a)
-    public static let zinc500 = NSColor(red: 0x71/255.0, green: 0x71/255.0, blue: 0x7a/255.0, alpha: 1.0)
-    
-    /// zinc-400 (#a1a1aa)
-    public static let zinc400 = NSColor(red: 0xa1/255.0, green: 0xa1/255.0, blue: 0xaa/255.0, alpha: 1.0)
-    
-    /// zinc-300 (#d4d4d8)
-    public static let zinc300 = NSColor(red: 0xd4/255.0, green: 0xd4/255.0, blue: 0xd8/255.0, alpha: 1.0)
-    
-    /// zinc-200 (#e4e4e7)
-    public static let zinc200 = NSColor(red: 0xe4/255.0, green: 0xe4/255.0, blue: 0xe7/255.0, alpha: 1.0)
-    
-    /// zinc-100 (#f4f4f5)
-    public static let zinc100 = NSColor(red: 0xf4/255.0, green: 0xf4/255.0, blue: 0xf5/255.0, alpha: 1.0)
+    public static var zinc950: NSColor { isLight ? LightThemeColors.zinc950 : DarkThemeColors.zinc950 }
+    public static var zinc900: NSColor { isLight ? LightThemeColors.zinc900 : DarkThemeColors.zinc900 }
+    public static var zinc800: NSColor { isLight ? LightThemeColors.zinc800 : DarkThemeColors.zinc800 }
+    public static var zinc700: NSColor { isLight ? LightThemeColors.zinc700 : DarkThemeColors.zinc700 }
+    public static var zinc600: NSColor { isLight ? LightThemeColors.zinc600 : DarkThemeColors.zinc600 }
+    public static var zinc500: NSColor { isLight ? LightThemeColors.zinc500 : DarkThemeColors.zinc500 }
+    public static var zinc400: NSColor { isLight ? LightThemeColors.zinc400 : DarkThemeColors.zinc400 }
+    public static var zinc300: NSColor { isLight ? LightThemeColors.zinc300 : DarkThemeColors.zinc300 }
+    public static var zinc200: NSColor { isLight ? LightThemeColors.zinc200 : DarkThemeColors.zinc200 }
+    public static var zinc100: NSColor { isLight ? LightThemeColors.zinc100 : DarkThemeColors.zinc100 }
     
     // MARK: - Emerald Palette (Tailwind)
     
-    /// emerald-500 (#10b981)
-    public static let emerald500 = NSColor(red: 0x10/255.0, green: 0xb9/255.0, blue: 0x81/255.0, alpha: 1.0)
-    
-    /// emerald-400 (#34d399)
-    public static let emerald400 = NSColor(red: 0x34/255.0, green: 0xd3/255.0, blue: 0x99/255.0, alpha: 1.0)
+    public static var emerald500: NSColor { isLight ? LightThemeColors.emerald500 : DarkThemeColors.emerald500 }
+    public static var emerald400: NSColor { isLight ? LightThemeColors.emerald500 : DarkThemeColors.emerald400 }
     
     // MARK: - Core Backgrounds
     
-    /// Main app background - zinc-950 (#09090b)
-    public static let background = zinc950
+    public static var background: NSColor {
+        isLight ? NSColor.white : DarkThemeColors.zinc950
+    }
     
-    /// Sidebar/panel background - zinc-950
-    public static let sidebarBackground = zinc950
+    public static var sidebarBackground: NSColor {
+        isLight ? LightThemeColors.zinc50 : DarkThemeColors.zinc950
+    }
     
-    /// Card/panel backgrounds - zinc-900 (#18181b)
-    public static let cardBackground = zinc900
+    public static var cardBackground: NSColor {
+        isLight ? NSColor.white : DarkThemeColors.zinc900
+    }
     
-    /// Transparent card background - zinc-900/20 rgba(24, 24, 27, 0.2)
-    public static let cardBackgroundTransparent = zinc900.withAlphaComponent(0.2)
+    public static var cardBackgroundTransparent: NSColor {
+        isLight ? NSColor.white.withAlphaComponent(0.8) : DarkThemeColors.zinc900.withAlphaComponent(0.2)
+    }
     
-    /// Slightly darker than card - zinc-900/50 with black overlay
-    public static let panelBackground = NSColor(red: 0x0c/255.0, green: 0x0c/255.0, blue: 0x0e/255.0, alpha: 1.0)
+    public static var panelBackground: NSColor {
+        isLight ? LightThemeColors.zinc50 : NSColor(red: 0x0c/255.0, green: 0x0c/255.0, blue: 0x0e/255.0, alpha: 1.0)
+    }
     
-    /// Input/control backgrounds - zinc-900/50
-    public static let inputBackground = zinc900.withAlphaComponent(0.5)
+    public static var inputBackground: NSColor {
+        isLight ? LightThemeColors.zinc50 : DarkThemeColors.zinc900.withAlphaComponent(0.5)
+    }
     
-    /// Header background - matches primary theme (zinc-950)
-    public static let headerBackground = zinc950
+    public static var headerBackground: NSColor {
+        isLight ? NSColor.white.withAlphaComponent(0.85) : DarkThemeColors.zinc950
+    }
     
     // MARK: - Text Colors
     
-    /// Primary text - white
-    public static let textPrimary = NSColor.white
+    public static var textPrimary: NSColor {
+        isLight ? LightThemeColors.zinc900 : NSColor.white
+    }
     
-    /// Secondary text - zinc-400 (#a1a1aa)
-    public static let textSecondary = zinc400
+    public static var textSecondary: NSColor {
+        isLight ? LightThemeColors.zinc600 : DarkThemeColors.zinc400
+    }
     
-    /// Tertiary/muted text - zinc-500 (#71717a)
-    public static let textTertiary = zinc500
+    public static var textTertiary: NSColor {
+        isLight ? LightThemeColors.zinc500 : DarkThemeColors.zinc500
+    }
     
-    /// Disabled/placeholder text - zinc-600 (#52525b)
-    public static let textDisabled = zinc600
+    public static var textDisabled: NSColor {
+        isLight ? LightThemeColors.zinc400 : DarkThemeColors.zinc600
+    }
     
-    /// Hover text - zinc-200 (#e4e4e7)
-    public static let textHover = zinc200
+    public static var textHover: NSColor {
+        isLight ? LightThemeColors.zinc700 : DarkThemeColors.zinc200
+    }
     
     // MARK: - Borders
     
-    /// Subtle border - white at 5% opacity
-    public static let borderSubtle = NSColor.white.withAlphaComponent(0.05)
+    public static var borderSubtle: NSColor {
+        isLight ? LightThemeColors.zinc200 : NSColor.white.withAlphaComponent(0.05)
+    }
     
-    /// Hover border - white at 10% opacity
-    public static let borderHover = NSColor.white.withAlphaComponent(0.10)
+    public static var borderHover: NSColor {
+        isLight ? LightThemeColors.zinc300 : NSColor.white.withAlphaComponent(0.10)
+    }
+
+    public static var borderStrong: NSColor {
+        isLight ? LightThemeColors.zinc300 : NSColor.white.withAlphaComponent(0.20)
+    }
     
-    /// Active/selected border - zinc-700 (#3f3f46)
-    public static let borderActive = NSColor(red: 0x3f/255.0, green: 0x3f/255.0, blue: 0x46/255.0, alpha: 1.0)
+    public static var borderActive: NSColor {
+        isLight ? LightThemeColors.zinc300 : DarkThemeColors.zinc700
+    }
     
-    /// Dashed border for drop zones - zinc-800 (#27272a)
-    public static let borderDashed = NSColor(red: 0x27/255.0, green: 0x27/255.0, blue: 0x2a/255.0, alpha: 1.0)
+    public static var borderDashed: NSColor {
+        isLight ? LightThemeColors.zinc200 : DarkThemeColors.zinc800
+    }
     
     // MARK: - Interactive States
     
-    /// Hover background - zinc-900/50
-    public static let hoverBackground = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 0.5)
+    public static var hoverBackground: NSColor {
+        isLight ? LightThemeColors.zinc200.withAlphaComponent(0.5) : DarkThemeColors.zinc900.withAlphaComponent(0.5)
+    }
     
-    /// Selected/active nav item - zinc-900 with border
-    public static let selectedBackground = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0)
+    public static var selectedBackground: NSColor {
+        isLight ? NSColor.white : DarkThemeColors.zinc900
+    }
     
-    /// Toggle/switch on state - white
-    public static let toggleOn = NSColor.white
+    public static var toggleOn: NSColor {
+        isLight ? LightThemeColors.zinc900 : NSColor.white
+    }
     
-    /// Toggle/switch off state - zinc-800
-    public static let toggleOff = NSColor(red: 0x27/255.0, green: 0x27/255.0, blue: 0x2a/255.0, alpha: 1.0)
+    public static var toggleOff: NSColor {
+        isLight ? LightThemeColors.zinc300 : DarkThemeColors.zinc800
+    }
     
     // MARK: - Accent Colors
     
-    /// Positive/success - emerald-500
-    public static let positive = NSColor(red: 0x10/255.0, green: 0xb9/255.0, blue: 0x81/255.0, alpha: 1.0)
+    public static var positive: NSColor {
+        isLight ? LightThemeColors.emerald600 : DarkThemeColors.emerald500
+    }
     
-    /// Positive background - emerald-500/10
-    public static let positiveBackground = NSColor(red: 0x10/255.0, green: 0xb9/255.0, blue: 0x81/255.0, alpha: 0.1)
+    public static var positiveBackground: NSColor {
+        isLight ? NSColor(red: 0x10/255.0, green: 0xb9/255.0, blue: 0x81/255.0, alpha: 0.1) : NSColor(red: 0x10/255.0, green: 0xb9/255.0, blue: 0x81/255.0, alpha: 0.1)
+    }
     
-    /// Warning - amber-500
-    public static let warning = NSColor(red: 0xf5/255.0, green: 0x9e/255.0, blue: 0x0b/255.0, alpha: 1.0)
+    public static var warning: NSColor {
+        isLight ? NSColor(red: 0xd9/255.0, green: 0x77/255.0, blue: 0x06/255.0, alpha: 1.0) : NSColor(red: 0xf5/255.0, green: 0x9e/255.0, blue: 0x0b/255.0, alpha: 1.0)
+    }
     
-    /// Warning background - amber-500/10
-    public static let warningBackground = NSColor(red: 0xf5/255.0, green: 0x9e/255.0, blue: 0x0b/255.0, alpha: 0.1)
+    public static var warningBackground: NSColor {
+        isLight ? NSColor(red: 0xfe/255.0, green: 0xf3/255.0, blue: 0xc7/255.0, alpha: 1.0) : NSColor(red: 0xf5/255.0, green: 0x9e/255.0, blue: 0x0b/255.0, alpha: 0.1)
+    }
     
-    /// Amber-900 for dark backgrounds - (#78350f)
-    public static let amber900 = NSColor(red: 0x78/255.0, green: 0x35/255.0, blue: 0x0f/255.0, alpha: 1.0)
+    public static var amber900: NSColor { NSColor(red: 0x78/255.0, green: 0x35/255.0, blue: 0x0f/255.0, alpha: 1.0) }
+    public static var amber200: NSColor { NSColor(red: 0xfd/255.0, green: 0xe6/255.0, blue: 0x8a/255.0, alpha: 1.0) }
     
-    /// Amber-200 for high contrast text - (#fde68a)
-    public static let amber200 = NSColor(red: 0xfd/255.0, green: 0xe6/255.0, blue: 0x8a/255.0, alpha: 1.0)
+    public static var negative: NSColor {
+        isLight ? NSColor(red: 0xdc/255.0, green: 0x26/255.0, blue: 0x26/255.0, alpha: 1.0) : NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 1.0)
+    }
     
-    /// Negative/error - red-500 (#ef4444)
-    public static let negative = NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 1.0)
+    public static var negativeBackground: NSColor {
+        isLight ? NSColor(red: 0xfe/255.0, green: 0xe2/255.0, blue: 0xe2/255.0, alpha: 1.0) : NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 0.15)
+    }
     
-    /// Negative background - red-500/15
-    public static let negativeBackground = NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 0.15)
+    public static var info: NSColor {
+        isLight ? NSColor(red: 0x25/255.0, green: 0x63/255.0, blue: 0xeb/255.0, alpha: 1.0) : NSColor(red: 0x3b/255.0, green: 0x82/255.0, blue: 0xf6/255.0, alpha: 1.0)
+    }
     
-    /// Red-900 for dark backgrounds - (#7f1d1d)
-    public static let red900 = NSColor(red: 0x7f/255.0, green: 0x1d/255.0, blue: 0x1d/255.0, alpha: 1.0)
+    public static var toastBackground: NSColor {
+        isLight ? NSColor.white : DarkThemeColors.zinc800
+    }
     
-    /// Red-400 for text on dark backgrounds - (#f87171)
-    public static let red400 = NSColor(red: 0xf8/255.0, green: 0x71/255.0, blue: 0x71/255.0, alpha: 1.0)
+    public static var toastBorder: NSColor {
+        isLight ? LightThemeColors.zinc200 : NSColor.white.withAlphaComponent(0.1)
+    }
     
-    /// Red-200 for high contrast text - (#fecaca)
-    public static let red200 = NSColor(red: 0xfe/255.0, green: 0xca/255.0, blue: 0xca/255.0, alpha: 1.0)
+    public static var red900: NSColor { NSColor(red: 0x7f/255.0, green: 0x1d/255.0, blue: 0x1d/255.0, alpha: 1.0) }
+    public static var red400: NSColor { NSColor(red: 0xf8/255.0, green: 0x71/255.0, blue: 0x71/255.0, alpha: 1.0) }
+    public static var red300: NSColor { NSColor(red: 0xfc/255.0, green: 0xa5/255.0, blue: 0xa5/255.0, alpha: 1.0) }
+    public static var red200: NSColor { NSColor(red: 0xfe/255.0, green: 0xca/255.0, blue: 0xca/255.0, alpha: 1.0) }
     
-    /// Character badge - blue-500
-    public static let badgeCharacter = NSColor(red: 0x3b/255.0, green: 0x82/255.0, blue: 0xf6/255.0, alpha: 1.0)
+    public static var badgeCharacter: NSColor {
+        isLight ? NSColor(red: 0x25/255.0, green: 0x63/255.0, blue: 0xeb/255.0, alpha: 1.0) : NSColor(red: 0x3b/255.0, green: 0x82/255.0, blue: 0xf6/255.0, alpha: 1.0)
+    }
     
-    /// Character badge background - blue-500/10
-    public static let badgeCharacterBackground = NSColor(red: 0x3b/255.0, green: 0x82/255.0, blue: 0xf6/255.0, alpha: 0.1)
+    public static var badgeCharacterBackground: NSColor {
+        isLight ? NSColor(red: 0xdb/255.0, green: 0xea/255.0, blue: 0xfe/255.0, alpha: 1.0) : NSColor(red: 0x3b/255.0, green: 0x82/255.0, blue: 0xf6/255.0, alpha: 0.1)
+    }
     
-    /// Stage badge - purple/violet
-    public static let badgeStage = NSColor(red: 0x8b/255.0, green: 0x5c/255.0, blue: 0xf6/255.0, alpha: 1.0)
+    public static var badgeStage: NSColor {
+        isLight ? NSColor(red: 0x7c/255.0, green: 0x3a/255.0, blue: 0xed/255.0, alpha: 1.0) : NSColor(red: 0x8b/255.0, green: 0x5c/255.0, blue: 0xf6/255.0, alpha: 1.0)
+    }
     
-    /// Stage badge background
-    public static let badgeStageBackground = NSColor(red: 0x8b/255.0, green: 0x5c/255.0, blue: 0xf6/255.0, alpha: 0.1)
+    public static var badgeStageBackground: NSColor {
+        isLight ? NSColor(red: 0xed/255.0, green: 0xe9/255.0, blue: 0xfe/255.0, alpha: 1.0) : NSColor(red: 0x8b/255.0, green: 0x5c/255.0, blue: 0xf6/255.0, alpha: 0.1)
+    }
     
-    /// Primary action button - white
-    public static let buttonPrimary = NSColor.white
+    public static var buttonPrimary: NSColor {
+        isLight ? LightThemeColors.zinc900 : NSColor.white
+    }
     
-    /// Primary button text - zinc-950
-    public static let buttonPrimaryText = NSColor(red: 0x09/255.0, green: 0x09/255.0, blue: 0x0b/255.0, alpha: 1.0)
+    public static var buttonPrimaryText: NSColor {
+        isLight ? NSColor.white : DarkThemeColors.zinc950
+    }
+
+    public static var textOnAccent: NSColor {
+        NSColor.white
+    }
+
+    public static var iconOnLightSurface: NSColor {
+        DarkThemeColors.zinc900
+    }
+
+    // MARK: - Picker Surfaces
+
+    public static var pickerBackground: NSColor {
+        isLight ? LightThemeColors.zinc50 : DarkThemeColors.zinc900
+    }
+
+    public static var pickerScrollBackground: NSColor {
+        isLight ? LightThemeColors.zinc100 : DarkThemeColors.zinc800
+    }
+
+    public static var pickerItemBackground: NSColor {
+        isLight ? LightThemeColors.zinc200 : DarkThemeColors.zinc700
+    }
+
+    public static var pickerItemSelectedBackground: NSColor {
+        isLight ? LightThemeColors.zinc300 : DarkThemeColors.zinc600
+    }
+
+    // MARK: - Overlays & Media
+
+    public static var overlayDim: NSColor {
+        isLight ? NSColor.black.withAlphaComponent(0.35) : NSColor.black.withAlphaComponent(0.8)
+    }
+
+    public static var overlayHighlight: NSColor {
+        isLight ? LightThemeColors.zinc100.withAlphaComponent(0.7) : NSColor.white.withAlphaComponent(0.05)
+    }
+
+    public static var overlayHighlightStrong: NSColor {
+        isLight ? LightThemeColors.zinc100.withAlphaComponent(0.95) : NSColor.white.withAlphaComponent(0.1)
+    }
+
+    public static var imageOverlay: NSColor {
+        isLight ? NSColor.white.withAlphaComponent(0.85) : NSColor.black.withAlphaComponent(0.9)
+    }
+
+    public static var imageLabelBackground: NSColor {
+        isLight ? LightThemeColors.zinc200.withAlphaComponent(0.8) : NSColor.black.withAlphaComponent(0.6)
+    }
+    
+    /// Text color for labels over image overlays (opposite of background)
+    public static var textOnImageOverlay: NSColor {
+        isLight ? LightThemeColors.zinc900 : NSColor.white
+    }
+
+    public static var buttonSecondaryBackground: NSColor {
+        isLight ? LightThemeColors.zinc100 : NSColor.white.withAlphaComponent(0.05)
+    }
+
+    public static var buttonSecondaryBackgroundHover: NSColor {
+        isLight ? LightThemeColors.zinc200 : NSColor.white.withAlphaComponent(0.1)
+    }
     
     // MARK: - Legacy Colors (for compatibility)
     
-    public static let placeholderBackground = NSColor(red: 0x18/255.0, green: 0x18/255.0, blue: 0x1b/255.0, alpha: 1.0)
-    public static let defaultPlaceholder = NSColor(red: 0x52/255.0, green: 0x52/255.0, blue: 0x5b/255.0, alpha: 1.0)
-    public static let creamText = NSColor.white
-    public static let grayText = NSColor(red: 0x71/255.0, green: 0x71/255.0, blue: 0x7a/255.0, alpha: 1.0)
-    public static let selectedBorder = NSColor.white.withAlphaComponent(0.10)
-    public static let greenAccent = NSColor(red: 0x10/255.0, green: 0xb9/255.0, blue: 0x81/255.0, alpha: 1.0)
-    public static let redAccent = NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 1.0)
+    public static var placeholderBackground: NSColor {
+        isLight ? LightThemeColors.zinc100 : DarkThemeColors.zinc900
+    }
+    
+    public static var defaultPlaceholder: NSColor {
+        isLight ? LightThemeColors.zinc400 : DarkThemeColors.zinc600
+    }
+    
+    public static var creamText: NSColor {
+        isLight ? LightThemeColors.zinc900 : NSColor.white
+    }
+    
+    public static var grayText: NSColor {
+        isLight ? LightThemeColors.zinc500 : DarkThemeColors.zinc500
+    }
+    
+    public static var selectedBorder: NSColor {
+        isLight ? LightThemeColors.zinc300 : NSColor.white.withAlphaComponent(0.10)
+    }
+    
+    public static var greenAccent: NSColor {
+        isLight ? LightThemeColors.emerald600 : DarkThemeColors.emerald500
+    }
+    
+    public static var redAccent: NSColor {
+        isLight ? NSColor(red: 0xdc/255.0, green: 0x26/255.0, blue: 0x26/255.0, alpha: 1.0) : NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 1.0)
+    }
     
     // MARK: - Glass Panel Effect
     
-    /// Create a glass panel gradient layer
     public static func glassGradient() -> CAGradientLayer {
         let gradient = CAGradientLayer()
-        gradient.colors = [
-            NSColor.white.withAlphaComponent(0.03).cgColor,
-            NSColor.white.withAlphaComponent(0.0).cgColor
-        ]
+        if isLight {
+            gradient.colors = [
+                NSColor.white.withAlphaComponent(0.6).cgColor,
+                NSColor.white.withAlphaComponent(0.2).cgColor
+            ]
+        } else {
+            gradient.colors = [
+                NSColor.white.withAlphaComponent(0.03).cgColor,
+                NSColor.white.withAlphaComponent(0.0).cgColor
+            ]
+        }
         gradient.locations = [0.0, 1.0]
         return gradient
     }

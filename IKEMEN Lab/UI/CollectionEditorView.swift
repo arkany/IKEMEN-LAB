@@ -123,7 +123,7 @@ class CollectionEditorView: NSView {
         
         // Border at bottom
         let borderLayer = CALayer()
-        borderLayer.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        borderLayer.backgroundColor = DesignColors.borderSubtle.cgColor
         borderLayer.frame = CGRect(x: 0, y: 0, width: 10000, height: 1)
         headerView.layer?.addSublayer(borderLayer)
         
@@ -176,7 +176,7 @@ class CollectionEditorView: NSView {
             string: "Activate",
             attributes: [
                 .font: DesignFonts.label(size: 12),
-                .foregroundColor: NSColor.white
+                .foregroundColor: DesignColors.textOnAccent
             ]
         )
         headerView.addSubview(activateButton)
@@ -306,7 +306,7 @@ class CollectionEditorView: NSView {
         rosterScrollView.backgroundColor = .clear
         rosterScrollView.drawsBackground = false
         rosterScrollView.wantsLayer = true
-        rosterScrollView.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        rosterScrollView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         rosterScrollView.layer?.cornerRadius = 8
         
         contentStack.addArrangedSubview(rosterScrollView)
@@ -356,7 +356,7 @@ class CollectionEditorView: NSView {
         stagesScrollView.backgroundColor = .clear
         stagesScrollView.drawsBackground = false
         stagesScrollView.wantsLayer = true
-        stagesScrollView.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        stagesScrollView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         stagesScrollView.layer?.cornerRadius = 8
         
         contentStack.addArrangedSubview(stagesScrollView)
@@ -376,7 +376,7 @@ class CollectionEditorView: NSView {
         screenpackView = NSView()
         screenpackView.translatesAutoresizingMaskIntoConstraints = false
         screenpackView.wantsLayer = true
-        screenpackView.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        screenpackView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         screenpackView.layer?.cornerRadius = 8
         
         // Title
@@ -533,12 +533,21 @@ class CollectionEditorView: NSView {
         if isActive {
             activateButton.title = "Active"
             activateButton.isEnabled = false
-            activateButton.layer?.backgroundColor = DesignColors.zinc700.cgColor
+            activateButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
         } else {
             activateButton.title = "Activate"
             activateButton.isEnabled = true
             activateButton.layer?.backgroundColor = DesignColors.positive.cgColor
         }
+
+        let titleColor = isActive ? DesignColors.textSecondary : DesignColors.textOnAccent
+        activateButton.attributedTitle = NSAttributedString(
+            string: activateButton.title,
+            attributes: [
+                .font: DesignFonts.label(size: 12),
+                .foregroundColor: titleColor
+            ]
+        )
     }
     
     // MARK: - Actions
@@ -819,7 +828,7 @@ class RosterEntryItem: NSCollectionViewItem {
         containerView = NSView()
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         containerView.layer?.cornerRadius = 6
         view.addSubview(containerView)
         
@@ -878,7 +887,7 @@ class RosterEntryItem: NSCollectionViewItem {
         case .emptySlot:
             nameLabel.stringValue = "Empty"
             thumbnailView.image = NSImage(systemSymbolName: "square.dashed", accessibilityDescription: nil)
-            thumbnailView.contentTintColor = DesignColors.zinc600
+            thumbnailView.contentTintColor = DesignColors.textDisabled
         }
     }
     
@@ -942,7 +951,7 @@ class StageEntryItem: NSCollectionViewItem {
         containerView = NSView()
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = DesignColors.zinc800.cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         containerView.layer?.cornerRadius = 6
         view.addSubview(containerView)
         
@@ -957,9 +966,9 @@ class StageEntryItem: NSCollectionViewItem {
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = DesignFonts.caption(size: 11)
-        nameLabel.textColor = .white
+        nameLabel.textColor = DesignColors.textOnAccent
         nameLabel.alignment = .center
-        nameLabel.backgroundColor = NSColor.black.withAlphaComponent(0.6)
+        nameLabel.backgroundColor = DesignColors.imageLabelBackground
         nameLabel.drawsBackground = true
         nameLabel.lineBreakMode = .byTruncatingTail
         containerView.addSubview(nameLabel)

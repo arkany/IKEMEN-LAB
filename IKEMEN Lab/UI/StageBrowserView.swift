@@ -63,6 +63,7 @@ class StageBrowserView: NSView {
     private var allStages: [StageInfo] = []  // All stages from data source
     private var stages: [StageInfo] = []     // Filtered stages for display
     private var cancellables = Set<AnyCancellable>()
+    private var themeObserver: NSObjectProtocol?
     
     // Registration status filter
     var registrationFilter: RegistrationFilter = .all {
@@ -175,6 +176,21 @@ class StageBrowserView: NSView {
                 self?.updateStages(stages)
             }
             .store(in: &cancellables)
+
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: .themeChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            // Update all visible items
+            for indexPath in self.collectionView.indexPathsForVisibleItems() {
+                if let item = self.collectionView.item(at: indexPath) as? StageListItem {
+                    item.applyTheme()
+                }
+            }
+            self.collectionView.reloadData()
+        }
     }
     
     /// Set stages directly (used for search filtering)
@@ -205,6 +221,12 @@ class StageBrowserView: NSView {
     func refresh() {
         updateStages(IkemenBridge.shared.stages)
     }
+
+    deinit {
+        if let themeObserver = themeObserver {
+            NotificationCenter.default.removeObserver(themeObserver)
+        }
+    }
 }
 
 // MARK: - NSCollectionViewDataSource
@@ -231,7 +253,25 @@ extension StageBrowserView: NSCollectionViewDataSource {
             self?.onStageDisableToggle?(stage)
         }
         
+        // Wire up the more button callback
+        item.onMoreClicked = { [weak self] stage, sourceView in
+            self?.showContextMenuForListItem(stage, sourceView: sourceView)
+        }
+        
         return item
+    }
+    
+    /// Show context menu from the more button in list view
+    private func showContextMenuForListItem(_ stage: StageInfo, sourceView: NSView) {
+        guard let index = stages.firstIndex(where: { $0.id == stage.id }) else { return }
+        let indexPath = IndexPath(item: index, section: 0)
+        
+        guard let menu = buildContextMenu(for: indexPath) else { return }
+        
+        // Position menu below the button
+        let buttonBounds = sourceView.bounds
+        let menuLocation = NSPoint(x: buttonBounds.midX, y: buttonBounds.minY)
+        menu.popUp(positioning: nil, at: menuLocation, in: sourceView)
     }
 }
 
@@ -421,6 +461,7 @@ class StageListItem: NSCollectionViewItem {
     static let identifier = NSUserInterfaceItemIdentifier("StageListItem")
     
     private var containerView: NSView!
+    private var borderLine: NSView!
     private var previewContainer: NSView!
     private var previewImageView: NSImageView!
     private var disabledOverlay: NSView!
@@ -476,10 +517,10 @@ class StageListItem: NSCollectionViewItem {
         view.addSubview(containerView)
         
         // Bottom border line
-        let borderLine = NSView()
+        borderLine = NSView()
         borderLine.translatesAutoresizingMaskIntoConstraints = false
         borderLine.wantsLayer = true
-        borderLine.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        borderLine.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
         containerView.addSubview(borderLine)
         
         // Preview container with rounded corners and border
@@ -488,9 +529,9 @@ class StageListItem: NSCollectionViewItem {
         previewContainer.wantsLayer = true
         previewContainer.layer?.cornerRadius = 6
         previewContainer.layer?.borderWidth = 1
-        previewContainer.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        previewContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
         previewContainer.layer?.masksToBounds = true
-        previewContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        previewContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         containerView.addSubview(previewContainer)
         
         // Preview image
@@ -505,7 +546,7 @@ class StageListItem: NSCollectionViewItem {
         disabledOverlay = NSView()
         disabledOverlay.translatesAutoresizingMaskIntoConstraints = false
         disabledOverlay.wantsLayer = true
-        disabledOverlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.2).cgColor
+        disabledOverlay.layer?.backgroundColor = DesignColors.overlayDim.withAlphaComponent(0.2).cgColor
         disabledOverlay.isHidden = true
         previewContainer.addSubview(disabledOverlay)
         
@@ -513,7 +554,7 @@ class StageListItem: NSCollectionViewItem {
         disabledIcon = NSImageView()
         disabledIcon.translatesAutoresizingMaskIntoConstraints = false
         disabledIcon.image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: nil)
-        disabledIcon.contentTintColor = NSColor.white.withAlphaComponent(0.5)
+        disabledIcon.contentTintColor = DesignColors.textDisabled
         disabledIcon.isHidden = true
         previewContainer.addSubview(disabledIcon)
         
@@ -528,14 +569,14 @@ class StageListItem: NSCollectionViewItem {
         // Name label
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.font = DesignFonts.body(size: 14)
-        nameLabel.textColor = DesignColors.zinc300
+        nameLabel.textColor = DesignColors.textPrimary
         nameLabel.lineBreakMode = .byTruncatingTail
         nameStack.addArrangedSubview(nameLabel)
         
         // Path label (mono font)
         pathLabel = NSTextField(labelWithString: "")
         pathLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
-        pathLabel.textColor = DesignColors.zinc600
+        pathLabel.textColor = DesignColors.textTertiary
         pathLabel.lineBreakMode = .byTruncatingTail
         nameStack.addArrangedSubview(pathLabel)
         
@@ -562,7 +603,7 @@ class StageListItem: NSCollectionViewItem {
         dateLabel = NSTextField(labelWithString: "")
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
         dateLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        dateLabel.textColor = DesignColors.zinc600
+        dateLabel.textColor = DesignColors.textTertiary
         dateLabel.alignment = .right
         containerView.addSubview(dateLabel)
         
@@ -580,7 +621,7 @@ class StageListItem: NSCollectionViewItem {
         moreButton.bezelStyle = .inline
         moreButton.isBordered = false
         moreButton.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        moreButton.contentTintColor = DesignColors.zinc400
+        moreButton.contentTintColor = DesignColors.textSecondary
         moreButton.alphaValue = 0 // Hidden by default, shown on hover
         containerView.addSubview(moreButton)
         
@@ -721,13 +762,13 @@ class StageListItem: NSCollectionViewItem {
             
             if isHovered {
                 // Show hover state
-                containerView.animator().layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+                containerView.animator().layer?.backgroundColor = DesignColors.hoverBackground.cgColor
                 moreButton.animator().alphaValue = 1.0
                 
                 // If not disabled, brighten image and text
                 if currentStage?.isDisabled != true {
                     previewImageView.animator().alphaValue = 1.0
-                    nameLabel.animator().textColor = .white
+                    nameLabel.animator().textColor = DesignColors.textPrimary
                 }
             } else {
                 // Return to normal
@@ -737,7 +778,7 @@ class StageListItem: NSCollectionViewItem {
                 // Return to dimmed state
                 if currentStage?.isDisabled != true {
                     previewImageView.animator().alphaValue = 0.6
-                    nameLabel.animator().textColor = DesignColors.zinc300
+                    nameLabel.animator().textColor = DesignColors.textPrimary
                 }
             }
         }
@@ -785,56 +826,59 @@ class StageListItem: NSCollectionViewItem {
             disabledIcon.isHidden = false
             nameLabel.textColor = DesignColors.textSecondary
             nameLabel.stringValue = stage.name
-            pathLabel.textColor = DesignColors.zinc700
+            pathLabel.textColor = DesignColors.textDisabled
             view.toolTip = "Not in select.def - won't appear in game"
         } else if stage.isDisabled {
             // Disabled: strikethrough and dimmed
             previewImageView.alphaValue = 0.4
             disabledOverlay.isHidden = false
             disabledIcon.isHidden = false
-            nameLabel.textColor = DesignColors.zinc500
+            nameLabel.textColor = DesignColors.textTertiary
             // Strikethrough effect using attributed string
             let attributes: [NSAttributedString.Key: Any] = [
                 .strikethroughStyle: NSUnderlineStyle.single.rawValue,
-                .strikethroughColor: DesignColors.zinc600
+                .strikethroughColor: DesignColors.textDisabled
             ]
             nameLabel.attributedStringValue = NSAttributedString(string: stage.name, attributes: attributes)
-            pathLabel.textColor = DesignColors.zinc700
+            pathLabel.textColor = DesignColors.textDisabled
             view.toolTip = nil
         } else {
             // Active: normal
             previewImageView.alphaValue = 0.6
             disabledOverlay.isHidden = true
             disabledIcon.isHidden = true
-            nameLabel.textColor = DesignColors.zinc300
+            nameLabel.textColor = DesignColors.textPrimary
             nameLabel.stringValue = stage.name  // Remove strikethrough
-            pathLabel.textColor = DesignColors.zinc600
+            pathLabel.textColor = DesignColors.textTertiary
             view.toolTip = nil
         }
         
         // Load preview image
         loadPreviewImage(for: stage)
+        
+        // Apply base theme colors (borders, etc.)
+        applyTheme()
     }
     
     private func configureAudioBadge(hasMusic: Bool) {
         if hasMusic {
             // BGM badge - emerald/green style
-            audioBadge.layer?.backgroundColor = DesignColors.emerald500.withAlphaComponent(0.1).cgColor
+            audioBadge.layer?.backgroundColor = DesignColors.positiveBackground.cgColor
             audioBadge.layer?.borderWidth = 1
-            audioBadge.layer?.borderColor = DesignColors.emerald500.withAlphaComponent(0.2).cgColor
+            audioBadge.layer?.borderColor = DesignColors.positive.withAlphaComponent(0.3).cgColor
             audioBadgeIcon.image = NSImage(systemSymbolName: "music.note", accessibilityDescription: nil)
-            audioBadgeIcon.contentTintColor = DesignColors.emerald400
+            audioBadgeIcon.contentTintColor = DesignColors.positive
             audioBadgeLabel.stringValue = "BGM"
-            audioBadgeLabel.textColor = DesignColors.emerald400
+            audioBadgeLabel.textColor = DesignColors.positive
         } else {
             // No audio badge - gray style
-            audioBadge.layer?.backgroundColor = DesignColors.zinc800.withAlphaComponent(0.5).cgColor
+            audioBadge.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
             audioBadge.layer?.borderWidth = 1
-            audioBadge.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            audioBadge.layer?.borderColor = DesignColors.borderSubtle.cgColor
             audioBadgeIcon.image = NSImage(systemSymbolName: "speaker.slash", accessibilityDescription: nil)
-            audioBadgeIcon.contentTintColor = DesignColors.zinc500
+            audioBadgeIcon.contentTintColor = DesignColors.textTertiary
             audioBadgeLabel.stringValue = "None"
-            audioBadgeLabel.textColor = DesignColors.zinc500
+            audioBadgeLabel.textColor = DesignColors.textTertiary
         }
     }
     
@@ -888,6 +932,28 @@ class StageListItem: NSCollectionViewItem {
         }
     }
     
+    /// Update all theme-dependent colors
+    func applyTheme() {
+        // Border line
+        borderLine.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        
+        // Preview container
+        previewContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        previewContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        
+        // Disabled overlay
+        disabledOverlay.layer?.backgroundColor = DesignColors.overlayDim.withAlphaComponent(0.2).cgColor
+        disabledIcon.contentTintColor = DesignColors.textDisabled
+        
+        // Text colors
+        nameLabel.textColor = DesignColors.textPrimary
+        pathLabel.textColor = DesignColors.textTertiary
+        dateLabel.textColor = DesignColors.textTertiary
+        
+        // More button
+        moreButton.contentTintColor = DesignColors.textSecondary
+    }
+    
     override func prepareForReuse() {
         super.prepareForReuse()
         previewImageView.image = nil
@@ -904,7 +970,8 @@ class StageListItem: NSCollectionViewItem {
         onMoreClicked = nil
         isHovered = false
         containerView.layer?.backgroundColor = NSColor.clear.cgColor
-        nameLabel.textColor = DesignColors.zinc300
-        pathLabel.textColor = DesignColors.zinc600
+        
+        // Apply current theme colors
+        applyTheme()
     }
 }

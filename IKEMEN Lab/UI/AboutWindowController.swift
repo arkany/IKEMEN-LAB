@@ -28,7 +28,7 @@ final class AboutWindowController: NSWindowController {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
-        window.backgroundColor = DesignColors.zinc900
+        window.backgroundColor = DesignColors.cardBackground
         window.center()
         
         self.init(window: window)
@@ -41,7 +41,7 @@ final class AboutWindowController: NSWindowController {
     private func setupUI() {
         guard let contentView = window?.contentView else { return }
         contentView.wantsLayer = true
-        contentView.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        contentView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         
         // Container stack
         let mainStack = NSStackView()
@@ -57,12 +57,12 @@ final class AboutWindowController: NSWindowController {
         
         // App Name
         appNameLabel.font = DesignFonts.header(size: 22)
-        appNameLabel.textColor = DesignColors.zinc100
+        appNameLabel.textColor = DesignColors.textPrimary
         appNameLabel.alignment = .center
         
         // Version
         versionLabel.font = DesignFonts.body(size: 13)
-        versionLabel.textColor = DesignColors.zinc400
+        versionLabel.textColor = DesignColors.textSecondary
         versionLabel.alignment = .center
         
         // Update Status Row
@@ -76,7 +76,7 @@ final class AboutWindowController: NSWindowController {
         updateSpinner.isHidden = true
         
         updateStatusLabel.font = DesignFonts.caption(size: 12)
-        updateStatusLabel.textColor = DesignColors.zinc500
+        updateStatusLabel.textColor = DesignColors.textTertiary
         updateStatusLabel.alignment = .center
         
         updateStack.addArrangedSubview(updateSpinner)
@@ -95,7 +95,7 @@ final class AboutWindowController: NSWindowController {
         
         // Copyright
         copyrightLabel.font = DesignFonts.caption(size: 11)
-        copyrightLabel.textColor = DesignColors.zinc600
+        copyrightLabel.textColor = DesignColors.textDisabled
         copyrightLabel.alignment = .center
         
         // Buttons row
@@ -107,7 +107,7 @@ final class AboutWindowController: NSWindowController {
         creditsButton.bezelStyle = .accessoryBarAction
         creditsButton.isBordered = false
         creditsButton.font = DesignFonts.caption(size: 11)
-        creditsButton.contentTintColor = DesignColors.zinc400
+        creditsButton.contentTintColor = DesignColors.textSecondary
         creditsButton.target = self
         creditsButton.action = #selector(showCredits)
         
@@ -115,7 +115,7 @@ final class AboutWindowController: NSWindowController {
         githubButton.bezelStyle = .accessoryBarAction
         githubButton.isBordered = false
         githubButton.font = DesignFonts.caption(size: 11)
-        githubButton.contentTintColor = DesignColors.zinc400
+        githubButton.contentTintColor = DesignColors.textSecondary
         githubButton.target = self
         githubButton.action = #selector(openGitHub)
         
@@ -190,16 +190,16 @@ final class AboutWindowController: NSWindowController {
             switch result {
             case .updateAvailable(let release):
                 updateStatusLabel.stringValue = "Update available: v\(release.version)"
-                updateStatusLabel.textColor = DesignColors.emerald400
+                updateStatusLabel.textColor = DesignColors.positive
                 checkUpdateButton.title = "Download Update"
                 
             case .upToDate:
                 updateStatusLabel.stringValue = "✓ You're up to date"
-                updateStatusLabel.textColor = DesignColors.zinc500
+                updateStatusLabel.textColor = DesignColors.textTertiary
                 
             case .error:
                 updateStatusLabel.stringValue = "Unable to check for updates"
-                updateStatusLabel.textColor = DesignColors.zinc600
+                updateStatusLabel.textColor = DesignColors.textDisabled
             }
         }
     }

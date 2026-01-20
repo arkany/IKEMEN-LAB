@@ -79,4 +79,5 @@ protocol AppSettingsProtocol: AnyObject {
     var defaultStageZoom: Double { get set }
     var defaultStageBoundLeft: Int { get set }
     var defaultStageBoundRight: Int { get set }
+    var useLightTheme: Bool { get set }
 }

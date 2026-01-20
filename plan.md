@@ -97,6 +97,14 @@ All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
 | │  └─ Firefox (.xpi) | 📋 Todo |
 | └─ Update detection (aspirational) | 💭 Future |
 | Random roster generation | 📋 Todo |
+| **Light Theme Remaining Fixes** | 📋 Todo |
+| ├─ ScreenpackPickerSheet.swift | 📋 Todo |
+| ├─ CollectionEditorView.swift | 📋 Todo |
+| ├─ AboutWindowController.swift | 📋 Todo |
+| ├─ CharacterPickerSheet.swift | 📋 Todo |
+| ├─ StagePickerSheet.swift | 📋 Todo |
+| ├─ ScreenpackBrowserView.swift | 📋 Todo |
+| └─ FirstRunView.swift | 📋 Todo |
 
 ### 🏛️ v3 — Polish & Safety
 | Feature | Status |
@@ -117,7 +125,7 @@ All alpha tasks complete! Currently at **v0.2.0** on GitHub Releases.
 | ├─ Auto-backup select.def | 📋 Todo |
 | ├─ Backup collections | 📋 Todo |
 | └─ Restore from backup | 📋 Todo |
-| Light/dark mode support | 📋 Todo |
+| Light/dark mode support | � In Progress |
 | Export/share curated sets | 📋 Todo |
 | Netplay IP manager | 📋 Todo |
 

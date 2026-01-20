@@ -305,4 +305,5 @@ class MockAppSettings: AppSettingsProtocol {
     var defaultStageZoom: Double = 1.0
     var defaultStageBoundLeft: Int = -150
     var defaultStageBoundRight: Int = 150
+    var useLightTheme: Bool = false
 }

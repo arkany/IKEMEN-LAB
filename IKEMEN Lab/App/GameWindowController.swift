@@ -37,7 +37,7 @@ enum NavItem: String, CaseIterable {
     /// Whether this item is hidden from the sidebar
     var isHidden: Bool {
         switch self {
-        case .soundpacks: return true
+        case .soundpacks, .duplicates: return true
         default: return false
         }
     }
@@ -70,11 +70,20 @@ class GameWindowController: NSWindowController {
     // UI Elements - Sidebar
     private var contentView: NSView!
     private var sidebarView: NSView!
+    private var sidebarHeaderView: NSView!
     private var mainAreaView: NSView!
     private var launchButton: NSButton!
     private var statusLabel: NSTextField!
     private var charactersCountLabel: NSTextField!
     private var stagesCountLabel: NSTextField!
+    private var logoContainerView: NSView!
+    private var logoIconView: NSImageView!
+    private var vramTrackView: NSView!
+    private var appNameLabelView: NSTextField!
+    private var appSubLabelView: NSTextField!
+    private var systemLabelView: NSTextField!
+    private var vramLabelView: NSTextField!
+    private var bottomAreaView: NSView!
     
     // VRAM monitoring
     private var vramFillView: NSView!
@@ -179,6 +188,7 @@ class GameWindowController: NSWindowController {
         setupSidebar()
         setupMainArea()
         setupConstraints()
+        applyTheme()
         
         // Initialize toast notifications with main area as parent
         ToastManager.shared.setParentView(mainAreaView)
@@ -292,7 +302,7 @@ class GameWindowController: NSWindowController {
         sidebarView = NSView()
         sidebarView.translatesAutoresizingMaskIntoConstraints = false
         sidebarView.wantsLayer = true
-        sidebarView.layer?.backgroundColor = DesignColors.background.cgColor
+        sidebarView.layer?.backgroundColor = DesignColors.sidebarBackground.cgColor
         contentView.addSubview(sidebarView)
         
         // === Right Border ===
@@ -300,35 +310,37 @@ class GameWindowController: NSWindowController {
         rightBorder.translatesAutoresizingMaskIntoConstraints = false
         rightBorder.wantsLayer = true
         rightBorder.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        rightBorder.identifier = NSUserInterfaceItemIdentifier("sidebarBorder")
         sidebarView.addSubview(rightBorder)
         
         // === Logo/Header Area ===
         let headerView = NSView()
         headerView.translatesAutoresizingMaskIntoConstraints = false
-        headerView.wantsLayer = true
         sidebarView.addSubview(headerView)
+        sidebarHeaderView = headerView
         
         // Bottom border for header
         let headerBorder = NSView()
         headerBorder.translatesAutoresizingMaskIntoConstraints = false
         headerBorder.wantsLayer = true
         headerBorder.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        headerBorder.identifier = NSUserInterfaceItemIdentifier("sidebarBorder")
         headerView.addSubview(headerBorder)
         
         // Logo icon (white box with icon)
         let logoContainer = NSView()
         logoContainer.translatesAutoresizingMaskIntoConstraints = false
         logoContainer.wantsLayer = true
-        logoContainer.layer?.backgroundColor = NSColor.white.cgColor
         logoContainer.layer?.cornerRadius = 6
         headerView.addSubview(logoContainer)
+        logoContainerView = logoContainer
         
         let logoIcon = NSImageView()
         logoIcon.translatesAutoresizingMaskIntoConstraints = false
         logoIcon.image = NSImage(systemSymbolName: "flask.fill", accessibilityDescription: nil)
-        logoIcon.contentTintColor = DesignColors.background
         logoIcon.symbolConfiguration = .init(pointSize: 12, weight: .bold)
         logoContainer.addSubview(logoIcon)
+        logoIconView = logoIcon
         
         // App name
         let appNameLabel = NSTextField(labelWithString: "IKEMEN")
@@ -336,12 +348,14 @@ class GameWindowController: NSWindowController {
         appNameLabel.font = DesignFonts.body(size: 14)
         appNameLabel.textColor = DesignColors.textPrimary
         headerView.addSubview(appNameLabel)
+        appNameLabelView = appNameLabel
         
         let appSubLabel = NSTextField(labelWithString: "Lab")
         appSubLabel.translatesAutoresizingMaskIntoConstraints = false
         appSubLabel.font = DesignFonts.label(size: 14)
         appSubLabel.textColor = DesignColors.textDisabled
         headerView.addSubview(appSubLabel)
+        appSubLabelView = appSubLabel
         
         // === Navigation Items ===
         let navStack = NSStackView()
@@ -374,12 +388,17 @@ class GameWindowController: NSWindowController {
         }
         
         // === Bottom Section ===
+        let bottomArea = NSView()
+        bottomArea.translatesAutoresizingMaskIntoConstraints = false
+        sidebarView.addSubview(bottomArea)
+        bottomAreaView = bottomArea
+        
         let bottomStack = NSStackView()
         bottomStack.translatesAutoresizingMaskIntoConstraints = false
         bottomStack.orientation = .vertical
         bottomStack.spacing = 12
         bottomStack.alignment = .leading
-        sidebarView.addSubview(bottomStack)
+        bottomArea.addSubview(bottomStack)
         
         // System info section
         let systemLabel = NSTextField(labelWithString: "SYSTEM")
@@ -388,6 +407,7 @@ class GameWindowController: NSWindowController {
         let kerning: [NSAttributedString.Key: Any] = [.kern: 2.0]
         systemLabel.attributedStringValue = NSAttributedString(string: "SYSTEM", attributes: kerning)
         bottomStack.addArrangedSubview(systemLabel)
+        systemLabelView = systemLabel
         
         // VRAM progress bar
         let vramContainer = NSView()
@@ -397,14 +417,14 @@ class GameWindowController: NSWindowController {
         let vramTrack = NSView()
         vramTrack.translatesAutoresizingMaskIntoConstraints = false
         vramTrack.wantsLayer = true
-        vramTrack.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         vramTrack.layer?.cornerRadius = 3
         vramContainer.addSubview(vramTrack)
+        vramTrackView = vramTrack
         
         vramFillView = NSView()
         vramFillView.translatesAutoresizingMaskIntoConstraints = false
         vramFillView.wantsLayer = true
-        vramFillView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        vramFillView.layer?.backgroundColor = DesignColors.textSecondary.cgColor
         vramFillView.layer?.cornerRadius = 3
         vramTrack.addSubview(vramFillView)
         
@@ -419,6 +439,7 @@ class GameWindowController: NSWindowController {
         vramLabel.font = NSFont.systemFont(ofSize: 11)
         vramLabel.textColor = DesignColors.textTertiary
         vramLabelStack.addArrangedSubview(vramLabel)
+        vramLabelView = vramLabel
         
         vramPercentLabel = NSTextField(labelWithString: "—")
         vramPercentLabel.font = NSFont.systemFont(ofSize: 11)
@@ -484,18 +505,23 @@ class GameWindowController: NSWindowController {
             collectionsSidebarSection.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding),
             
             // Bottom stack
-            bottomStack.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor, constant: sidebarPadding),
-            bottomStack.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor, constant: -sidebarPadding),
-            bottomStack.bottomAnchor.constraint(equalTo: sidebarView.bottomAnchor, constant: -sidebarPadding),
+            bottomArea.leadingAnchor.constraint(equalTo: sidebarView.leadingAnchor),
+            bottomArea.trailingAnchor.constraint(equalTo: sidebarView.trailingAnchor),
+            bottomArea.bottomAnchor.constraint(equalTo: sidebarView.bottomAnchor),
+            bottomArea.topAnchor.constraint(greaterThanOrEqualTo: collectionsSidebarSection.bottomAnchor, constant: 20),
+            
+            bottomStack.leadingAnchor.constraint(equalTo: bottomArea.leadingAnchor, constant: sidebarPadding),
+            bottomStack.trailingAnchor.constraint(equalTo: bottomArea.trailingAnchor, constant: -sidebarPadding),
+            bottomStack.bottomAnchor.constraint(equalTo: bottomArea.bottomAnchor, constant: -sidebarPadding),
             
             // VRAM container
             vramContainer.widthAnchor.constraint(equalTo: bottomStack.widthAnchor),
             vramContainer.heightAnchor.constraint(equalToConstant: 30),
             
-            vramTrack.topAnchor.constraint(equalTo: vramContainer.topAnchor),
-            vramTrack.leadingAnchor.constraint(equalTo: vramContainer.leadingAnchor),
-            vramTrack.trailingAnchor.constraint(equalTo: vramContainer.trailingAnchor),
-            vramTrack.heightAnchor.constraint(equalToConstant: 6),
+        vramTrack.topAnchor.constraint(equalTo: vramContainer.topAnchor),
+        vramTrack.leadingAnchor.constraint(equalTo: vramContainer.leadingAnchor),
+        vramTrack.trailingAnchor.constraint(equalTo: vramContainer.trailingAnchor),
+        vramTrack.heightAnchor.constraint(equalToConstant: 6),
             
             vramFillView.topAnchor.constraint(equalTo: vramTrack.topAnchor),
             vramFillView.bottomAnchor.constraint(equalTo: vramTrack.bottomAnchor),
@@ -577,16 +603,17 @@ class GameWindowController: NSWindowController {
             let badgeContainer = NSView()
             badgeContainer.translatesAutoresizingMaskIntoConstraints = false
             badgeContainer.wantsLayer = true
-            badgeContainer.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
+            badgeContainer.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
             badgeContainer.layer?.cornerRadius = 4
             badgeContainer.layer?.borderWidth = 1
             badgeContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
+            badgeContainer.identifier = NSUserInterfaceItemIdentifier("navBadgeContainer")
             badgeContainer.setContentHuggingPriority(.required, for: .horizontal)
             
             let badge = NSTextField(labelWithString: "0")
             badge.translatesAutoresizingMaskIntoConstraints = false
             badge.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-            badge.textColor = DesignColors.textDisabled
+            badge.textColor = DesignColors.textTertiary
             badge.alignment = .center
             badge.backgroundColor = .clear
             badge.isBordered = false
@@ -637,6 +664,7 @@ class GameWindowController: NSWindowController {
     
     private func updateNewNavButtonAppearance(_ button: NSButton, for item: NavItem, isHovered: Bool) {
         let isSelected = selectedNavItem == item
+        let unselectedTextColor = AppSettings.shared.useLightTheme ? DesignColors.textTertiary : DesignColors.textSecondary
         
         guard let container = button.subviews.first(where: { $0.identifier?.rawValue == "navContainer" }) else { return }
         
@@ -644,12 +672,26 @@ class GameWindowController: NSWindowController {
             container.layer?.backgroundColor = DesignColors.selectedBackground.cgColor
             container.layer?.borderWidth = 1
             container.layer?.borderColor = DesignColors.borderSubtle.cgColor
+            applyNavSelectionShadow(to: container, isSelected: true)
         } else if isHovered {
             container.layer?.backgroundColor = DesignColors.hoverBackground.cgColor
             container.layer?.borderWidth = 0
+            applyNavSelectionShadow(to: container, isSelected: false)
         } else {
             container.layer?.backgroundColor = NSColor.clear.cgColor
             container.layer?.borderWidth = 0
+            applyNavSelectionShadow(to: container, isSelected: false)
+        }
+        
+        if let stack = container.subviews.compactMap({ $0 as? NSStackView }).first {
+            for view in stack.arrangedSubviews {
+                if let iconView = view as? NSImageView, iconView.identifier?.rawValue == "navIcon" {
+                    iconView.contentTintColor = isSelected || isHovered ? DesignColors.textPrimary : unselectedTextColor
+                }
+                if let label = view as? NSTextField, label.identifier?.rawValue == "navLabel" {
+                    label.textColor = isSelected || isHovered ? DesignColors.textPrimary : unselectedTextColor
+                }
+            }
         }
     }
     
@@ -666,6 +708,8 @@ class GameWindowController: NSWindowController {
     private func selectNavItem(_ item: NavItem?) {
         selectedNavItem = item
         
+        let unselectedTextColor = AppSettings.shared.useLightTheme ? DesignColors.textTertiary : DesignColors.textSecondary
+        
         // Update button appearances using new styling
         for (navItem, button) in navButtons {
             let isSelected = navItem == item
@@ -677,19 +721,21 @@ class GameWindowController: NSWindowController {
                 container.layer?.backgroundColor = DesignColors.selectedBackground.cgColor
                 container.layer?.borderWidth = 1
                 container.layer?.borderColor = DesignColors.borderSubtle.cgColor
+                applyNavSelectionShadow(to: container, isSelected: true)
             } else {
                 container.layer?.backgroundColor = NSColor.clear.cgColor
                 container.layer?.borderWidth = 0
+                applyNavSelectionShadow(to: container, isSelected: false)
             }
             
             // Update icon and label colors
             if let stack = container.subviews.compactMap({ $0 as? NSStackView }).first {
                 for view in stack.arrangedSubviews {
                     if let iconView = view as? NSImageView, iconView.identifier?.rawValue == "navIcon" {
-                        iconView.contentTintColor = isSelected ? DesignColors.textPrimary : DesignColors.textSecondary
+                        iconView.contentTintColor = isSelected ? DesignColors.textPrimary : unselectedTextColor
                     }
                     if let label = view as? NSTextField, label.identifier?.rawValue == "navLabel" {
-                        label.textColor = isSelected ? DesignColors.textPrimary : DesignColors.textSecondary
+                        label.textColor = isSelected ? DesignColors.textPrimary : unselectedTextColor
                     }
                 }
             }
@@ -698,6 +744,22 @@ class GameWindowController: NSWindowController {
         // Update main area content
         updateMainAreaContent()
     }
+
+    private func applyNavSelectionShadow(to view: NSView, isSelected: Bool) {
+        guard AppSettings.shared.useLightTheme else {
+            view.layer?.shadowOpacity = 0
+            return
+        }
+        
+        if isSelected {
+            view.layer?.shadowColor = NSColor.black.withAlphaComponent(0.08).cgColor
+            view.layer?.shadowOffset = CGSize(width: 0, height: 1)
+            view.layer?.shadowRadius = 2
+            view.layer?.shadowOpacity = 1
+        } else {
+            view.layer?.shadowOpacity = 0
+        }
+    }
     
     // MARK: - Main Area Setup
     
@@ -705,7 +767,7 @@ class GameWindowController: NSWindowController {
         mainAreaView = NSView()
         mainAreaView.translatesAutoresizingMaskIntoConstraints = false
         mainAreaView.wantsLayer = true
-        mainAreaView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.2).cgColor // bg-black/20 from HTML
+        mainAreaView.layer?.backgroundColor = DesignColors.background.cgColor
         contentView.addSubview(mainAreaView)
         
         // Content Header (shared across all views)
@@ -1504,6 +1566,17 @@ class GameWindowController: NSWindowController {
         ])
         stackView.addArrangedSubview(audioSection)
         
+        // Appearance Section
+        let appearanceSection = createSettingsSection(title: "Appearance", settings: [
+            createAppToggleSetting(
+                label: "Light Mode",
+                description: "Switch between dark and light theme",
+                getValue: { AppSettings.shared.useLightTheme },
+                setValue: { AppSettings.shared.useLightTheme = $0 }
+            ),
+        ])
+        stackView.addArrangedSubview(appearanceSection)
+        
         // Advanced Features Section
         let advancedSection = createSettingsSection(title: "Advanced", settings: [
             createAppToggleSetting(
@@ -2160,12 +2233,114 @@ class GameWindowController: NSWindowController {
                 self?.updateMainAreaContent()
             }
             .store(in: &cancellables)
+        
+        // Observe theme changes to update UI colors
+        NotificationCenter.default.publisher(for: .themeChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.applyTheme()
+            }
+            .store(in: &cancellables)
     }
     
     private func updateNavItemCount(_ item: NavItem, count: Int) {
         // In the new design, counts are shown in separate badge labels
         guard let badge = navLabels[item] else { return }
         badge.stringValue = "\(count)"
+    }
+    
+    // MARK: - Theme Application
+    
+    /// Apply current theme colors to all UI elements
+    private func applyTheme() {
+        guard let window = window else { return }
+        
+        window.appearance = AppSettings.shared.useLightTheme ? NSAppearance(named: .aqua) : NSAppearance(named: .darkAqua)
+        
+        // Window background
+        window.backgroundColor = DesignColors.background
+        contentView?.layer?.backgroundColor = DesignColors.background.cgColor
+        sidebarView?.layer?.backgroundColor = DesignColors.sidebarBackground.cgColor
+        mainAreaView?.layer?.backgroundColor = DesignColors.background.cgColor
+
+        if AppSettings.shared.useLightTheme {
+            logoContainerView?.layer?.backgroundColor = DesignColors.zinc900.cgColor
+            logoIconView?.contentTintColor = NSColor.white
+        } else {
+            logoContainerView?.layer?.backgroundColor = NSColor.white.cgColor
+            logoIconView?.contentTintColor = DesignColors.background
+        }
+        
+        vramTrackView?.layer?.backgroundColor = AppSettings.shared.useLightTheme ? DesignColors.zinc200.cgColor : DesignColors.cardBackground.cgColor
+        vramFillView?.layer?.backgroundColor = AppSettings.shared.useLightTheme ? DesignColors.zinc400.cgColor : NSColor.white.withAlphaComponent(0.2).cgColor
+        appNameLabelView?.textColor = DesignColors.textPrimary
+        appSubLabelView?.textColor = DesignColors.textDisabled
+        systemLabelView?.textColor = DesignColors.textDisabled
+        vramLabelView?.textColor = DesignColors.textTertiary
+        vramPercentLabel?.textColor = DesignColors.textTertiary
+        
+        // Update all nav buttons and labels
+        let unselectedTextColor = AppSettings.shared.useLightTheme ? DesignColors.textTertiary : DesignColors.textSecondary
+        
+        for (item, button) in navButtons {
+            let isSelected = selectedNavItem == item
+            if let container = button.subviews.first(where: { $0.identifier?.rawValue == "navContainer" }) {
+                container.layer?.backgroundColor = isSelected ? DesignColors.selectedBackground.cgColor : NSColor.clear.cgColor
+                container.layer?.borderColor = isSelected ? DesignColors.borderSubtle.cgColor : NSColor.clear.cgColor
+                applyNavSelectionShadow(to: container, isSelected: isSelected)
+            }
+            if let iconView = button.subviews.compactMap({ $0 as? NSImageView }).first {
+                iconView.contentTintColor = isSelected ? DesignColors.textPrimary : unselectedTextColor
+            }
+            if let badgeContainer = button.viewWithIdentifier(NSUserInterfaceItemIdentifier("navBadgeContainer")) {
+                badgeContainer.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
+                badgeContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
+            }
+        }
+        
+        for (_, label) in navLabels {
+            // Badge labels are small count indicators
+            label.textColor = DesignColors.textTertiary
+        }
+        
+        // Update sidebar borders - thin views are borders (check recursively)
+        updateBorderColors(in: sidebarView)
+        
+        // Refresh the current view to rebuild with new colors
+        if let selected = selectedNavItem {
+            selectNavItem(selected)
+        }
+        
+        // Force redraw
+        window.contentView?.needsDisplay = true
+    }
+    
+    private func updateBorderColors(in view: NSView?) {
+        guard let view = view else { return }
+        for subview in view.subviews {
+            if subview.identifier?.rawValue == "sidebarBorder" {
+                subview.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+            }
+            updateBorderColors(in: subview)
+        }
+    }
+    
+    private func updateTextColorsRecursively(in view: NSView?) {
+        guard let view = view else { return }
+        for subview in view.subviews {
+            if let textField = subview as? NSTextField {
+                // Check if it's likely a primary/header text (white in dark, dark in light)
+                let currentAlpha = textField.textColor?.alphaComponent ?? 1.0
+                if currentAlpha < 0.5 {
+                    // Disabled/placeholder
+                    textField.textColor = DesignColors.textDisabled
+                } else {
+                    // Assume primary text for now; labels will be rebuilt anyway
+                    textField.textColor = DesignColors.textPrimary
+                }
+            }
+            updateTextColorsRecursively(in: subview)
+        }
     }
     
     private func updateUI(for state: EngineState) {
@@ -2614,7 +2789,7 @@ class GameWindowController: NSWindowController {
         } else if percentage > 70 {
             vramFillView.layer?.backgroundColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0).cgColor
         } else {
-            vramFillView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+            vramFillView.layer?.backgroundColor = AppSettings.shared.useLightTheme ? DesignColors.zinc400.cgColor : NSColor.white.withAlphaComponent(0.2).cgColor
         }
         
         // Schedule next update (every 2 seconds)

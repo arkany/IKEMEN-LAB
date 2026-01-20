@@ -24,6 +24,7 @@ public final class AppSettings {
             Keys.defaultStageBoundRight: 150,
             Keys.hasCompletedFRE: false,
             Keys.importMode: ImportMode.freshStart.rawValue,
+            Keys.useLightTheme: false,
         ])
     }
     
@@ -37,6 +38,7 @@ public final class AppSettings {
         static let hasCompletedFRE = "hasCompletedFRE"
         static let ikemenGOPath = "ikemenGOPath"
         static let importMode = "importMode"
+        static let useLightTheme = "useLightTheme"
     }
     
     // MARK: - First Run Experience
@@ -128,12 +130,24 @@ public final class AppSettings {
         get { defaults.integer(forKey: Keys.defaultStageBoundRight) }
         set { defaults.set(newValue, forKey: Keys.defaultStageBoundRight) }
     }
+    
+    // MARK: - Appearance
+    
+    /// Whether to use light theme (false = dark theme, the default)
+    public var useLightTheme: Bool {
+        get { defaults.bool(forKey: Keys.useLightTheme) }
+        set {
+            defaults.set(newValue, forKey: Keys.useLightTheme)
+            NotificationCenter.default.post(name: .themeChanged, object: nil)
+        }
+    }
 }
 
 // MARK: - Notifications
 
 public extension Notification.Name {
     static let settingsChanged = Notification.Name("AppSettingsChanged")
+    static let themeChanged = Notification.Name("AppThemeChanged")
 }
 
 // MARK: - Protocol Conformance
