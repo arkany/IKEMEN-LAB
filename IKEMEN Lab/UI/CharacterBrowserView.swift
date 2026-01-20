@@ -243,7 +243,17 @@ class CharacterBrowserView: NSView {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.collectionView.reloadData()
+            guard let self = self else { return }
+            // Update all visible items (both grid and list)
+            for indexPath in self.collectionView.indexPathsForVisibleItems() {
+                if let item = self.collectionView.item(at: indexPath) as? CharacterCollectionViewItem {
+                    item.applyTheme()
+                } else if let item = self.collectionView.item(at: indexPath) as? CharacterListItem {
+                    item.applyTheme()
+                }
+            }
+            // Also update the list view header and other components
+            self.collectionView.reloadData()
         }
     }
     
@@ -941,6 +951,14 @@ class GradientOverlayView: NSView {
         gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)    // top
     }
     
+    func applyTheme() {
+        gradientLayer.colors = [
+            DesignColors.panelBackground.cgColor,
+            DesignColors.panelBackground.withAlphaComponent(0.2).cgColor,
+            NSColor.clear.cgColor
+        ]
+    }
+    
     override func layout() {
         super.layout()
         CATransaction.begin()
@@ -954,7 +972,10 @@ class GradientOverlayView: NSView {
     }
     
     override func updateLayer() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         gradientLayer.frame = bounds
+        CATransaction.commit()
     }
 }
 
@@ -1296,6 +1317,9 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         
         // Update tags (show up to 3)
         updateTags(character.inferredTags)
+        
+        // Apply current theme colors
+        applyTheme()
     }
     
     private func updateTags(_ tags: [String]) {
@@ -1359,11 +1383,37 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
             statusDot.layer?.shadowColor = DesignColors.positive.cgColor
         case .warning:
             statusDot.isHidden = false
-            statusDot.layer?.backgroundColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0).cgColor
-            statusDot.layer?.shadowColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0).cgColor
+            statusDot.layer?.backgroundColor = DesignColors.warning.cgColor
+            statusDot.layer?.shadowColor = DesignColors.warning.cgColor
         case .none:
             statusDot.isHidden = true
         }
+    }
+    
+    /// Update all theme-dependent colors and gradients
+    func applyTheme() {
+        // Update gradient overlay
+        gradientOverlay.applyTheme()
+        
+        // Update container background and border
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.1).cgColor
+        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        
+        // Update portrait placeholder background
+        portraitImageView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
+        
+        // Update text colors
+        placeholderLabel.textColor = DesignColors.textPrimary.withAlphaComponent(0.05)
+        nameLabel.textColor = DesignColors.textPrimary
+        authorLabel.textColor = DesignColors.textTertiary
+        
+        // Update status dot color
+        statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
+        statusDot.layer?.shadowColor = DesignColors.positive.cgColor
+        
+        // Update unregistered badge
+        unregisteredBadge.layer?.backgroundColor = DesignColors.red900.cgColor
+        unregisteredBadge.layer?.borderColor = DesignColors.red400.withAlphaComponent(0.3).cgColor
     }
     
     override func prepareForReuse() {
@@ -1390,6 +1440,9 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         duplicateBadge.isHidden = true
         
         view.toolTip = nil
+        
+        // Apply current theme colors
+        applyTheme()
     }
 }
 
@@ -1906,6 +1959,9 @@ class CharacterListItem: NSCollectionViewItem {
             containerView.layer?.opacity = 1.0
             view.toolTip = nil
         }
+        
+        // Apply base theme colors (borders, etc.)
+        applyTheme()
     }
     
     func setPortrait(_ image: NSImage?) {
@@ -1921,10 +1977,40 @@ class CharacterListItem: NSCollectionViewItem {
             statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
         case .warning:
             statusDot.isHidden = false
-            statusDot.layer?.backgroundColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0).cgColor
+            statusDot.layer?.backgroundColor = DesignColors.warning.cgColor
         case .none:
             statusDot.isHidden = true
         }
+    }
+    
+    /// Update all theme-dependent colors
+    func applyTheme() {
+        // Update border line
+        if let borderLine = containerView.subviews.first(where: { $0.identifier?.rawValue == "listBorderLine" }) {
+            borderLine.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        }
+        
+        // Update icon view
+        iconView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        
+        // Update text colors
+        nameLabel.textColor = DesignColors.textPrimary
+        pathLabel.textColor = DesignColors.textTertiary
+        authorLabel.textColor = DesignColors.textSecondary
+        versionLabel.textColor = DesignColors.textSecondary
+        dateLabel.textColor = DesignColors.textTertiary
+        iconInitialLabel.textColor = DesignColors.textTertiary
+        
+        // Update series badge
+        seriesBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        seriesBadge.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        seriesLabel.textColor = DesignColors.textSecondary
+        
+        // Update status dot
+        statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
+        
+        // Update more button
+        moreButton.contentTintColor = DesignColors.textTertiary
     }
     
     override func prepareForReuse() {
@@ -1947,10 +2033,9 @@ class CharacterListItem: NSCollectionViewItem {
         isHovered = false
         updateAppearance(animated: false)
         
-        // Reset badge styling to default
-        seriesBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        seriesBadge.layer?.borderColor = DesignColors.borderSubtle.cgColor
-        seriesLabel.textColor = DesignColors.textSecondary
+        // Apply current theme colors
+        applyTheme()
+        
         view.toolTip = nil
     }
     

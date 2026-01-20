@@ -202,8 +202,21 @@ public struct DesignColors {
         isLight ? NSColor(red: 0xfe/255.0, green: 0xe2/255.0, blue: 0xe2/255.0, alpha: 1.0) : NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 0.15)
     }
     
+    public static var info: NSColor {
+        isLight ? NSColor(red: 0x25/255.0, green: 0x63/255.0, blue: 0xeb/255.0, alpha: 1.0) : NSColor(red: 0x3b/255.0, green: 0x82/255.0, blue: 0xf6/255.0, alpha: 1.0)
+    }
+    
+    public static var toastBackground: NSColor {
+        isLight ? NSColor.white : DarkThemeColors.zinc800
+    }
+    
+    public static var toastBorder: NSColor {
+        isLight ? LightThemeColors.zinc200 : NSColor.white.withAlphaComponent(0.1)
+    }
+    
     public static var red900: NSColor { NSColor(red: 0x7f/255.0, green: 0x1d/255.0, blue: 0x1d/255.0, alpha: 1.0) }
     public static var red400: NSColor { NSColor(red: 0xf8/255.0, green: 0x71/255.0, blue: 0x71/255.0, alpha: 1.0) }
+    public static var red300: NSColor { NSColor(red: 0xfc/255.0, green: 0xa5/255.0, blue: 0xa5/255.0, alpha: 1.0) }
     public static var red200: NSColor { NSColor(red: 0xfe/255.0, green: 0xca/255.0, blue: 0xca/255.0, alpha: 1.0) }
     
     public static var badgeCharacter: NSColor {
@@ -271,11 +284,16 @@ public struct DesignColors {
     }
 
     public static var imageOverlay: NSColor {
-        isLight ? NSColor.black.withAlphaComponent(0.7) : NSColor.black.withAlphaComponent(0.9)
+        isLight ? NSColor.white.withAlphaComponent(0.85) : NSColor.black.withAlphaComponent(0.9)
     }
 
     public static var imageLabelBackground: NSColor {
-        isLight ? NSColor.black.withAlphaComponent(0.45) : NSColor.black.withAlphaComponent(0.6)
+        isLight ? LightThemeColors.zinc200.withAlphaComponent(0.8) : NSColor.black.withAlphaComponent(0.6)
+    }
+    
+    /// Text color for labels over image overlays (opposite of background)
+    public static var textOnImageOverlay: NSColor {
+        isLight ? LightThemeColors.zinc900 : NSColor.white
     }
 
     public static var buttonSecondaryBackground: NSColor {

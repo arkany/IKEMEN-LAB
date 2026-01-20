@@ -207,7 +207,16 @@ class ScreenpackBrowserView: NSView {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.collectionView.reloadData()
+            guard let self = self else { return }
+            // Update all visible items
+            for indexPath in self.collectionView.indexPathsForVisibleItems() {
+                if let item = self.collectionView.item(at: indexPath) as? ScreenpackGridItem {
+                    item.applyTheme()
+                } else if let item = self.collectionView.item(at: indexPath) as? ScreenpackListItem {
+                    item.applyTheme()
+                }
+            }
+            self.collectionView.reloadData()
         }
     }
     
@@ -452,14 +461,14 @@ class ScreenpackGridItem: NSCollectionViewItem {
         resolutionBadge = NSView()
         resolutionBadge.translatesAutoresizingMaskIntoConstraints = false
         resolutionBadge.wantsLayer = true
-        resolutionBadge.layer?.backgroundColor = DesignColors.imageOverlay.withAlphaComponent(0.6).cgColor
+        resolutionBadge.layer?.backgroundColor = DesignColors.imageLabelBackground.cgColor
         resolutionBadge.layer?.cornerRadius = 4
         containerView.addSubview(resolutionBadge)
         
         resolutionLabel = NSTextField(labelWithString: "")
         resolutionLabel.translatesAutoresizingMaskIntoConstraints = false
         resolutionLabel.font = DesignFonts.caption(size: 10)
-        resolutionLabel.textColor = DesignColors.textSecondary
+        resolutionLabel.textColor = DesignColors.textOnImageOverlay
         resolutionLabel.isBordered = false
         resolutionLabel.isEditable = false
         resolutionLabel.drawsBackground = false
@@ -483,20 +492,20 @@ class ScreenpackGridItem: NSCollectionViewItem {
         warningLabel.drawsBackground = false
         warningBadge.addSubview(warningLabel)
         
-        // Name label - bottom-left, white, semibold
+        // Name label - bottom-left, uses textOnImageOverlay for proper contrast
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = DesignFonts.body(size: 14)
-        nameLabel.textColor = DesignColors.textOnAccent
+        nameLabel.textColor = DesignColors.textOnImageOverlay
         nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.maximumNumberOfLines = 1
         containerView.addSubview(nameLabel)
         
-        // Author label - below name, zinc-400
+        // Author label - below name
         authorLabel = NSTextField(labelWithString: "")
         authorLabel.translatesAutoresizingMaskIntoConstraints = false
         authorLabel.font = DesignFonts.caption(size: 11)
-        authorLabel.textColor = DesignColors.textTertiary
+        authorLabel.textColor = DesignColors.textOnImageOverlay.withAlphaComponent(0.7)
         authorLabel.lineBreakMode = .byTruncatingTail
         authorLabel.maximumNumberOfLines = 1
         containerView.addSubview(authorLabel)
@@ -549,7 +558,11 @@ class ScreenpackGridItem: NSCollectionViewItem {
     
     override func viewDidLayout() {
         super.viewDidLayout()
+        // Disable implicit animations for frame changes during resize
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         gradientLayer.frame = containerView.bounds
+        CATransaction.commit()
         setupTrackingArea()
     }
     
@@ -655,6 +668,9 @@ class ScreenpackGridItem: NSCollectionViewItem {
         // Update appearance for active state
         updateAppearance(animated: false)
         
+        // Apply current theme colors
+        applyTheme()
+        
         // Check cache first
         let cacheKey = "screenpack:\(screenpack.id)"
         if let cached = ImageCache.shared.get(cacheKey) {
@@ -677,6 +693,42 @@ class ScreenpackGridItem: NSCollectionViewItem {
         }
     }
     
+    /// Update all theme-dependent colors
+    func applyTheme() {
+        // Container
+        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        containerView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.1).cgColor
+        
+        // Preview background
+        previewImageView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.5).cgColor
+        
+        // Placeholder text
+        placeholderLabel.textColor = DesignColors.textDisabled.withAlphaComponent(0.3)
+        
+        // Gradient overlay
+        gradientLayer.colors = [
+            NSColor.clear.cgColor,
+            NSColor.clear.cgColor,
+            DesignColors.imageOverlay.cgColor
+        ]
+        
+        // Status dot
+        statusDot.layer?.backgroundColor = DesignColors.positive.cgColor
+        statusDot.layer?.shadowColor = DesignColors.positive.cgColor
+        
+        // Resolution badge - use imageLabelBackground for proper contrast
+        resolutionBadge.layer?.backgroundColor = DesignColors.imageLabelBackground.cgColor
+        resolutionLabel.textColor = DesignColors.textOnImageOverlay
+        
+        // Warning badge
+        warningBadge.layer?.backgroundColor = DesignColors.warningBackground.cgColor
+        warningLabel.textColor = DesignColors.warning
+        
+        // Text labels - use textOnImageOverlay for proper contrast over gradient
+        nameLabel.textColor = DesignColors.textOnImageOverlay
+        authorLabel.textColor = DesignColors.textOnImageOverlay.withAlphaComponent(0.7)
+    }
+    
     override func prepareForReuse() {
         super.prepareForReuse()
         previewImageView.image = nil
@@ -692,11 +744,10 @@ class ScreenpackGridItem: NSCollectionViewItem {
         isHovered = false
         isSelected = false
         onActivate = nil
-        
-        // Reset appearance
-        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
-        containerView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.1).cgColor
         containerView.layer?.shadowOpacity = 0
+        
+        // Apply current theme colors
+        applyTheme()
     }
 }
 
@@ -1093,6 +1144,9 @@ class ScreenpackListItem: NSCollectionViewItem {
         // Update initial appearance
         updateAppearance(animated: false)
         
+        // Apply current theme colors
+        applyTheme()
+        
         // Load thumbnail
         let cacheKey = "screenpack:\(screenpack.id)"
         if let cached = ImageCache.shared.get(cacheKey) {
@@ -1122,10 +1176,8 @@ class ScreenpackListItem: NSCollectionViewItem {
         placeholderLabel.stringValue = ""
         placeholderLabel.isHidden = false
         nameLabel.stringValue = ""
-        nameLabel.textColor = DesignColors.textPrimary
         typeLabel.stringValue = ""
         descriptionLabel.stringValue = ""
-        descriptionLabel.textColor = DesignColors.textTertiary
         versionLabel.stringValue = ""
         resolutionLabel.stringValue = ""
         activeBadge.isHidden = true
@@ -1136,11 +1188,35 @@ class ScreenpackListItem: NSCollectionViewItem {
         isHovered = false
         isSelected = false
         onActivate = nil
+        containerView.layer?.shadowOpacity = 0
         
-        // Reset appearance
+        // Apply current theme colors
+        applyTheme()
+    }
+    
+    /// Update all theme-dependent colors
+    func applyTheme() {
+        // Container
         containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
         containerView.layer?.backgroundColor = DesignColors.cardBackground.withAlphaComponent(0.2).cgColor
-        containerView.layer?.shadowOpacity = 0
+        
+        // Text colors
+        nameLabel.textColor = DesignColors.textPrimary
+        typeLabel.textColor = DesignColors.textTertiary
+        descriptionLabel.textColor = DesignColors.textTertiary
+        versionLabel.textColor = DesignColors.textTertiary
+        resolutionLabel.textColor = DesignColors.textTertiary
+        
+        // Active badge
+        activeBadge.layer?.backgroundColor = DesignColors.positive.withAlphaComponent(0.1).cgColor
+        activeBadge.layer?.borderColor = DesignColors.positive.withAlphaComponent(0.3).cgColor
+        activeBadgeLabel.textColor = DesignColors.positive
+        
+        // Warning badge
+        warningBadge.layer?.backgroundColor = DesignColors.warningBackground.cgColor
+        warningLabel.textColor = DesignColors.warning
+        
+        // Action button
         actionButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
         actionButton.contentTintColor = DesignColors.textSecondary
     }

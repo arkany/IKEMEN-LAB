@@ -268,7 +268,7 @@ class CharacterDetailsView: NSView {
         heroNameLabel = NSTextField(labelWithString: "")
         heroNameLabel.translatesAutoresizingMaskIntoConstraints = false
         heroNameLabel.font = NSFont.systemFont(ofSize: 28, weight: .bold)
-        heroNameLabel.textColor = .white
+        heroNameLabel.textColor = DesignColors.textPrimary
         heroNameLabel.lineBreakMode = .byTruncatingTail
         heroContainerView.addSubview(heroNameLabel)
         

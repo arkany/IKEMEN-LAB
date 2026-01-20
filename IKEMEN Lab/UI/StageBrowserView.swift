@@ -182,7 +182,14 @@ class StageBrowserView: NSView {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.collectionView.reloadData()
+            guard let self = self else { return }
+            // Update all visible items
+            for indexPath in self.collectionView.indexPathsForVisibleItems() {
+                if let item = self.collectionView.item(at: indexPath) as? StageListItem {
+                    item.applyTheme()
+                }
+            }
+            self.collectionView.reloadData()
         }
     }
     
@@ -454,6 +461,7 @@ class StageListItem: NSCollectionViewItem {
     static let identifier = NSUserInterfaceItemIdentifier("StageListItem")
     
     private var containerView: NSView!
+    private var borderLine: NSView!
     private var previewContainer: NSView!
     private var previewImageView: NSImageView!
     private var disabledOverlay: NSView!
@@ -509,7 +517,7 @@ class StageListItem: NSCollectionViewItem {
         view.addSubview(containerView)
         
         // Bottom border line
-        let borderLine = NSView()
+        borderLine = NSView()
         borderLine.translatesAutoresizingMaskIntoConstraints = false
         borderLine.wantsLayer = true
         borderLine.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
@@ -847,6 +855,9 @@ class StageListItem: NSCollectionViewItem {
         
         // Load preview image
         loadPreviewImage(for: stage)
+        
+        // Apply base theme colors (borders, etc.)
+        applyTheme()
     }
     
     private func configureAudioBadge(hasMusic: Bool) {
@@ -921,6 +932,28 @@ class StageListItem: NSCollectionViewItem {
         }
     }
     
+    /// Update all theme-dependent colors
+    func applyTheme() {
+        // Border line
+        borderLine.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        
+        // Preview container
+        previewContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        previewContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        
+        // Disabled overlay
+        disabledOverlay.layer?.backgroundColor = DesignColors.overlayDim.withAlphaComponent(0.2).cgColor
+        disabledIcon.contentTintColor = DesignColors.textDisabled
+        
+        // Text colors
+        nameLabel.textColor = DesignColors.textPrimary
+        pathLabel.textColor = DesignColors.textTertiary
+        dateLabel.textColor = DesignColors.textTertiary
+        
+        // More button
+        moreButton.contentTintColor = DesignColors.textSecondary
+    }
+    
     override func prepareForReuse() {
         super.prepareForReuse()
         previewImageView.image = nil
@@ -937,7 +970,8 @@ class StageListItem: NSCollectionViewItem {
         onMoreClicked = nil
         isHovered = false
         containerView.layer?.backgroundColor = NSColor.clear.cgColor
-        nameLabel.textColor = DesignColors.textPrimary
-        pathLabel.textColor = DesignColors.textTertiary
+        
+        // Apply current theme colors
+        applyTheme()
     }
 }

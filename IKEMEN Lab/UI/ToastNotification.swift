@@ -18,8 +18,8 @@ enum ToastType {
     var iconColor: NSColor {
         switch self {
         case .success: return DesignColors.positive
-        case .error: return NSColor(red: 0xef/255.0, green: 0x44/255.0, blue: 0x44/255.0, alpha: 1.0) // red-500
-        case .info: return NSColor(red: 0x3b/255.0, green: 0x82/255.0, blue: 0xf6/255.0, alpha: 1.0) // blue-500
+        case .error: return DesignColors.negative
+        case .info: return DesignColors.info
         }
     }
 }
@@ -54,11 +54,11 @@ class ToastNotificationView: NSView {
     private func setup() {
         wantsLayer = true
         
-        // Background: zinc-800 with border
-        layer?.backgroundColor = NSColor(red: 0x27/255.0, green: 0x27/255.0, blue: 0x2a/255.0, alpha: 1.0).cgColor
+        // Background: theme-aware with border
+        layer?.backgroundColor = DesignColors.toastBackground.cgColor
         layer?.cornerRadius = 12
         layer?.borderWidth = 1
-        layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
+        layer?.borderColor = DesignColors.toastBorder.cgColor
         
         // Shadow
         layer?.shadowColor = NSColor.black.cgColor

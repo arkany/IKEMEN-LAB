@@ -1797,7 +1797,11 @@ class HoverableStatCard: NSView, ThemeApplicable {
     
     override func layout() {
         super.layout()
+        // Disable implicit animations for frame changes during resize
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         gradientLayer?.frame = bounds
+        CATransaction.commit()
     }
     
     private func updateAppearance(animated: Bool) {
@@ -2156,8 +2160,12 @@ class HoverableLaunchCard: NSView, ThemeApplicable {
     
     override func layout() {
         super.layout()
+        // Disable implicit animations for frame changes during resize
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         gradientLayer?.frame = bounds
         hoverGradientLayer?.frame = bounds
+        CATransaction.commit()
     }
     
     private func updateAppearance(animated: Bool) {
