@@ -939,9 +939,15 @@ class GameWindowController: NSWindowController {
         collectionEditorView.onBackClicked = { [weak self] in
             self?.closeCollectionEditor()
         }
-        collectionEditorView.onActivateClicked = { collection in
+        collectionEditorView.onActivateClicked = { [weak self] collection in
             CollectionStore.shared.setActive(collection)
-            ToastManager.shared.showSuccess(title: "Activated: \(collection.name)")
+            ToastManager.shared.showSuccess(
+                title: "Activated: \(collection.name)",
+                actionTitle: "Launch",
+                action: { [weak self] in
+                    self?.launchIkemen()
+                }
+            )
         }
         collectionEditorView.onAddCharactersClicked = { [weak self] collection in
             self?.showCharacterPicker(for: collection)
@@ -1913,9 +1919,11 @@ class GameWindowController: NSWindowController {
             }
         }
         
-        // Present as sheet
+        // Present as sheet using beginSheet on window
         guard let window = window else { return }
-        window.contentViewController?.presentAsSheet(picker)
+        let sheetWindow = NSWindow(contentViewController: picker)
+        sheetWindow.styleMask = [.titled, .closable]
+        window.beginSheet(sheetWindow) { _ in }
     }
     
     private func showStagePicker(for collection: Collection) {
@@ -1927,9 +1935,11 @@ class GameWindowController: NSWindowController {
             }
         }
         
-        // Present as sheet
+        // Present as sheet using beginSheet on window
         guard let window = window else { return }
-        window.contentViewController?.presentAsSheet(picker)
+        let sheetWindow = NSWindow(contentViewController: picker)
+        sheetWindow.styleMask = [.titled, .closable]
+        window.beginSheet(sheetWindow) { _ in }
     }
     
     private func showScreenpackPicker(for collection: Collection) {
@@ -1941,38 +1951,80 @@ class GameWindowController: NSWindowController {
             }
         }
         
-        // Present as sheet
+        // Present as sheet using beginSheet on window
         guard let window = window else { return }
-        window.contentViewController?.presentAsSheet(picker)
+        let sheetWindow = NSWindow(contentViewController: picker)
+        sheetWindow.styleMask = [.titled, .closable]
+        window.beginSheet(sheetWindow) { _ in }
     }
     
+    private var newCollectionOverlay: NSView?
+    private var newCollectionSheet: NewCollectionSheet?
+    
     private func showNewCollectionDialog() {
-        let alert = NSAlert()
-        alert.messageText = "New Collection"
-        alert.informativeText = "Enter a name for the new collection:"
-        alert.addButton(withTitle: "Create")
-        alert.addButton(withTitle: "Cancel")
+        guard let window = window, let contentView = window.contentView else { return }
         
-        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
-        input.placeholderString = "Collection Name"
-        alert.accessoryView = input
+        // Create dimming overlay
+        let overlay = NSView(frame: contentView.bounds)
+        overlay.wantsLayer = true
+        overlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.5).cgColor
+        overlay.alphaValue = 0
+        overlay.autoresizingMask = [.width, .height]
+        contentView.addSubview(overlay)
+        newCollectionOverlay = overlay
         
-        alert.beginSheetModal(for: window!) { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            
-            let name = input.stringValue.trimmingCharacters(in: .whitespaces)
-            guard !name.isEmpty else {
-                self?.showAlert(title: "Invalid Name", message: "Please enter a collection name.")
-                return
-            }
-            
-            let collection = CollectionStore.shared.createCollection(name: name)
-            
+        // Create the sheet
+        let sheetWidth: CGFloat = 400
+        let sheetHeight: CGFloat = 360
+        let sheetX = (contentView.bounds.width - sheetWidth) / 2
+        let sheetY = (contentView.bounds.height - sheetHeight) / 2
+        
+        let sheet = NewCollectionSheet(frame: NSRect(x: sheetX, y: sheetY, width: sheetWidth, height: sheetHeight))
+        sheet.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
+        
+        sheet.onCancel = { [weak self] in
+            self?.dismissNewCollectionSheet()
+        }
+        
+        sheet.onCreateCollection = { [weak self] name, icon in
+            let collection = CollectionStore.shared.createCollection(name: name, icon: icon)
             ToastManager.shared.showSuccess(title: "Created collection: \(name)")
+            
+            self?.dismissNewCollectionSheet()
             
             // Select the new collection
             self?.collectionsSidebarSection.selectCollection(collection)
             self?.handleCollectionSelected(collection)
+        }
+        
+        contentView.addSubview(sheet)
+        newCollectionSheet = sheet
+        
+        // Animate in
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.25
+            overlay.animator().alphaValue = 1
+        }
+        sheet.animateAppear()
+        
+        // Click overlay to dismiss
+        let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(overlayClicked))
+        overlay.addGestureRecognizer(clickGesture)
+    }
+    
+    @objc private func overlayClicked() {
+        dismissNewCollectionSheet()
+    }
+    
+    private func dismissNewCollectionSheet() {
+        NSAnimationContext.runAnimationGroup { [weak self] context in
+            context.duration = 0.2
+            self?.newCollectionOverlay?.animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            self?.newCollectionOverlay?.removeFromSuperview()
+            self?.newCollectionSheet?.removeFromSuperview()
+            self?.newCollectionOverlay = nil
+            self?.newCollectionSheet = nil
         }
     }
     

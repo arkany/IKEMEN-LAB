@@ -55,6 +55,7 @@
 		047 /* Services.swift in Sources */ = {isa = PBXBuildFile; fileRef = 147 /* Services.swift */; };
 		048 /* DependencyContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148 /* DependencyContainer.swift */; };
 		049 /* Injectable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 149 /* Injectable.swift */; };
+		050 /* NewCollectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150 /* NewCollectionSheet.swift */; };
 		10AF34FB2F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 10AF34E32F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
 		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
@@ -143,6 +144,7 @@
 		147 /* Services.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services.swift; sourceTree = "<group>"; };
 		148 /* DependencyContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyContainer.swift; sourceTree = "<group>"; };
 		149 /* Injectable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Injectable.swift; sourceTree = "<group>"; };
+		150 /* NewCollectionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewCollectionSheet.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -313,6 +315,7 @@
 				143 /* StagePickerSheet.swift */,
 				144 /* ScreenpackPickerSheet.swift */,
 				146 /* AboutWindowController.swift */,
+				150 /* NewCollectionSheet.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -548,6 +551,7 @@
 				047 /* Services.swift in Sources */,
 				048 /* DependencyContainer.swift in Sources */,
 				049 /* Injectable.swift in Sources */,
+				050 /* NewCollectionSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

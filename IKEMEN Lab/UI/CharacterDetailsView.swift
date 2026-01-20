@@ -25,8 +25,8 @@ class CharacterDetailsView: NSView {
     
     // Hero action buttons (shown on hover)
     private var heroActionsContainer: NSStackView!
-    private var openFolderButton: NSButton!
-    private var deleteButton: NSButton!
+    private var openFolderButton: NSView!
+    private var deleteButton: NSView!
     private var heroTrackingArea: NSTrackingArea?
     
     // Quick stats
@@ -709,40 +709,39 @@ class CharacterDetailsView: NSView {
         }
     }
     
-    private func createHeroActionButton(icon: String, action: Selector) -> NSButton {
-        let button = NSButton(frame: NSRect(x: 0, y: 0, width: 30, height: 30))
+    private func createHeroActionButton(icon: String, action: Selector) -> NSView {
+        // Use NSView with click gesture for precise size control (NSButton intrinsic size fights constraints)
+        let button = NSView(frame: NSRect(x: 0, y: 0, width: 30, height: 30))
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setButtonType(.momentaryChange)
-        button.bezelStyle = .smallSquare
-        button.isBordered = false
-        button.title = ""
         button.wantsLayer = true
         button.layer?.cornerRadius = 6
         button.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.5).cgColor
         button.layer?.borderWidth = 1
         button.layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
         
+        let iconView = NSImageView(frame: .zero)
+        iconView.translatesAutoresizingMaskIntoConstraints = false
         if let image = NSImage(systemSymbolName: icon, accessibilityDescription: icon) {
             let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-            button.image = image.withSymbolConfiguration(config)
+            iconView.image = image.withSymbolConfiguration(config)
         }
-        button.imagePosition = .imageOnly
-        button.imageScaling = .scaleNone
-        button.contentTintColor = DesignColors.textSecondary
-        button.target = self
-        button.action = action
+        iconView.contentTintColor = DesignColors.textSecondary
+        iconView.imageScaling = .scaleNone
+        iconView.imageAlignment = .alignCenter
+        button.addSubview(iconView)
         
-        // Force exact size - prevent intrinsic content size from overriding
-        button.setContentHuggingPriority(.required, for: .horizontal)
-        button.setContentHuggingPriority(.required, for: .vertical)
-        button.setContentCompressionResistancePriority(.required, for: .horizontal)
-        button.setContentCompressionResistancePriority(.required, for: .vertical)
+        NSLayoutConstraint.activate([
+            iconView.topAnchor.constraint(equalTo: button.topAnchor),
+            iconView.leadingAnchor.constraint(equalTo: button.leadingAnchor),
+            iconView.trailingAnchor.constraint(equalTo: button.trailingAnchor),
+            iconView.bottomAnchor.constraint(equalTo: button.bottomAnchor),
+            button.widthAnchor.constraint(equalToConstant: 30),
+            button.heightAnchor.constraint(equalToConstant: 30),
+        ])
         
-        let widthConstraint = button.widthAnchor.constraint(equalToConstant: 30)
-        let heightConstraint = button.heightAnchor.constraint(equalToConstant: 30)
-        widthConstraint.priority = .required
-        heightConstraint.priority = .required
-        NSLayoutConstraint.activate([widthConstraint, heightConstraint])
+        // Add click gesture
+        let clickGesture = NSClickGestureRecognizer(target: self, action: action)
+        button.addGestureRecognizer(clickGesture)
         
         return button
     }

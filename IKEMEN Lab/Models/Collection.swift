@@ -10,6 +10,7 @@ struct Collection: Codable, Identifiable, Hashable {
     var characters: [RosterEntry]           // Ordered list with optional grid positions
     var stages: [String]                    // Stage folder names (e.g., "Bifrost")
     var screenpackPath: String?             // Relative path to screenpack (e.g., "data/MvC2")
+    var lifebarsPath: String?               // Relative path to lifebars (e.g., "data/fight.def")
     var isDefault: Bool                     // True for "All Characters" collection
     var isActive: Bool                      // True if this collection is currently active
     var createdAt: Date
@@ -22,6 +23,7 @@ struct Collection: Codable, Identifiable, Hashable {
         self.characters = []
         self.stages = []
         self.screenpackPath = nil
+        self.lifebarsPath = nil
         self.isDefault = false
         self.isActive = false
         self.createdAt = Date()

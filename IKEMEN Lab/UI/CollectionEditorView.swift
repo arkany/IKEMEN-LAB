@@ -23,6 +23,7 @@ class CollectionEditorView: NSView {
     var onAddCharactersClicked: ((Collection) -> Void)?
     var onAddStagesClicked: ((Collection) -> Void)?
     var onChangeScreenpackClicked: ((Collection) -> Void)?
+    var onChangeLifebarsClicked: ((Collection) -> Void)?
     
     // UI Components
     private var scrollView: NSScrollView!
@@ -32,6 +33,9 @@ class CollectionEditorView: NSView {
     private var headerView: NSView!
     private var backButton: NSButton!
     private var titleLabel: NSTextField!
+    private var activeBadge: NSView!
+    private var activeBadgeDot: NSView!
+    private var activeBadgeLabel: NSTextField!
     private var activateButton: NSButton!
     private var menuButton: NSButton!
     private var backButtonTrackingArea: NSTrackingArea?
@@ -41,20 +45,34 @@ class CollectionEditorView: NSView {
     private var rosterCountLabel: NSTextField!
     private var addCharactersButton: NSButton!
     private var rosterCollectionView: NSCollectionView!
-    private var rosterScrollView: NSScrollView!
+    private var rosterContainerView: NSView!
+    private var rosterHeightConstraint: NSLayoutConstraint?
     
     // Stages Section
     private var stagesHeaderView: NSView!
     private var stagesCountLabel: NSTextField!
     private var addStagesButton: NSButton!
     private var stagesCollectionView: NSCollectionView!
-    private var stagesScrollView: NSScrollView!
+    private var stagesContainerView: NSView!
+    private var stagesHeightConstraint: NSLayoutConstraint?
     
     // Screenpack Section
     private var screenpackView: NSView!
+    private var screenpackIconView: NSView!
     private var screenpackLabel: NSTextField!
-    private var screenpackWarningLabel: NSTextField!
+    private var screenpackDescLabel: NSTextField!
     private var changeScreenpackButton: NSButton!
+    private var screenpackTrackingArea: NSTrackingArea?
+    private var isScreenpackHovered = false
+    
+    // Lifebars Section
+    private var lifebarsView: NSView!
+    private var lifebarsIconView: NSView!
+    private var lifebarsLabel: NSTextField!
+    private var lifebarsDescLabel: NSTextField!
+    private var changeLifebarsButton: NSButton!
+    private var lifebarsTrackingArea: NSTrackingArea?
+    private var isLifebarsHovered = false
     
     // MARK: - Initialization
     
@@ -77,6 +95,7 @@ class CollectionEditorView: NSView {
         setupRosterSection()
         setupStagesSection()
         setupScreenpackSection()
+        setupLifebarsSection()
         setupObservers()
     }
     
@@ -147,7 +166,7 @@ class CollectionEditorView: NSView {
         let chevronImage = NSImageView()
         chevronImage.translatesAutoresizingMaskIntoConstraints = false
         chevronImage.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
-        chevronImage.contentTintColor = DesignColors.textSecondary
+        chevronImage.contentTintColor = DesignColors.textTertiary
         chevronImage.imageScaling = .scaleProportionallyDown
         headerView.addSubview(chevronImage)
         
@@ -163,7 +182,33 @@ class CollectionEditorView: NSView {
         titleLabel.delegate = self
         headerView.addSubview(titleLabel)
         
-        // Right side: Activate button (styled pill button)
+        // Right side: Active badge (pill with dot)
+        activeBadge = NSView()
+        activeBadge.translatesAutoresizingMaskIntoConstraints = false
+        activeBadge.wantsLayer = true
+        activeBadge.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        activeBadge.layer?.cornerRadius = 12
+        activeBadge.layer?.borderWidth = 1
+        activeBadge.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        activeBadge.isHidden = true
+        headerView.addSubview(activeBadge)
+        
+        // Pulsing dot in badge
+        activeBadgeDot = NSView()
+        activeBadgeDot.translatesAutoresizingMaskIntoConstraints = false
+        activeBadgeDot.wantsLayer = true
+        activeBadgeDot.layer?.backgroundColor = DesignColors.positive.cgColor
+        activeBadgeDot.layer?.cornerRadius = 3
+        activeBadge.addSubview(activeBadgeDot)
+        
+        // "Active" label in badge
+        activeBadgeLabel = NSTextField(labelWithString: "Active")
+        activeBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        activeBadgeLabel.font = DesignFonts.label(size: 11)
+        activeBadgeLabel.textColor = DesignColors.textSecondary
+        activeBadge.addSubview(activeBadgeLabel)
+        
+        // Activate button (shown when not active)
         activateButton = NSButton(title: "Activate", target: self, action: #selector(activateClicked))
         activateButton.translatesAutoresizingMaskIntoConstraints = false
         activateButton.bezelStyle = .inline
@@ -180,6 +225,13 @@ class CollectionEditorView: NSView {
             ]
         )
         headerView.addSubview(activateButton)
+        
+        // Divider line between badge/button and menu
+        let divider = NSView()
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        divider.wantsLayer = true
+        divider.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        headerView.addSubview(divider)
         
         // Menu button (three dots)
         menuButton = NSButton(title: "", target: self, action: #selector(menuClicked))
@@ -212,13 +264,33 @@ class CollectionEditorView: NSView {
             titleLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             titleLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 100),
             
-            // Right side - activate + menu
+            // Right side - active badge / activate button + divider + menu
             menuButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -32),
             menuButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             menuButton.widthAnchor.constraint(equalToConstant: 28),
             menuButton.heightAnchor.constraint(equalToConstant: 28),
             
-            activateButton.trailingAnchor.constraint(equalTo: menuButton.leadingAnchor, constant: -16),
+            divider.trailingAnchor.constraint(equalTo: menuButton.leadingAnchor, constant: -12),
+            divider.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            divider.widthAnchor.constraint(equalToConstant: 1),
+            divider.heightAnchor.constraint(equalToConstant: 16),
+            
+            // Active badge
+            activeBadge.trailingAnchor.constraint(equalTo: divider.leadingAnchor, constant: -12),
+            activeBadge.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            activeBadge.heightAnchor.constraint(equalToConstant: 24),
+            
+            activeBadgeDot.leadingAnchor.constraint(equalTo: activeBadge.leadingAnchor, constant: 10),
+            activeBadgeDot.centerYAnchor.constraint(equalTo: activeBadge.centerYAnchor),
+            activeBadgeDot.widthAnchor.constraint(equalToConstant: 6),
+            activeBadgeDot.heightAnchor.constraint(equalToConstant: 6),
+            
+            activeBadgeLabel.leadingAnchor.constraint(equalTo: activeBadgeDot.trailingAnchor, constant: 6),
+            activeBadgeLabel.trailingAnchor.constraint(equalTo: activeBadge.trailingAnchor, constant: -10),
+            activeBadgeLabel.centerYAnchor.constraint(equalTo: activeBadge.centerYAnchor),
+            
+            // Activate button (overlaps same position as badge)
+            activateButton.trailingAnchor.constraint(equalTo: divider.leadingAnchor, constant: -12),
             activateButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             activateButton.heightAnchor.constraint(equalToConstant: 28),
             activateButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 80),
@@ -235,13 +307,28 @@ class CollectionEditorView: NSView {
             userInfo: ["view": "backButton"]
         )
         backButton.addTrackingArea(backButtonTrackingArea!)
+        
+        // Start pulsing animation on the dot
+        startPulsingAnimation()
+    }
+    
+    private func startPulsingAnimation() {
+        let pulse = CABasicAnimation(keyPath: "opacity")
+        pulse.fromValue = 1.0
+        pulse.toValue = 0.4
+        pulse.duration = 1.0
+        pulse.autoreverses = true
+        pulse.repeatCount = .infinity
+        activeBadgeDot.layer?.add(pulse, forKey: "pulse")
     }
     
     // MARK: - Mouse Tracking for Header
     
     override func mouseEntered(with event: NSEvent) {
-        if let userInfo = event.trackingArea?.userInfo as? [String: String],
-           userInfo["view"] == "backButton" {
+        guard let userInfo = event.trackingArea?.userInfo else { return }
+        
+        // Handle back button hover
+        if let viewType = userInfo["view"] as? String, viewType == "backButton" {
             backButton.attributedTitle = NSAttributedString(
                 string: "Collections",
                 attributes: [
@@ -250,12 +337,29 @@ class CollectionEditorView: NSView {
                 ]
             )
             NSCursor.pointingHand.set()
+            return
+        }
+        
+        // Handle card hovers
+        if let type = userInfo["type"] as? String {
+            switch type {
+            case "screenpack":
+                isScreenpackHovered = true
+                animateCardHover(screenpackView, hovered: true)
+            case "lifebars":
+                isLifebarsHovered = true
+                animateCardHover(lifebarsView, hovered: true)
+            default:
+                break
+            }
         }
     }
     
     override func mouseExited(with event: NSEvent) {
-        if let userInfo = event.trackingArea?.userInfo as? [String: String],
-           userInfo["view"] == "backButton" {
+        guard let userInfo = event.trackingArea?.userInfo else { return }
+        
+        // Handle back button hover
+        if let viewType = userInfo["view"] as? String, viewType == "backButton" {
             backButton.attributedTitle = NSAttributedString(
                 string: "Collections",
                 attributes: [
@@ -264,6 +368,38 @@ class CollectionEditorView: NSView {
                 ]
             )
             NSCursor.arrow.set()
+            return
+        }
+        
+        // Handle card hovers
+        if let type = userInfo["type"] as? String {
+            switch type {
+            case "screenpack":
+                isScreenpackHovered = false
+                animateCardHover(screenpackView, hovered: false)
+            case "lifebars":
+                isLifebarsHovered = false
+                animateCardHover(lifebarsView, hovered: false)
+            default:
+                break
+            }
+        }
+    }
+    
+    private func animateCardHover(_ view: NSView?, hovered: Bool) {
+        guard let view = view else { return }
+        
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            
+            if hovered {
+                view.layer?.borderColor = DesignColors.borderHover.cgColor
+                view.layer?.backgroundColor = DesignColors.cardBackgroundHover.cgColor
+            } else {
+                view.layer?.borderColor = DesignColors.borderSubtle.cgColor
+                view.layer?.backgroundColor = DesignColors.cardBackgroundTransparent.cgColor
+            }
         }
     }
     
@@ -272,18 +408,18 @@ class CollectionEditorView: NSView {
         rosterHeaderView = createSectionHeader(
             title: "ROSTER",
             countLabel: &rosterCountLabel,
-            buttonTitle: "+ Add Characters",
+            buttonTitle: "Add Characters",
             buttonAction: #selector(addCharactersClicked)
         )
         addCharactersButton = rosterHeaderView.subviews.compactMap { $0 as? NSButton }.first
         contentStack.addArrangedSubview(rosterHeaderView)
         
-        // Roster collection view
+        // Roster collection view - grid layout matching HTML mockup
         let layout = NSCollectionViewFlowLayout()
-        layout.itemSize = NSSize(width: 100, height: 130)
-        layout.minimumInteritemSpacing = 8
-        layout.minimumLineSpacing = 8
-        layout.sectionInset = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        layout.itemSize = NSSize(width: 96, height: 120) // Square-ish aspect with name below
+        layout.minimumInteritemSpacing = 16
+        layout.minimumLineSpacing = 16
+        layout.sectionInset = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         
         rosterCollectionView = NSCollectionView()
         rosterCollectionView.collectionViewLayout = layout
@@ -298,26 +434,32 @@ class CollectionEditorView: NSView {
         rosterCollectionView.registerForDraggedTypes([.rosterEntryDrag])
         rosterCollectionView.setDraggingSourceOperationMask(.move, forLocal: true)
         
-        rosterScrollView = NSScrollView()
-        rosterScrollView.translatesAutoresizingMaskIntoConstraints = false
-        rosterScrollView.documentView = rosterCollectionView
-        rosterScrollView.hasVerticalScroller = true
-        rosterScrollView.hasHorizontalScroller = false
-        rosterScrollView.backgroundColor = .clear
-        rosterScrollView.drawsBackground = false
-        rosterScrollView.wantsLayer = true
-        rosterScrollView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        rosterScrollView.layer?.cornerRadius = 8
+        // Container view (no scroll view - parent handles scrolling)
+        rosterContainerView = NSView()
+        rosterContainerView.translatesAutoresizingMaskIntoConstraints = false
+        rosterContainerView.wantsLayer = true
+        rosterContainerView.addSubview(rosterCollectionView)
         
-        contentStack.addArrangedSubview(rosterScrollView)
+        rosterCollectionView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            rosterCollectionView.topAnchor.constraint(equalTo: rosterContainerView.topAnchor),
+            rosterCollectionView.leadingAnchor.constraint(equalTo: rosterContainerView.leadingAnchor),
+            rosterCollectionView.trailingAnchor.constraint(equalTo: rosterContainerView.trailingAnchor),
+            rosterCollectionView.bottomAnchor.constraint(equalTo: rosterContainerView.bottomAnchor),
+        ])
+        
+        contentStack.addArrangedSubview(rosterContainerView)
+        
+        // Create height constraint (will be updated based on content)
+        rosterHeightConstraint = rosterContainerView.heightAnchor.constraint(equalToConstant: 120)
         
         NSLayoutConstraint.activate([
             rosterHeaderView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
             rosterHeaderView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -24),
             
-            rosterScrollView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
-            rosterScrollView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -24),
-            rosterScrollView.heightAnchor.constraint(equalToConstant: 300),
+            rosterContainerView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
+            rosterContainerView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -24),
+            rosterHeightConstraint!,
         ])
     }
     
@@ -326,19 +468,18 @@ class CollectionEditorView: NSView {
         stagesHeaderView = createSectionHeader(
             title: "STAGES",
             countLabel: &stagesCountLabel,
-            buttonTitle: "+ Add Stages",
+            buttonTitle: "Add Stages",
             buttonAction: #selector(addStagesClicked)
         )
         addStagesButton = stagesHeaderView.subviews.compactMap { $0 as? NSButton }.first
         contentStack.addArrangedSubview(stagesHeaderView)
         
-        // Stages collection view (horizontal scroll)
+        // Stages collection view - grid layout with 16:9 aspect ratio
         let layout = NSCollectionViewFlowLayout()
-        layout.scrollDirection = .horizontal
-        layout.itemSize = NSSize(width: 160, height: 90)
-        layout.minimumInteritemSpacing = 8
-        layout.minimumLineSpacing = 8
-        layout.sectionInset = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        layout.itemSize = NSSize(width: 192, height: 120) // ~16:10 aspect with name below
+        layout.minimumInteritemSpacing = 16
+        layout.minimumLineSpacing = 16
+        layout.sectionInset = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         
         stagesCollectionView = NSCollectionView()
         stagesCollectionView.collectionViewLayout = layout
@@ -348,43 +489,69 @@ class CollectionEditorView: NSView {
         stagesCollectionView.isSelectable = true
         stagesCollectionView.register(StageEntryItem.self, forItemWithIdentifier: StageEntryItem.identifier)
         
-        stagesScrollView = NSScrollView()
-        stagesScrollView.translatesAutoresizingMaskIntoConstraints = false
-        stagesScrollView.documentView = stagesCollectionView
-        stagesScrollView.hasVerticalScroller = false
-        stagesScrollView.hasHorizontalScroller = true
-        stagesScrollView.backgroundColor = .clear
-        stagesScrollView.drawsBackground = false
-        stagesScrollView.wantsLayer = true
-        stagesScrollView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        stagesScrollView.layer?.cornerRadius = 8
+        // Container view (no scroll view - parent handles scrolling)
+        stagesContainerView = NSView()
+        stagesContainerView.translatesAutoresizingMaskIntoConstraints = false
+        stagesContainerView.wantsLayer = true
+        stagesContainerView.addSubview(stagesCollectionView)
         
-        contentStack.addArrangedSubview(stagesScrollView)
+        stagesCollectionView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stagesCollectionView.topAnchor.constraint(equalTo: stagesContainerView.topAnchor),
+            stagesCollectionView.leadingAnchor.constraint(equalTo: stagesContainerView.leadingAnchor),
+            stagesCollectionView.trailingAnchor.constraint(equalTo: stagesContainerView.trailingAnchor),
+            stagesCollectionView.bottomAnchor.constraint(equalTo: stagesContainerView.bottomAnchor),
+        ])
+        
+        contentStack.addArrangedSubview(stagesContainerView)
+        
+        // Create height constraint (will be updated based on content)
+        stagesHeightConstraint = stagesContainerView.heightAnchor.constraint(equalToConstant: 120)
         
         NSLayoutConstraint.activate([
             stagesHeaderView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
             stagesHeaderView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -24),
             
-            stagesScrollView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
-            stagesScrollView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -24),
-            stagesScrollView.heightAnchor.constraint(equalToConstant: 120),
+            stagesContainerView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
+            stagesContainerView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -24),
+            stagesHeightConstraint!,
         ])
     }
     
     private func setupScreenpackSection() {
-        // Container
+        // Section header
+        let screenpackHeaderLabel = NSTextField(labelWithString: "SCREENPACK")
+        screenpackHeaderLabel.translatesAutoresizingMaskIntoConstraints = false
+        screenpackHeaderLabel.font = DesignFonts.label(size: 11)
+        screenpackHeaderLabel.textColor = DesignColors.textTertiary
+        contentStack.addArrangedSubview(screenpackHeaderLabel)
+        
+        // Card container matching HTML mockup
         screenpackView = NSView()
         screenpackView.translatesAutoresizingMaskIntoConstraints = false
         screenpackView.wantsLayer = true
-        screenpackView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        screenpackView.layer?.backgroundColor = DesignColors.cardBackgroundTransparent.cgColor
         screenpackView.layer?.cornerRadius = 8
+        screenpackView.layer?.borderWidth = 1
+        screenpackView.layer?.borderColor = DesignColors.borderSubtle.cgColor
         
-        // Title
-        let titleLabel = NSTextField(labelWithString: "SCREENPACK")
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.font = DesignFonts.label(size: 12)
-        titleLabel.textColor = DesignColors.textTertiary
-        screenpackView.addSubview(titleLabel)
+        // Icon container (left side)
+        screenpackIconView = NSView()
+        screenpackIconView.translatesAutoresizingMaskIntoConstraints = false
+        screenpackIconView.wantsLayer = true
+        screenpackIconView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        screenpackIconView.layer?.cornerRadius = 4
+        screenpackIconView.layer?.borderWidth = 1
+        screenpackIconView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        screenpackView.addSubview(screenpackIconView)
+        
+        // Icon image
+        let screenpackIcon = NSImageView()
+        screenpackIcon.translatesAutoresizingMaskIntoConstraints = false
+        screenpackIcon.image = NSImage(systemSymbolName: "tv", accessibilityDescription: nil)
+        screenpackIcon.contentTintColor = DesignColors.textTertiary
+        screenpackIcon.imageScaling = .scaleProportionallyDown
+        screenpackIconView.addSubview(screenpackIcon)
         
         // Screenpack name
         screenpackLabel = NSTextField(labelWithString: "Default")
@@ -393,38 +560,163 @@ class CollectionEditorView: NSView {
         screenpackLabel.textColor = DesignColors.textPrimary
         screenpackView.addSubview(screenpackLabel)
         
-        // Warning label
-        screenpackWarningLabel = NSTextField(labelWithString: "")
-        screenpackWarningLabel.translatesAutoresizingMaskIntoConstraints = false
-        screenpackWarningLabel.font = DesignFonts.caption(size: 12)
-        screenpackWarningLabel.textColor = DesignColors.warning
-        screenpackWarningLabel.isHidden = true
-        screenpackView.addSubview(screenpackWarningLabel)
+        // Description label
+        screenpackDescLabel = NSTextField(labelWithString: "Default configuration")
+        screenpackDescLabel.translatesAutoresizingMaskIntoConstraints = false
+        screenpackDescLabel.font = DesignFonts.caption(size: 12)
+        screenpackDescLabel.textColor = DesignColors.textTertiary
+        screenpackView.addSubview(screenpackDescLabel)
         
-        // Change button
+        // Change button - styled to match HTML mockup
         changeScreenpackButton = NSButton(title: "Change", target: self, action: #selector(changeScreenpackClicked))
         changeScreenpackButton.translatesAutoresizingMaskIntoConstraints = false
-        changeScreenpackButton.bezelStyle = .rounded
+        changeScreenpackButton.bezelStyle = .inline
+        changeScreenpackButton.isBordered = false
+        changeScreenpackButton.wantsLayer = true
+        changeScreenpackButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
+        changeScreenpackButton.layer?.cornerRadius = 6
+        changeScreenpackButton.layer?.borderWidth = 1
+        changeScreenpackButton.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        changeScreenpackButton.font = DesignFonts.label(size: 12)
+        changeScreenpackButton.attributedTitle = NSAttributedString(
+            string: "Change",
+            attributes: [
+                .font: DesignFonts.label(size: 12),
+                .foregroundColor: DesignColors.textSecondary
+            ]
+        )
         screenpackView.addSubview(changeScreenpackButton)
         
         contentStack.addArrangedSubview(screenpackView)
         
         NSLayoutConstraint.activate([
+            screenpackHeaderLabel.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
+            
             screenpackView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
             screenpackView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -24),
-            screenpackView.heightAnchor.constraint(equalToConstant: 80),
+            screenpackView.heightAnchor.constraint(equalToConstant: 72),
             
-            titleLabel.leadingAnchor.constraint(equalTo: screenpackView.leadingAnchor, constant: 16),
-            titleLabel.topAnchor.constraint(equalTo: screenpackView.topAnchor, constant: 12),
+            screenpackIconView.leadingAnchor.constraint(equalTo: screenpackView.leadingAnchor, constant: 16),
+            screenpackIconView.centerYAnchor.constraint(equalTo: screenpackView.centerYAnchor),
+            screenpackIconView.widthAnchor.constraint(equalToConstant: 64),
+            screenpackIconView.heightAnchor.constraint(equalToConstant: 40),
             
-            screenpackLabel.leadingAnchor.constraint(equalTo: screenpackView.leadingAnchor, constant: 16),
-            screenpackLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 4),
+            screenpackIcon.centerXAnchor.constraint(equalTo: screenpackIconView.centerXAnchor),
+            screenpackIcon.centerYAnchor.constraint(equalTo: screenpackIconView.centerYAnchor),
+            screenpackIcon.widthAnchor.constraint(equalToConstant: 22),
+            screenpackIcon.heightAnchor.constraint(equalToConstant: 22),
             
-            screenpackWarningLabel.leadingAnchor.constraint(equalTo: screenpackView.leadingAnchor, constant: 16),
-            screenpackWarningLabel.topAnchor.constraint(equalTo: screenpackLabel.bottomAnchor, constant: 4),
+            screenpackLabel.leadingAnchor.constraint(equalTo: screenpackIconView.trailingAnchor, constant: 16),
+            screenpackLabel.topAnchor.constraint(equalTo: screenpackView.topAnchor, constant: 16),
+            
+            screenpackDescLabel.leadingAnchor.constraint(equalTo: screenpackIconView.trailingAnchor, constant: 16),
+            screenpackDescLabel.topAnchor.constraint(equalTo: screenpackLabel.bottomAnchor, constant: 2),
             
             changeScreenpackButton.trailingAnchor.constraint(equalTo: screenpackView.trailingAnchor, constant: -16),
             changeScreenpackButton.centerYAnchor.constraint(equalTo: screenpackView.centerYAnchor),
+            changeScreenpackButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 70),
+            changeScreenpackButton.heightAnchor.constraint(equalToConstant: 28),
+        ])
+    }
+    
+    private func setupLifebarsSection() {
+        // Section header
+        let lifebarsHeaderLabel = NSTextField(labelWithString: "LIFE BARS")
+        lifebarsHeaderLabel.translatesAutoresizingMaskIntoConstraints = false
+        lifebarsHeaderLabel.font = DesignFonts.label(size: 11)
+        lifebarsHeaderLabel.textColor = DesignColors.textTertiary
+        contentStack.addArrangedSubview(lifebarsHeaderLabel)
+        
+        // Card container matching HTML mockup
+        lifebarsView = NSView()
+        lifebarsView.translatesAutoresizingMaskIntoConstraints = false
+        lifebarsView.wantsLayer = true
+        lifebarsView.layer?.backgroundColor = DesignColors.cardBackgroundTransparent.cgColor
+        lifebarsView.layer?.cornerRadius = 8
+        lifebarsView.layer?.borderWidth = 1
+        lifebarsView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        
+        // Icon container (left side)
+        lifebarsIconView = NSView()
+        lifebarsIconView.translatesAutoresizingMaskIntoConstraints = false
+        lifebarsIconView.wantsLayer = true
+        lifebarsIconView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
+        lifebarsIconView.layer?.cornerRadius = 4
+        lifebarsIconView.layer?.borderWidth = 1
+        lifebarsIconView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        lifebarsView.addSubview(lifebarsIconView)
+        
+        // Icon image
+        let lifebarsIcon = NSImageView()
+        lifebarsIcon.translatesAutoresizingMaskIntoConstraints = false
+        lifebarsIcon.image = NSImage(systemSymbolName: "slider.horizontal.3", accessibilityDescription: nil)
+        lifebarsIcon.contentTintColor = DesignColors.textTertiary
+        lifebarsIcon.imageScaling = .scaleProportionallyDown
+        lifebarsIconView.addSubview(lifebarsIcon)
+        
+        // Lifebars name
+        lifebarsLabel = NSTextField(labelWithString: "Default")
+        lifebarsLabel.translatesAutoresizingMaskIntoConstraints = false
+        lifebarsLabel.font = DesignFonts.body(size: 14)
+        lifebarsLabel.textColor = DesignColors.textPrimary
+        lifebarsView.addSubview(lifebarsLabel)
+        
+        // Description label
+        lifebarsDescLabel = NSTextField(labelWithString: "Standard 2-Player")
+        lifebarsDescLabel.translatesAutoresizingMaskIntoConstraints = false
+        lifebarsDescLabel.font = DesignFonts.caption(size: 12)
+        lifebarsDescLabel.textColor = DesignColors.textTertiary
+        lifebarsView.addSubview(lifebarsDescLabel)
+        
+        // Change button - styled to match HTML mockup
+        changeLifebarsButton = NSButton(title: "Change", target: self, action: #selector(changeLifebarsClicked))
+        changeLifebarsButton.translatesAutoresizingMaskIntoConstraints = false
+        changeLifebarsButton.bezelStyle = .inline
+        changeLifebarsButton.isBordered = false
+        changeLifebarsButton.wantsLayer = true
+        changeLifebarsButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
+        changeLifebarsButton.layer?.cornerRadius = 6
+        changeLifebarsButton.layer?.borderWidth = 1
+        changeLifebarsButton.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        changeLifebarsButton.font = DesignFonts.label(size: 12)
+        changeLifebarsButton.attributedTitle = NSAttributedString(
+            string: "Change",
+            attributes: [
+                .font: DesignFonts.label(size: 12),
+                .foregroundColor: DesignColors.textSecondary
+            ]
+        )
+        lifebarsView.addSubview(changeLifebarsButton)
+        
+        contentStack.addArrangedSubview(lifebarsView)
+        
+        NSLayoutConstraint.activate([
+            lifebarsHeaderLabel.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
+            
+            lifebarsView.leadingAnchor.constraint(equalTo: contentStack.leadingAnchor, constant: 24),
+            lifebarsView.trailingAnchor.constraint(equalTo: contentStack.trailingAnchor, constant: -24),
+            lifebarsView.heightAnchor.constraint(equalToConstant: 72),
+            
+            lifebarsIconView.leadingAnchor.constraint(equalTo: lifebarsView.leadingAnchor, constant: 16),
+            lifebarsIconView.centerYAnchor.constraint(equalTo: lifebarsView.centerYAnchor),
+            lifebarsIconView.widthAnchor.constraint(equalToConstant: 64),
+            lifebarsIconView.heightAnchor.constraint(equalToConstant: 40),
+            
+            lifebarsIcon.centerXAnchor.constraint(equalTo: lifebarsIconView.centerXAnchor),
+            lifebarsIcon.centerYAnchor.constraint(equalTo: lifebarsIconView.centerYAnchor),
+            lifebarsIcon.widthAnchor.constraint(equalToConstant: 22),
+            lifebarsIcon.heightAnchor.constraint(equalToConstant: 22),
+            
+            lifebarsLabel.leadingAnchor.constraint(equalTo: lifebarsIconView.trailingAnchor, constant: 16),
+            lifebarsLabel.topAnchor.constraint(equalTo: lifebarsView.topAnchor, constant: 16),
+            
+            lifebarsDescLabel.leadingAnchor.constraint(equalTo: lifebarsIconView.trailingAnchor, constant: 16),
+            lifebarsDescLabel.topAnchor.constraint(equalTo: lifebarsLabel.bottomAnchor, constant: 2),
+            
+            changeLifebarsButton.trailingAnchor.constraint(equalTo: lifebarsView.trailingAnchor, constant: -16),
+            changeLifebarsButton.centerYAnchor.constraint(equalTo: lifebarsView.centerYAnchor),
+            changeLifebarsButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 70),
+            changeLifebarsButton.heightAnchor.constraint(equalToConstant: 28),
         ])
     }
     
@@ -432,27 +724,52 @@ class CollectionEditorView: NSView {
         let header = NSView()
         header.translatesAutoresizingMaskIntoConstraints = false
         
-        // Title with count
+        // Title with count - matching HTML: text-xs font-semibold text-zinc-500 uppercase tracking-widest
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.font = DesignFonts.label(size: 12)
+        titleLabel.font = DesignFonts.label(size: 11)
         titleLabel.textColor = DesignColors.textTertiary
         header.addSubview(titleLabel)
         
-        // Count label
+        // Count label - matching HTML: text-zinc-600 font-mono
         countLabel = NSTextField(labelWithString: "(0)")
         countLabel.translatesAutoresizingMaskIntoConstraints = false
-        countLabel.font = DesignFonts.label(size: 12)
-        countLabel.textColor = DesignColors.textTertiary
+        countLabel.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        countLabel.textColor = DesignColors.textDisabled
         header.addSubview(countLabel)
         
-        // Add button
-        let button = NSButton(title: buttonTitle, target: self, action: buttonAction)
+        // Add button - matching HTML: text-emerald-500 with icon
+        let button = NSButton(frame: .zero)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.bezelStyle = .inline
         button.isBordered = false
-        button.font = DesignFonts.body(size: 13)
-        button.contentTintColor = DesignColors.badgeCharacter
+        button.target = self
+        button.action = buttonAction
+        button.setButtonType(.momentaryChange)
+        
+        // Create attributed title with icon - vertically centered
+        let attachment = NSTextAttachment()
+        attachment.image = NSImage(systemSymbolName: "plus.circle", accessibilityDescription: nil)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 12, weight: .medium))
+        attachment.image = attachment.image?.tinted(with: DesignColors.positive)
+        // Adjust vertical alignment of icon
+        attachment.bounds = CGRect(x: 0, y: -2, width: 14, height: 14)
+        
+        let iconString = NSAttributedString(attachment: attachment)
+        let textString = NSAttributedString(
+            string: " \(buttonTitle)",
+            attributes: [
+                .font: DesignFonts.label(size: 12),
+                .foregroundColor: DesignColors.positive,
+                .baselineOffset: 0
+            ]
+        )
+        
+        let fullString = NSMutableAttributedString()
+        fullString.append(iconString)
+        fullString.append(textString)
+        button.attributedTitle = fullString
+        
         header.addSubview(button)
         
         NSLayoutConstraint.activate([
@@ -461,7 +778,7 @@ class CollectionEditorView: NSView {
             titleLabel.leadingAnchor.constraint(equalTo: header.leadingAnchor),
             titleLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor),
             
-            countLabel.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 8),
+            countLabel.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 6),
             countLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor),
             
             button.trailingAnchor.constraint(equalTo: header.trailingAnchor),
@@ -506,9 +823,22 @@ class CollectionEditorView: NSView {
         
         // Screenpack
         if let screenpackPath = collection.screenpackPath {
-            screenpackLabel.stringValue = URL(fileURLWithPath: screenpackPath).lastPathComponent
+            let name = URL(fileURLWithPath: screenpackPath).lastPathComponent
+            screenpackLabel.stringValue = name
+            screenpackDescLabel.stringValue = "Custom configuration"
         } else {
             screenpackLabel.stringValue = "Default"
+            screenpackDescLabel.stringValue = "Default configuration"
+        }
+        
+        // Lifebars
+        if let lifebarsPath = collection.lifebarsPath {
+            let name = URL(fileURLWithPath: lifebarsPath).lastPathComponent
+            lifebarsLabel.stringValue = name
+            lifebarsDescLabel.stringValue = "Custom lifebars"
+        } else {
+            lifebarsLabel.stringValue = "Default"
+            lifebarsDescLabel.stringValue = "Standard 2-Player"
         }
         
         updateActivateButton()
@@ -516,6 +846,42 @@ class CollectionEditorView: NSView {
         // Reload collection views
         rosterCollectionView.reloadData()
         stagesCollectionView.reloadData()
+        
+        // Update scroll view heights based on content
+        updateCollectionViewHeights()
+    }
+    
+    private func updateCollectionViewHeights() {
+        guard let collection = collection else { return }
+        
+        // Calculate roster height based on item count and available width
+        let availableWidth = rosterContainerView.frame.width > 0 ? rosterContainerView.frame.width : (bounds.width - 48)
+        let rosterItemWidth: CGFloat = 96
+        let rosterItemHeight: CGFloat = 120
+        let spacing: CGFloat = 16
+        
+        let rosterColumns = max(1, Int((availableWidth + spacing) / (rosterItemWidth + spacing)))
+        let rosterRows = collection.characters.isEmpty ? 0 : Int(ceil(Double(collection.characters.count) / Double(rosterColumns)))
+        let rosterHeight = max(120, CGFloat(rosterRows) * (rosterItemHeight + spacing) - spacing)
+        rosterHeightConstraint?.constant = rosterHeight
+        
+        // Calculate stages height
+        let stageItemWidth: CGFloat = 192
+        let stageItemHeight: CGFloat = 120
+        
+        let stageColumns = max(1, Int((availableWidth + spacing) / (stageItemWidth + spacing)))
+        let stageRows = collection.stages.isEmpty ? 0 : Int(ceil(Double(collection.stages.count) / Double(stageColumns)))
+        let stagesHeight = max(120, CGFloat(stageRows) * (stageItemHeight + spacing) - spacing)
+        stagesHeightConstraint?.constant = stagesHeight
+        
+        // Force layout update
+        layoutSubtreeIfNeeded()
+    }
+    
+    override func layout() {
+        super.layout()
+        // Recalculate heights when view resizes
+        updateCollectionViewHeights()
     }
     
     private func refreshIfNeeded() {
@@ -530,24 +896,19 @@ class CollectionEditorView: NSView {
         
         let isActive = CollectionStore.shared.activeCollectionId == collection.id
         
-        if isActive {
-            activateButton.title = "Active"
-            activateButton.isEnabled = false
-            activateButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
-        } else {
-            activateButton.title = "Activate"
-            activateButton.isEnabled = true
-            activateButton.layer?.backgroundColor = DesignColors.positive.cgColor
+        // Show badge when active, button when not
+        activeBadge.isHidden = !isActive
+        activateButton.isHidden = isActive
+        
+        if !isActive {
+            activateButton.attributedTitle = NSAttributedString(
+                string: "Activate",
+                attributes: [
+                    .font: DesignFonts.label(size: 12),
+                    .foregroundColor: DesignColors.textOnAccent
+                ]
+            )
         }
-
-        let titleColor = isActive ? DesignColors.textSecondary : DesignColors.textOnAccent
-        activateButton.attributedTitle = NSAttributedString(
-            string: activateButton.title,
-            attributes: [
-                .font: DesignFonts.label(size: 12),
-                .foregroundColor: titleColor
-            ]
-        )
     }
     
     // MARK: - Actions
@@ -591,6 +952,7 @@ class CollectionEditorView: NSView {
         newCollection.characters = collection.characters
         newCollection.stages = collection.stages
         newCollection.screenpackPath = collection.screenpackPath
+        newCollection.lifebarsPath = collection.lifebarsPath
         CollectionStore.shared.update(newCollection)
         
         ToastManager.shared.showSuccess(title: "Created copy: \(newCollection.name)")
@@ -628,6 +990,11 @@ class CollectionEditorView: NSView {
     @objc private func changeScreenpackClicked() {
         guard let collection = collection else { return }
         onChangeScreenpackClicked?(collection)
+    }
+    
+    @objc private func changeLifebarsClicked() {
+        guard let collection = collection else { return }
+        onChangeLifebarsClicked?(collection)
     }
     
     // MARK: - Context Menu for Roster Items
@@ -707,6 +1074,42 @@ class CollectionEditorView: NSView {
               let collection = collection else { return }
         
         CollectionStore.shared.removeStage(folder: stageFolder, from: collection.id)
+    }
+    
+    // MARK: - Hover State Tracking
+    
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        
+        // Screenpack tracking area
+        if let oldArea = screenpackTrackingArea {
+            screenpackView?.removeTrackingArea(oldArea)
+        }
+        if let screenpackView = screenpackView {
+            let area = NSTrackingArea(
+                rect: screenpackView.bounds,
+                options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
+                owner: self,
+                userInfo: ["type": "screenpack"]
+            )
+            screenpackView.addTrackingArea(area)
+            screenpackTrackingArea = area
+        }
+        
+        // Lifebars tracking area
+        if let oldArea = lifebarsTrackingArea {
+            lifebarsView?.removeTrackingArea(oldArea)
+        }
+        if let lifebarsView = lifebarsView {
+            let area = NSTrackingArea(
+                rect: lifebarsView.bounds,
+                options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
+                owner: self,
+                userInfo: ["type": "lifebars"]
+            )
+            lifebarsView.addTrackingArea(area)
+            lifebarsTrackingArea = area
+        }
     }
 }
 
@@ -819,50 +1222,189 @@ class RosterEntryItem: NSCollectionViewItem {
     
     private var containerView: NSView!
     private var thumbnailView: NSImageView!
+    private var hoverOverlay: NSView!
+    private var deleteButton: NSView!
     private var nameLabel: NSTextField!
     private var entry: RosterEntry?
+    private var trackingArea: NSTrackingArea?
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 100, height: 130))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 96, height: 120))
         
+        // Container with square aspect ratio for thumbnail
         containerView = NSView()
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
         containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        containerView.layer?.cornerRadius = 6
+        containerView.layer?.cornerRadius = 12
+        containerView.layer?.borderWidth = 1
+        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        containerView.layer?.masksToBounds = true
         view.addSubview(containerView)
         
+        // Thumbnail image (fills container)
         thumbnailView = NSImageView()
         thumbnailView.translatesAutoresizingMaskIntoConstraints = false
         thumbnailView.imageScaling = .scaleProportionallyUpOrDown
         thumbnailView.wantsLayer = true
-        thumbnailView.layer?.cornerRadius = 4
-        thumbnailView.layer?.masksToBounds = true
+        thumbnailView.layer?.anchorPoint = CGPoint(x: 0.5, y: 0.5)  // Center anchor for zoom
+        thumbnailView.alphaValue = 0.8
         containerView.addSubview(thumbnailView)
         
+        // Hover overlay (shown on hover)
+        hoverOverlay = NSView()
+        hoverOverlay.translatesAutoresizingMaskIntoConstraints = false
+        hoverOverlay.wantsLayer = true
+        hoverOverlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.4).cgColor
+        hoverOverlay.alphaValue = 0
+        containerView.addSubview(hoverOverlay)
+        
+        // Delete button (shown on hover) - red circle with trash icon
+        // Using custom view approach for precise sizing control
+        deleteButton = NSView(frame: NSRect(x: 0, y: 0, width: 32, height: 32))
+        deleteButton.translatesAutoresizingMaskIntoConstraints = false
+        deleteButton.wantsLayer = true
+        deleteButton.layer?.backgroundColor = DesignColors.negative.cgColor
+        deleteButton.layer?.cornerRadius = 16
+        
+        let trashIcon = NSImageView(frame: .zero)
+        trashIcon.translatesAutoresizingMaskIntoConstraints = false
+        trashIcon.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Remove")?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 14, weight: .medium))
+        trashIcon.contentTintColor = .white
+        trashIcon.imageScaling = .scaleNone
+        trashIcon.imageAlignment = .alignCenter
+        deleteButton.addSubview(trashIcon)
+        
+        NSLayoutConstraint.activate([
+            trashIcon.topAnchor.constraint(equalTo: deleteButton.topAnchor),
+            trashIcon.leadingAnchor.constraint(equalTo: deleteButton.leadingAnchor),
+            trashIcon.trailingAnchor.constraint(equalTo: deleteButton.trailingAnchor),
+            trashIcon.bottomAnchor.constraint(equalTo: deleteButton.bottomAnchor),
+        ])
+        
+        // Add click gesture
+        let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(deleteClicked))
+        deleteButton.addGestureRecognizer(clickGesture)
+        
+        deleteButton.alphaValue = 0
+        hoverOverlay.addSubview(deleteButton)
+        
+        // Name label below the card
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.caption(size: 11)
+        nameLabel.font = DesignFonts.label(size: 10)
         nameLabel.textColor = DesignColors.textSecondary
         nameLabel.alignment = .center
         nameLabel.lineBreakMode = .byTruncatingTail
-        containerView.addSubview(nameLabel)
+        view.addSubview(nameLabel)
         
         NSLayoutConstraint.activate([
+            // Square container
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            containerView.heightAnchor.constraint(equalTo: containerView.widthAnchor),
             
-            thumbnailView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 8),
-            thumbnailView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
-            thumbnailView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
-            thumbnailView.heightAnchor.constraint(equalToConstant: 90),
+            // Thumbnail fills container
+            thumbnailView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            thumbnailView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            thumbnailView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            thumbnailView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             
-            nameLabel.topAnchor.constraint(equalTo: thumbnailView.bottomAnchor, constant: 4),
-            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 4),
-            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -4),
+            // Hover overlay fills container
+            hoverOverlay.topAnchor.constraint(equalTo: containerView.topAnchor),
+            hoverOverlay.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            hoverOverlay.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            hoverOverlay.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            
+            // Delete button centered in overlay - fixed 32x32 circle
+            deleteButton.centerXAnchor.constraint(equalTo: hoverOverlay.centerXAnchor),
+            deleteButton.centerYAnchor.constraint(equalTo: hoverOverlay.centerYAnchor),
+            deleteButton.widthAnchor.constraint(equalToConstant: 32),
+            deleteButton.heightAnchor.constraint(equalToConstant: 32),
+            
+            // Name label below container
+            nameLabel.topAnchor.constraint(equalTo: containerView.bottomAnchor, constant: 6),
+            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 2),
+            nameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -2),
         ])
+        
+        setupTrackingArea()
+    }
+    
+    private func setupTrackingArea() {
+        trackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        view.addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.allowsImplicitAnimation = true
+            hoverOverlay.animator().alphaValue = 1
+            deleteButton.animator().alphaValue = 1
+            thumbnailView.animator().alphaValue = 1
+            containerView.layer?.borderColor = DesignColors.borderHover.cgColor
+        }
+        // Scale up 5% centered - need to use CABasicAnimation for centered transform
+        let bounds = thumbnailView.bounds
+        var transform = CATransform3DIdentity
+        transform = CATransform3DTranslate(transform, bounds.width/2, bounds.height/2, 0)
+        transform = CATransform3DScale(transform, 1.05, 1.05, 1)
+        transform = CATransform3DTranslate(transform, -bounds.width/2, -bounds.height/2, 0)
+        
+        let animation = CABasicAnimation(keyPath: "transform")
+        animation.toValue = transform
+        animation.duration = 0.3
+        animation.fillMode = .forwards
+        animation.isRemovedOnCompletion = false
+        thumbnailView.layer?.add(animation, forKey: "scaleUp")
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.allowsImplicitAnimation = true
+            hoverOverlay.animator().alphaValue = 0
+            deleteButton.animator().alphaValue = 0
+            thumbnailView.animator().alphaValue = 0.8
+            updateBorderForSelection()
+        }
+        // Reset scale with animation
+        let animation = CABasicAnimation(keyPath: "transform")
+        animation.toValue = CATransform3DIdentity
+        animation.duration = 0.3
+        animation.fillMode = .forwards
+        animation.isRemovedOnCompletion = false
+        thumbnailView.layer?.add(animation, forKey: "scaleDown")
+    }
+    
+    @objc private func deleteClicked() {
+        // Walk up the view hierarchy to find the collection view
+        var currentView: NSView? = view
+        var collectionView: NSCollectionView? = nil
+        while let parent = currentView?.superview {
+            if let cv = parent as? NSCollectionView {
+                collectionView = cv
+                break
+            }
+            currentView = parent
+        }
+        
+        guard let cv = collectionView,
+              let indexPath = cv.indexPath(for: self),
+              let editorView = findCollectionEditorView(),
+              let menu = editorView.buildRosterContextMenu(for: indexPath.item),
+              let removeItem = menu.items.first(where: { $0.title == "Remove" }) else { return }
+        
+        // Trigger the remove action
+        _ = removeItem.target?.perform(removeItem.action, with: removeItem)
     }
     
     func configure(with entry: RosterEntry) {
@@ -871,6 +1413,7 @@ class RosterEntryItem: NSCollectionViewItem {
         switch entry.entryType {
         case .character:
             nameLabel.stringValue = entry.characterFolder ?? "Unknown"
+            nameLabel.textColor = DesignColors.textSecondary
             thumbnailView.image = NSImage(systemSymbolName: "person.fill", accessibilityDescription: nil)
             thumbnailView.contentTintColor = DesignColors.textSecondary
             
@@ -881,18 +1424,20 @@ class RosterEntryItem: NSCollectionViewItem {
             
         case .randomSelect:
             nameLabel.stringValue = "Random"
+            nameLabel.textColor = DesignColors.warning
             thumbnailView.image = NSImage(systemSymbolName: "questionmark.circle.fill", accessibilityDescription: nil)
             thumbnailView.contentTintColor = DesignColors.warning
             
         case .emptySlot:
             nameLabel.stringValue = "Empty"
+            nameLabel.textColor = DesignColors.textDisabled
             thumbnailView.image = NSImage(systemSymbolName: "square.dashed", accessibilityDescription: nil)
             thumbnailView.contentTintColor = DesignColors.textDisabled
         }
     }
     
     private func loadThumbnail(for folder: String) {
-        guard let ikemenPath = IkemenBridge.shared.workingDirectory else { return }
+        guard let _ = IkemenBridge.shared.workingDirectory else { return }
         
         // Find the character in the bridge's loaded characters
         if let character = IkemenBridge.shared.characters.first(where: { $0.directory.lastPathComponent == folder }) {
@@ -903,10 +1448,28 @@ class RosterEntryItem: NSCollectionViewItem {
         }
     }
     
+    private func updateBorderForSelection() {
+        if isSelected {
+            containerView.layer?.borderWidth = 2
+            containerView.layer?.borderColor = DesignColors.positive.withAlphaComponent(0.8).cgColor
+        } else {
+            containerView.layer?.borderWidth = 1
+            containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        }
+    }
+    
     override var isSelected: Bool {
         didSet {
-            containerView.layer?.borderWidth = isSelected ? 2 : 0
-            containerView.layer?.borderColor = isSelected ? DesignColors.badgeCharacter.cgColor : nil
+            updateBorderForSelection()
+            if isSelected {
+                nameLabel.textColor = DesignColors.positive
+            } else if let entry = entry {
+                switch entry.entryType {
+                case .character: nameLabel.textColor = DesignColors.textSecondary
+                case .randomSelect: nameLabel.textColor = DesignColors.warning
+                case .emptySlot: nameLabel.textColor = DesignColors.textDisabled
+                }
+            }
         }
     }
     
@@ -944,51 +1507,111 @@ class StageEntryItem: NSCollectionViewItem {
     private var thumbnailView: NSImageView!
     private var nameLabel: NSTextField!
     private var stageFolder: String?
+    private var trackingArea: NSTrackingArea?
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 160, height: 90))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 192, height: 120))
         
+        // Container with 16:9 aspect ratio
         containerView = NSView()
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.wantsLayer = true
         containerView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
-        containerView.layer?.cornerRadius = 6
+        containerView.layer?.cornerRadius = 12
+        containerView.layer?.borderWidth = 1
+        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        containerView.layer?.masksToBounds = true
         view.addSubview(containerView)
         
+        // Thumbnail image
         thumbnailView = NSImageView()
         thumbnailView.translatesAutoresizingMaskIntoConstraints = false
         thumbnailView.imageScaling = .scaleProportionallyUpOrDown
         thumbnailView.wantsLayer = true
-        thumbnailView.layer?.cornerRadius = 4
-        thumbnailView.layer?.masksToBounds = true
+        thumbnailView.layer?.anchorPoint = CGPoint(x: 0.5, y: 0.5)  // Center anchor for zoom
+        thumbnailView.alphaValue = 0.6
         containerView.addSubview(thumbnailView)
         
+        // Name label below card (not overlaid)
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
-        nameLabel.font = DesignFonts.caption(size: 11)
-        nameLabel.textColor = DesignColors.textOnAccent
-        nameLabel.alignment = .center
-        nameLabel.backgroundColor = DesignColors.imageLabelBackground
-        nameLabel.drawsBackground = true
+        nameLabel.font = DesignFonts.label(size: 10)
+        nameLabel.textColor = DesignColors.textSecondary
         nameLabel.lineBreakMode = .byTruncatingTail
-        containerView.addSubview(nameLabel)
+        view.addSubview(nameLabel)
         
         NSLayoutConstraint.activate([
+            // 16:9 container
             containerView.topAnchor.constraint(equalTo: view.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            containerView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            containerView.heightAnchor.constraint(equalToConstant: 100),
             
+            // Thumbnail fills container
             thumbnailView.topAnchor.constraint(equalTo: containerView.topAnchor),
             thumbnailView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             thumbnailView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             thumbnailView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             
-            nameLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            nameLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            nameLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-            nameLabel.heightAnchor.constraint(equalToConstant: 20),
+            // Name label below
+            nameLabel.topAnchor.constraint(equalTo: containerView.bottomAnchor, constant: 6),
+            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 2),
+            nameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -2),
         ])
+        
+        setupTrackingArea()
+    }
+    
+    private func setupTrackingArea() {
+        trackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        view.addTrackingArea(trackingArea!)
+    }
+    
+    override func mouseEntered(with event: NSEvent) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.allowsImplicitAnimation = true
+            thumbnailView.animator().alphaValue = 1.0
+            containerView.layer?.borderColor = DesignColors.borderHover.cgColor
+        }
+        nameLabel.textColor = DesignColors.textPrimary
+        
+        // Scale up 5% centered
+        let bounds = thumbnailView.bounds
+        var transform = CATransform3DIdentity
+        transform = CATransform3DTranslate(transform, bounds.width/2, bounds.height/2, 0)
+        transform = CATransform3DScale(transform, 1.05, 1.05, 1)
+        transform = CATransform3DTranslate(transform, -bounds.width/2, -bounds.height/2, 0)
+        
+        let animation = CABasicAnimation(keyPath: "transform")
+        animation.toValue = transform
+        animation.duration = 0.3
+        animation.fillMode = .forwards
+        animation.isRemovedOnCompletion = false
+        thumbnailView.layer?.add(animation, forKey: "scaleUp")
+    }
+    
+    override func mouseExited(with event: NSEvent) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.allowsImplicitAnimation = true
+            thumbnailView.animator().alphaValue = 0.6
+            updateBorderForSelection()
+        }
+        nameLabel.textColor = isSelected ? DesignColors.positive : DesignColors.textSecondary
+        
+        // Reset scale with animation
+        let animation = CABasicAnimation(keyPath: "transform")
+        animation.toValue = CATransform3DIdentity
+        animation.duration = 0.3
+        animation.fillMode = .forwards
+        animation.isRemovedOnCompletion = false
+        thumbnailView.layer?.add(animation, forKey: "scaleDown")
     }
     
     func configure(with folder: String) {
@@ -1020,10 +1643,20 @@ class StageEntryItem: NSCollectionViewItem {
         }
     }
     
+    private func updateBorderForSelection() {
+        if isSelected {
+            containerView.layer?.borderWidth = 2
+            containerView.layer?.borderColor = DesignColors.positive.withAlphaComponent(0.8).cgColor
+        } else {
+            containerView.layer?.borderWidth = 1
+            containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
+        }
+    }
+    
     override var isSelected: Bool {
         didSet {
-            containerView.layer?.borderWidth = isSelected ? 2 : 0
-            containerView.layer?.borderColor = isSelected ? DesignColors.badgeCharacter.cgColor : nil
+            updateBorderForSelection()
+            nameLabel.textColor = isSelected ? DesignColors.positive : DesignColors.textSecondary
         }
     }
     

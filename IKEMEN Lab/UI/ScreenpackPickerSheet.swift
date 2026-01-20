@@ -210,7 +210,12 @@ class ScreenpackPickerSheet: NSViewController {
     @objc private func doneClicked() {
         syncToCollection()
         onDismiss?()
-        dismiss(nil)
+        // Dismiss the sheet window properly
+        if let sheetWindow = view.window, let parentWindow = sheetWindow.sheetParent {
+            parentWindow.endSheet(sheetWindow)
+        } else {
+            dismiss(nil)
+        }
     }
     
     private func screenpackPath(for screenpack: ScreenpackInfo) -> String {

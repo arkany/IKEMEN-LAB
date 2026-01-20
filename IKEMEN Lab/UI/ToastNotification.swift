@@ -32,17 +32,21 @@ class ToastNotificationView: NSView {
     private var titleLabel: NSTextField!
     private var subtitleLabel: NSTextField!
     private var closeButton: NSButton!
+    private var actionButton: NSButton?
     
     var onDismiss: (() -> Void)?
+    var onAction: (() -> Void)?
     
     private let toastType: ToastType
     private let title: String
     private let subtitle: String?
+    private let actionTitle: String?
     
-    init(type: ToastType, title: String, subtitle: String? = nil) {
+    init(type: ToastType, title: String, subtitle: String? = nil, actionTitle: String? = nil) {
         self.toastType = type
         self.title = title
         self.subtitle = subtitle
+        self.actionTitle = actionTitle
         super.init(frame: .zero)
         setup()
     }
@@ -101,6 +105,17 @@ class ToastNotificationView: NSView {
             addSubview(subtitleLabel)
         }
         
+        // Action button (optional)
+        if let actionTitle = actionTitle {
+            actionButton = NSButton(title: actionTitle, target: self, action: #selector(actionTapped))
+            actionButton!.translatesAutoresizingMaskIntoConstraints = false
+            actionButton!.bezelStyle = .inline
+            actionButton!.isBordered = false
+            actionButton!.font = DesignFonts.body(size: 13)
+            actionButton!.contentTintColor = DesignColors.positive
+            addSubview(actionButton!)
+        }
+        
         // Close button
         closeButton = NSButton()
         closeButton.translatesAutoresizingMaskIntoConstraints = false
@@ -129,11 +144,20 @@ class ToastNotificationView: NSView {
             closeButton.centerYAnchor.constraint(equalTo: centerYAnchor),
             closeButton.widthAnchor.constraint(equalToConstant: 20),
             closeButton.heightAnchor.constraint(equalToConstant: 20),
-            
-            // Title
-            titleLabel.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 12),
-            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: closeButton.leadingAnchor, constant: -12),
         ])
+        
+        // Action button layout (if present)
+        if let actionButton = actionButton {
+            NSLayoutConstraint.activate([
+                actionButton.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -8),
+                actionButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            ])
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: actionButton.leadingAnchor, constant: -12).isActive = true
+        } else {
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: closeButton.leadingAnchor, constant: -12).isActive = true
+        }
+        
+        titleLabel.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 12).isActive = true
         
         if let subtitleLabel = subtitleLabel {
             NSLayoutConstraint.activate([
@@ -146,6 +170,11 @@ class ToastNotificationView: NSView {
         } else {
             titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor).isActive = true
         }
+    }
+    
+    @objc private func actionTapped() {
+        onAction?()
+        onDismiss?()
     }
     
     @objc private func dismissTapped() {
@@ -169,19 +198,19 @@ class ToastManager {
         self.parentView = view
     }
     
-    func showSuccess(title: String, subtitle: String? = nil, duration: TimeInterval = 4.0) {
-        show(type: .success, title: title, subtitle: subtitle, duration: duration)
+    func showSuccess(title: String, subtitle: String? = nil, duration: TimeInterval = 4.0, actionTitle: String? = nil, action: (() -> Void)? = nil) {
+        show(type: .success, title: title, subtitle: subtitle, duration: duration, actionTitle: actionTitle, action: action)
     }
     
     func showError(title: String, subtitle: String? = nil, duration: TimeInterval = 6.0) {
-        show(type: .error, title: title, subtitle: subtitle, duration: duration)
+        show(type: .error, title: title, subtitle: subtitle, duration: duration, actionTitle: nil, action: nil)
     }
     
     func showInfo(title: String, subtitle: String? = nil, duration: TimeInterval = 4.0) {
-        show(type: .info, title: title, subtitle: subtitle, duration: duration)
+        show(type: .info, title: title, subtitle: subtitle, duration: duration, actionTitle: nil, action: nil)
     }
     
-    private func show(type: ToastType, title: String, subtitle: String?, duration: TimeInterval) {
+    private func show(type: ToastType, title: String, subtitle: String?, duration: TimeInterval, actionTitle: String?, action: (() -> Void)?) {
         guard let parent = parentView else {
             NSLog("ToastManager: No parent view set")
             return
@@ -191,18 +220,19 @@ class ToastManager {
         dismissCurrentToast(animated: false)
         
         // Create new toast
-        let toast = ToastNotificationView(type: type, title: title, subtitle: subtitle)
+        let toast = ToastNotificationView(type: type, title: title, subtitle: subtitle, actionTitle: actionTitle)
         toast.translatesAutoresizingMaskIntoConstraints = false
         toast.alphaValue = 0
         toast.onDismiss = { [weak self] in
             self?.dismissCurrentToast(animated: true)
         }
+        toast.onAction = action
         
         parent.addSubview(toast)
         currentToast = toast
         
         // Position: top-right with padding, starting off-screen
-        let toastWidth: CGFloat = 360
+        let toastWidth: CGFloat = actionTitle != nil ? 420 : 360  // Wider if action button present
         let toastHeight: CGFloat = subtitle != nil ? 72 : 52
         
         NSLayoutConstraint.activate([

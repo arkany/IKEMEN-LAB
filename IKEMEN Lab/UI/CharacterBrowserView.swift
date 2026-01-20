@@ -88,6 +88,11 @@ class CharacterBrowserView: NSView {
     private var duplicateIds: Set<String> = []       // IDs of characters that have duplicates
     private var themeObserver: NSObjectProtocol?
     
+    // New collection sheet
+    private var newCollectionOverlay: NSView?
+    private var newCollectionSheet: NewCollectionSheet?
+    private var pendingNewCollectionCharacter: CharacterInfo?
+    
     // View mode
     var viewMode: BrowserViewMode = .grid {
         didSet {
@@ -645,29 +650,100 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
     @objc private func addToNewCollectionAction(_ sender: NSMenuItem) {
         guard let character = sender.representedObject as? CharacterInfo else { return }
         
-        let alert = NSAlert()
-        alert.messageText = "New Collection"
-        alert.informativeText = "Enter a name for the new collection:"
-        alert.addButton(withTitle: "Create")
-        alert.addButton(withTitle: "Cancel")
+        // Store the character for later use when collection is created
+        pendingNewCollectionCharacter = character
         
-        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
-        input.placeholderString = "Collection Name"
-        alert.accessoryView = input
+        // Get the window to present the sheet in
+        guard let window = self.window else { return }
         
-        let response = alert.runModal()
-        guard response == .alertFirstButtonReturn else { return }
+        // Create dimming overlay
+        let overlay = NSView(frame: window.contentView?.bounds ?? .zero)
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        overlay.wantsLayer = true
+        overlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.5).cgColor
+        overlay.alphaValue = 0
         
-        let name = input.stringValue.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { return }
+        // Add click gesture to dismiss
+        let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(newCollectionOverlayClicked))
+        overlay.addGestureRecognizer(clickGesture)
+        
+        window.contentView?.addSubview(overlay)
+        
+        if let contentView = window.contentView {
+            NSLayoutConstraint.activate([
+                overlay.topAnchor.constraint(equalTo: contentView.topAnchor),
+                overlay.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+                overlay.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+                overlay.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            ])
+        }
+        
+        newCollectionOverlay = overlay
+        
+        // Create and add the sheet
+        let sheet = NewCollectionSheet()
+        sheet.translatesAutoresizingMaskIntoConstraints = false
+        sheet.onCancel = { [weak self] in
+            self?.dismissNewCollectionSheet()
+        }
+        sheet.onCreateCollection = { [weak self] name, icon in
+            self?.createCollectionWithCharacter(name: name, icon: icon)
+        }
+        
+        window.contentView?.addSubview(sheet)
+        
+        if let contentView = window.contentView {
+            NSLayoutConstraint.activate([
+                sheet.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+                sheet.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            ])
+        }
+        
+        newCollectionSheet = sheet
+        
+        // Animate in
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            overlay.animator().alphaValue = 1
+        }
+        
+        sheet.animateAppear()
+    }
+    
+    @objc private func newCollectionOverlayClicked() {
+        dismissNewCollectionSheet()
+    }
+    
+    private func dismissNewCollectionSheet() {
+        guard let sheet = newCollectionSheet, let overlay = newCollectionOverlay else { return }
+        
+        sheet.animateDismiss { [weak self] in
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.2
+                overlay.animator().alphaValue = 0
+            }, completionHandler: {
+                sheet.removeFromSuperview()
+                overlay.removeFromSuperview()
+                self?.newCollectionSheet = nil
+                self?.newCollectionOverlay = nil
+                self?.pendingNewCollectionCharacter = nil
+            })
+        }
+    }
+    
+    private func createCollectionWithCharacter(name: String, icon: String) {
+        guard let character = pendingNewCollectionCharacter else { return }
         
         // Create collection and add character
-        let collection = CollectionStore.shared.createCollection(name: name)
+        let collection = CollectionStore.shared.createCollection(name: name, icon: icon)
         let folder = character.directory.lastPathComponent
         let def = character.defFile.lastPathComponent
         CollectionStore.shared.addCharacter(folder: folder, def: def, to: collection.id)
         
         ToastManager.shared.showSuccess(title: "Created \(name) with \(character.displayName)")
+        
+        dismissNewCollectionSheet()
     }
 
     @objc private func applyRecentTagAction(_ sender: NSMenuItem) {

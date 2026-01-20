@@ -26,6 +26,22 @@
 
 ## Current Focus
 
+### ✅ Recently Completed (January 2026)
+- [x] **Collections UI Polish**
+  - [x] Removed max-height constraints on roster/stages sections
+  - [x] Dynamic height calculation based on content
+  - [x] Fixed nested scroll view blocking parent scroll
+  - [x] Section header icon/text vertical alignment
+  - [x] Hover zoom effect on character/stage thumbnails (centered scale-105)
+  - [x] Delete button fixed to perfect 32×32 circle (NSView approach)
+  - [x] Character details panel action buttons fixed sizing (NSView approach)
+- [x] **Add Characters/Stages Sheets**
+  - [x] Fixed sheet presentation (beginSheet instead of presentAsSheet)
+  - [x] Fixed sheet dismissal (endSheet on parent window)
+- [x] **Toast Notifications**
+  - [x] Added action button support to toast system
+  - [x] "Launch" button on collection activation toast
+
 ### 🔄 In Progress
 - [ ] Screenpack Browser UI overhaul (match Character Browser design)
 

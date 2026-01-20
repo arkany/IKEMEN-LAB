@@ -99,6 +99,10 @@ public struct DesignColors {
         isLight ? NSColor.white.withAlphaComponent(0.8) : DarkThemeColors.zinc900.withAlphaComponent(0.2)
     }
     
+    public static var cardBackgroundHover: NSColor {
+        isLight ? NSColor.white : DarkThemeColors.zinc900.withAlphaComponent(0.4)
+    }
+    
     public static var panelBackground: NSColor {
         isLight ? LightThemeColors.zinc50 : NSColor(red: 0x0c/255.0, green: 0x0c/255.0, blue: 0x0e/255.0, alpha: 1.0)
     }
@@ -607,5 +611,20 @@ public struct VersionDateFormatter {
         
         // If no pattern matched, return original
         return trimmed
+    }
+}
+
+// MARK: - NSImage Tinting Extension
+
+extension NSImage {
+    /// Returns a tinted copy of the image with the specified color
+    func tinted(with color: NSColor) -> NSImage {
+        let image = self.copy() as! NSImage
+        image.lockFocus()
+        color.set()
+        let imageRect = NSRect(origin: .zero, size: image.size)
+        imageRect.fill(using: .sourceAtop)
+        image.unlockFocus()
+        return image
     }
 }

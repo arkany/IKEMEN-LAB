@@ -266,7 +266,14 @@ class IkemenBridge: ObservableObject {
         case .success:
             print("Successfully activated collection: \(collection.name)")
             DispatchQueue.main.async {
-                ToastManager.shared.showSuccess(title: "Collection activated", subtitle: collection.name)
+                ToastManager.shared.showSuccess(
+                    title: "Collection activated",
+                    subtitle: collection.name,
+                    actionTitle: "Launch",
+                    action: {
+                        try? IkemenBridge.shared.launchEngine()
+                    }
+                )
             }
             // If screenpack also changed, we might need to update config.json (not implemented yet)
             
