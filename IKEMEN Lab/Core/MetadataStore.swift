@@ -471,6 +471,20 @@ public final class MetadataStore {
             return rows.compactMap { $0["tag"] as String? }
         } ?? []
     }
+    
+    /// Get the most recently used tags (by most recent createdAt)
+    public func recentCustomTags(limit: Int = 5) throws -> [String] {
+        try dbQueue?.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT tag, MAX(createdAt) as lastUsed
+                FROM character_custom_tags
+                GROUP BY tag
+                ORDER BY lastUsed DESC
+                LIMIT ?
+            """, arguments: [limit])
+            return rows.compactMap { $0["tag"] as String? }
+        } ?? []
+    }
 
     /// Get custom tags for a character
     public func customTags(for characterId: String) throws -> [String] {

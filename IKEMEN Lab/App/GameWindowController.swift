@@ -1190,8 +1190,15 @@ class GameWindowController: NSWindowController {
         alert.addButton(withTitle: "Add")
         alert.addButton(withTitle: "Cancel")
         
-        // Use TagInputView with auto-suggest
-        let inputView = TagInputView(frame: NSRect(x: 0, y: 0, width: 250, height: 170))
+        // Use TagInputView with native autocomplete
+        let inputView = TagInputView(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
+        
+        // Exclude tags already on the character(s)
+        if characterIds.count == 1, let charId = characterIds.first {
+            let existingTags = (try? MetadataStore.shared.customTags(for: charId)) ?? []
+            inputView.setExcludedTags(existingTags)
+        }
+        
         alert.accessoryView = inputView
         
         // Focus the text field after alert is shown
