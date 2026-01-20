@@ -454,10 +454,38 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
 
         // Tags submenu
         let tagsMenu = NSMenu()
-        let addTagTitle = tagTargets.count > 1 ? "Add Tag to Selected…" : "Add Tag…"
-        let addTagItem = NSMenuItem(title: addTagTitle, action: #selector(addCustomTagAction(_:)), keyEquivalent: "")
-        addTagItem.representedObject = tagTargetIds
-        addTagItem.target = self
+        
+        // Add Tag submenu with recent tags + create new option
+        let addTagTitle = tagTargets.count > 1 ? "Add Tag to Selected" : "Add Tag"
+        let addTagItem = NSMenuItem(title: addTagTitle, action: nil, keyEquivalent: "")
+        let addTagSubmenu = NSMenu()
+        
+        // Get recent tags (excluding tags already on selected characters)
+        let existingTags = Set(tagTargetIds.flatMap { customTagsById[$0] ?? [] })
+        let recentTags = (try? MetadataStore.shared.recentCustomTags(limit: 5)) ?? []
+        let availableRecentTags = recentTags.filter { !existingTags.contains($0) }
+        
+        // Add recent tags as quick options
+        for tag in availableRecentTags {
+            let item = NSMenuItem(title: tag, action: #selector(applyRecentTagAction(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = TagActionContext(tag: tag, characterIds: tagTargetIds)
+            addTagSubmenu.addItem(item)
+        }
+        
+        // Add divider if there are recent tags
+        if !availableRecentTags.isEmpty {
+            addTagSubmenu.addItem(NSMenuItem.separator())
+        }
+        
+        // Create new tag option
+        let createTagTitle = "Create New Tag…"
+        let createTagItem = NSMenuItem(title: createTagTitle, action: #selector(addCustomTagAction(_:)), keyEquivalent: "")
+        createTagItem.representedObject = tagTargetIds
+        createTagItem.target = self
+        addTagSubmenu.addItem(createTagItem)
+        
+        addTagItem.submenu = addTagSubmenu
         tagsMenu.addItem(addTagItem)
 
         let tagSet = Set(tagTargetIds.flatMap { customTagsById[$0] ?? [] })
@@ -642,6 +670,18 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
         ToastManager.shared.showSuccess(title: "Created \(name) with \(character.displayName)")
     }
 
+    @objc private func applyRecentTagAction(_ sender: NSMenuItem) {
+        guard let context = sender.representedObject as? TagActionContext else { return }
+        
+        do {
+            try MetadataStore.shared.assignCustomTag(context.tag, to: context.characterIds)
+            let title = context.characterIds.count > 1 ? "Added tag to selected" : "Tag added"
+            ToastManager.shared.showSuccess(title: title, subtitle: context.tag)
+        } catch {
+            ToastManager.shared.showError(title: "Failed to add tag", subtitle: error.localizedDescription)
+        }
+    }
+
     @objc private func addCustomTagAction(_ sender: NSMenuItem) {
         guard let characterIds = sender.representedObject as? [String] else { return }
         
@@ -651,26 +691,14 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
         alert.addButton(withTitle: "Add")
         alert.addButton(withTitle: "Cancel")
         
-        // Use TagInputView with native autocomplete
-        let inputView = TagInputView(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
-        
-        // Exclude tags already on the character(s)
-        if characterIds.count == 1, let charId = characterIds.first {
-            let existingTags = (try? MetadataStore.shared.customTags(for: charId)) ?? []
-            inputView.setExcludedTags(existingTags)
-        }
-        
-        alert.accessoryView = inputView
-        
-        // Focus the text field after alert is shown
-        DispatchQueue.main.async {
-            inputView.focus()
-        }
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
+        input.placeholderString = "Tag name"
+        alert.accessoryView = input
         
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn else { return }
         
-        let tag = inputView.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tag = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !tag.isEmpty else {
             ToastManager.shared.showError(title: "Tag cannot be empty")
             return

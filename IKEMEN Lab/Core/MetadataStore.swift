@@ -526,12 +526,23 @@ public final class MetadataStore {
     }
 
     /// Assign a custom tag to characters
+    /// Uses case-insensitive matching: if "DC" exists, adding "dc" will use "DC"
     public func assignCustomTag(_ tag: String, to characterIds: [String]) throws {
         let normalized = normalizeTag(tag)
         guard !normalized.isEmpty else { return }
         guard !characterIds.isEmpty else { return }
 
         try dbQueue?.write { db in
+            // Check if a tag with this name already exists (case-insensitive)
+            // If so, use the existing casing to maintain consistency
+            let existingTag = try String.fetchOne(db, sql: """
+                SELECT tag FROM character_custom_tags
+                WHERE tag = ? COLLATE NOCASE
+                LIMIT 1
+            """, arguments: [normalized])
+            
+            let tagToUse = existingTag ?? normalized
+            
             for id in characterIds {
                 try db.execute(
                     sql: """
@@ -539,7 +550,7 @@ public final class MetadataStore {
                         (characterId, tag, createdAt)
                         VALUES (?, ?, ?)
                     """,
-                    arguments: [id, normalized, Date()]
+                    arguments: [id, tagToUse, Date()]
                 )
             }
         }

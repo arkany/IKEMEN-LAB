@@ -98,6 +98,9 @@ class CharacterDetailsView: NSView {
     /// Callback when add tag is clicked
     var onAddTag: ((CharacterInfo) -> Void)?
     
+    /// Callback to apply an existing tag directly
+    var onApplyTag: ((CharacterInfo, String) -> Void)?
+    
     // MARK: - Initialization
     
     override init(frame frameRect: NSRect) {
@@ -899,6 +902,46 @@ class CharacterDetailsView: NSView {
     }
 
     @objc private func addTagClicked() {
+        guard let character = currentCharacter else { return }
+        
+        // Build a menu with recent tags + create new option
+        let menu = NSMenu()
+        
+        // Get recent tags, excluding ones already on this character
+        let existingTags = Set((try? MetadataStore.shared.customTags(for: character.id)) ?? [])
+        let recentTags = (try? MetadataStore.shared.recentCustomTags(limit: 5)) ?? []
+        let availableRecentTags = recentTags.filter { !existingTags.contains($0) }
+        
+        // Add recent tags as quick options
+        for tag in availableRecentTags {
+            let item = NSMenuItem(title: tag, action: #selector(applyRecentTagFromMenu(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = tag
+            menu.addItem(item)
+        }
+        
+        // Add divider if there are recent tags
+        if !availableRecentTags.isEmpty {
+            menu.addItem(NSMenuItem.separator())
+        }
+        
+        // Create new tag option
+        let createItem = NSMenuItem(title: "Create New Tag…", action: #selector(createNewTagFromMenu), keyEquivalent: "")
+        createItem.target = self
+        menu.addItem(createItem)
+        
+        // Show menu below the button
+        let buttonBounds = addTagButton.bounds
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: buttonBounds.maxY + 4), in: addTagButton)
+    }
+    
+    @objc private func applyRecentTagFromMenu(_ sender: NSMenuItem) {
+        guard let tag = sender.representedObject as? String,
+              let character = currentCharacter else { return }
+        onApplyTag?(character, tag)
+    }
+    
+    @objc private func createNewTagFromMenu() {
         if let character = currentCharacter {
             onAddTag?(character)
         }

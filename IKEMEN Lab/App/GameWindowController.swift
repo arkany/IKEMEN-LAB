@@ -873,6 +873,9 @@ class GameWindowController: NSWindowController {
         characterDetailsView.onAddTag = { [weak self] character in
             self?.promptForCustomTag(for: [character.id])
         }
+        characterDetailsView.onApplyTag = { [weak self] character, tag in
+            self?.applyTagDirectly(tag, to: [character.id])
+        }
         mainAreaView.addSubview(characterDetailsView)
         
         // Stage Browser (hidden initially)
@@ -1190,31 +1193,23 @@ class GameWindowController: NSWindowController {
         alert.addButton(withTitle: "Add")
         alert.addButton(withTitle: "Cancel")
         
-        // Use TagInputView with native autocomplete
-        let inputView = TagInputView(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
-        
-        // Exclude tags already on the character(s)
-        if characterIds.count == 1, let charId = characterIds.first {
-            let existingTags = (try? MetadataStore.shared.customTags(for: charId)) ?? []
-            inputView.setExcludedTags(existingTags)
-        }
-        
-        alert.accessoryView = inputView
-        
-        // Focus the text field after alert is shown
-        DispatchQueue.main.async {
-            inputView.focus()
-        }
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 250, height: 24))
+        input.placeholderString = "Tag name"
+        alert.accessoryView = input
         
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn else { return }
         
-        let tag = inputView.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tag = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !tag.isEmpty else {
             ToastManager.shared.showError(title: "Tag cannot be empty")
             return
         }
         
+        applyTagDirectly(tag, to: characterIds)
+    }
+    
+    private func applyTagDirectly(_ tag: String, to characterIds: [String]) {
         do {
             try MetadataStore.shared.assignCustomTag(tag, to: characterIds)
             let title = characterIds.count > 1 ? "Added tag to selected" : "Tag added"
