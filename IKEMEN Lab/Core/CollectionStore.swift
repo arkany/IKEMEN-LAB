@@ -19,6 +19,8 @@ class CollectionStore: ObservableObject {
     
     private let collectionsDirectory: URL
     private let activeCollectionKey = "activeCollectionId"
+    private let evaluator = SmartCollectionEvaluator()
+    private var contentChangedObserver: NSObjectProtocol?
     
     private init() {
         // ~/Library/Application Support/IKEMEN Lab/collections/
@@ -34,6 +36,15 @@ class CollectionStore: ObservableObject {
         
         // Ensure default collection exists
         ensureDefaultCollection()
+        
+        // Observe content changes to refresh smart collections
+        contentChangedObserver = NotificationCenter.default.addObserver(
+            forName: .contentChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.refreshSmartCollections()
+        }
     }
     
     // MARK: - Public API
@@ -187,6 +198,53 @@ class CollectionStore: ObservableObject {
         guard var collection = collection(withId: collectionId) else { return }
         collection.stages.removeAll { $0 == folder }
         update(collection)
+    }
+    
+    // MARK: - Smart Collections
+    
+    /// Create a smart collection with filter rules
+    func createSmartCollection(name: String, icon: String = "sparkles", rules: [FilterRule], ruleOperator: RuleOperator = .all, includeCharacters: Bool = true, includeStages: Bool = false) -> Collection {
+        var collection = Collection(name: name, icon: icon)
+        collection.isSmartCollection = true
+        collection.smartRules = rules
+        collection.smartRuleOperator = ruleOperator
+        collection.includeCharacters = includeCharacters
+        collection.includeStages = includeStages
+        
+        collections.append(collection)
+        save(collection)
+        
+        // Immediately evaluate to populate content
+        refreshSmartCollection(collection)
+        
+        return collection
+    }
+    
+    /// Refresh all smart collections by re-evaluating their rules
+    func refreshSmartCollections() {
+        let smartCollections = collections.filter { $0.isSmartCollection }
+        
+        for collection in smartCollections {
+            refreshSmartCollection(collection)
+        }
+    }
+    
+    /// Refresh a specific smart collection
+    private func refreshSmartCollection(_ collection: Collection) {
+        guard collection.isSmartCollection else { return }
+        
+        let result = evaluator.evaluate(collection)
+        
+        var updated = collection
+        updated.characters = result.characters.map { .character(folder: $0) }
+        updated.stages = result.stages
+        updated.modifiedAt = Date()
+        
+        if let index = collections.firstIndex(where: { $0.id == collection.id }) {
+            collections[index] = updated
+        }
+        
+        save(updated)
     }
     
     // MARK: - Sync with Library
