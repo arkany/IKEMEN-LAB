@@ -49,15 +49,9 @@ class SelectDefGenerator {
         // [ExtraStages] section
         lines.append("[ExtraStages]")
         
-        for stageFolder in collection.stages {
-            if stageFolder.lowercased().hasSuffix(".def") {
-                // It's a direct file reference (e.g. "my_stage.def")
-                lines.append("stages/\(stageFolder)")
-            } else {
-                // It's a folder, find the def file inside
-                let defFile = findStageDefFile(in: stageFolder, ikemenPath: ikemenPath)
-                lines.append("stages/\(stageFolder)/\(defFile)")
-            }
+        for stageEntry in collection.stages {
+            let stageLine = resolveStageDefPath(stageEntry, ikemenPath: ikemenPath)
+            lines.append(stageLine)
         }
         
         lines.append("")
@@ -164,6 +158,46 @@ class SelectDefGenerator {
         }
         
         return "\(stageFolder).def"
+    }
+    
+    /// Resolve a stage entry to its select.def path
+    /// Handles both folder-based stages (stages/folder/file.def) and loose stages (stages/file.def)
+    private static func resolveStageDefPath(_ stageEntry: String, ikemenPath: URL) -> String {
+        let fileManager = FileManager.default
+        let stagesDir = ikemenPath.appendingPathComponent("stages")
+        
+        // If it already ends with .def, it's a direct reference
+        if stageEntry.lowercased().hasSuffix(".def") {
+            return "stages/\(stageEntry)"
+        }
+        
+        // Check if it's a folder
+        let folderPath = stagesDir.appendingPathComponent(stageEntry)
+        var isDirectory: ObjCBool = false
+        if fileManager.fileExists(atPath: folderPath.path, isDirectory: &isDirectory), isDirectory.boolValue {
+            // It's a folder, find the def file inside
+            let defFile = findStageDefFile(in: stageEntry, ikemenPath: ikemenPath)
+            return "stages/\(stageEntry)/\(defFile)"
+        }
+        
+        // Check if it's a loose .def file (name without extension stored)
+        let looseDefPath = stagesDir.appendingPathComponent("\(stageEntry).def")
+        if fileManager.fileExists(atPath: looseDefPath.path) {
+            return "stages/\(stageEntry).def"
+        }
+        
+        // Case-insensitive search for loose def file
+        if let contents = try? fileManager.contentsOfDirectory(at: stagesDir, includingPropertiesForKeys: nil) {
+            let defFiles = contents.filter { $0.pathExtension.lowercased() == "def" }
+            if let match = defFiles.first(where: {
+                $0.deletingPathExtension().lastPathComponent.lowercased() == stageEntry.lowercased()
+            }) {
+                return "stages/\(match.lastPathComponent)"
+            }
+        }
+        
+        // Fallback: assume folder structure
+        return "stages/\(stageEntry)/\(stageEntry).def"
     }
     
     private static func createBackup(of url: URL) -> URL? {
