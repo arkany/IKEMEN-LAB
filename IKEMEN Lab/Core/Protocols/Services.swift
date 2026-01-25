@@ -80,4 +80,5 @@ protocol AppSettingsProtocol: AnyObject {
     var defaultStageBoundLeft: Int { get set }
     var defaultStageBoundRight: Int { get set }
     var useLightTheme: Bool { get set }
+    var fullgameImportEnabled: Bool { get set }
 }

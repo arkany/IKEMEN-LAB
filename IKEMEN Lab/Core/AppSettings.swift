@@ -25,6 +25,7 @@ public final class AppSettings {
             Keys.hasCompletedFRE: false,
             Keys.importMode: ImportMode.freshStart.rawValue,
             Keys.useLightTheme: false,
+            Keys.fullgameImportEnabled: false,
         ])
     }
     
@@ -39,6 +40,7 @@ public final class AppSettings {
         static let ikemenGOPath = "ikemenGOPath"
         static let importMode = "importMode"
         static let useLightTheme = "useLightTheme"
+        static let fullgameImportEnabled = "fullgameImportEnabled"
     }
     
     // MARK: - First Run Experience
@@ -139,6 +141,17 @@ public final class AppSettings {
         set {
             defaults.set(newValue, forKey: Keys.useLightTheme)
             NotificationCenter.default.post(name: .themeChanged, object: nil)
+        }
+    }
+    
+    // MARK: - Fullgame Import
+    
+    /// Whether fullgame import mode is enabled (imports entire MUGEN packages as collections)
+    public var fullgameImportEnabled: Bool {
+        get { defaults.bool(forKey: Keys.fullgameImportEnabled) }
+        set {
+            defaults.set(newValue, forKey: Keys.fullgameImportEnabled)
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
 }

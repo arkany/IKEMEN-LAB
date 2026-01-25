@@ -306,4 +306,5 @@ class MockAppSettings: AppSettingsProtocol {
     var defaultStageBoundLeft: Int = -150
     var defaultStageBoundRight: Int = 150
     var useLightTheme: Bool = false
+    var fullgameImportEnabled: Bool = false
 }

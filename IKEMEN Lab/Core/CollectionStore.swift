@@ -69,8 +69,12 @@ class CollectionStore: ObservableObject {
     }
     
     /// Delete a collection (cannot delete default)
+    /// Also removes any fonts and sounds owned by this collection
     func delete(_ collection: Collection) {
         guard !collection.isDefault else { return }
+        
+        // Delete associated fonts and sounds from the filesystem
+        deleteAssociatedAssets(for: collection)
         
         collections.removeAll { $0.id == collection.id }
         
@@ -82,6 +86,27 @@ class CollectionStore: ObservableObject {
             if let defaultCollection = collections.first(where: { $0.isDefault }) {
                 setActive(defaultCollection)
             }
+        }
+    }
+    
+    /// Delete fonts and sounds associated with a collection
+    private func deleteAssociatedAssets(for collection: Collection) {
+        guard let workingDir = AppSettings.shared.ikemenGOPath else { return }
+        
+        let fileManager = FileManager.default
+        let fontDir = workingDir.appendingPathComponent("font")
+        let soundDir = workingDir.appendingPathComponent("sound")
+        
+        // Delete fonts owned by this collection
+        for fontFile in collection.fonts {
+            let fontPath = fontDir.appendingPathComponent(fontFile)
+            try? fileManager.removeItem(at: fontPath)
+        }
+        
+        // Delete sounds owned by this collection
+        for soundFile in collection.sounds {
+            let soundPath = soundDir.appendingPathComponent(soundFile)
+            try? fileManager.removeItem(at: soundPath)
         }
     }
     

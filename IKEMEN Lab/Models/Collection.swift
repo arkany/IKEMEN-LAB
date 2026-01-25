@@ -11,6 +11,8 @@ struct Collection: Codable, Identifiable, Hashable {
     var stages: [String]                    // Stage folder names (e.g., "Bifrost")
     var screenpackPath: String?             // Relative path to screenpack (e.g., "data/MvC2")
     var lifebarsPath: String?               // Relative path to lifebars (e.g., "data/fight.def")
+    var fonts: [String]                     // Font filenames owned by this collection (e.g., "motu.fnt")
+    var sounds: [String]                    // Sound filenames owned by this collection (e.g., "select.mp3")
     var isDefault: Bool                     // True for "All Characters" collection
     var isActive: Bool                      // True if this collection is currently active
     var createdAt: Date
@@ -24,6 +26,8 @@ struct Collection: Codable, Identifiable, Hashable {
         self.stages = []
         self.screenpackPath = nil
         self.lifebarsPath = nil
+        self.fonts = []
+        self.sounds = []
         self.isDefault = false
         self.isActive = false
         self.createdAt = Date()

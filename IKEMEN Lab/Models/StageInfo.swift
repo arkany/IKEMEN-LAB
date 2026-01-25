@@ -106,19 +106,31 @@ public struct StageInfo: Identifiable, Hashable {
             
             // Check if it's a root-relative path (e.g., "stages/Bifrost.sff")
             // vs a file-relative path (e.g., "Bifrost.sff")
+            let targetURL: URL
             if normalizedPath.contains("/") {
                 // Root-relative path - resolve from Ikemen GO working directory
-                // Go up from stages/ folder to root, then append the path
                 let rootDir = defFile.deletingLastPathComponent().deletingLastPathComponent()
-                self.sffFile = rootDir.appendingPathComponent(normalizedPath)
+                targetURL = rootDir.appendingPathComponent(normalizedPath)
             } else {
                 // File-relative path - resolve from same directory as .def
-                self.sffFile = defFile.deletingLastPathComponent().appendingPathComponent(normalizedPath)
+                targetURL = defFile.deletingLastPathComponent().appendingPathComponent(normalizedPath)
             }
             
-            // Debug: check if file exists
-            if let sff = self.sffFile, !FileManager.default.fileExists(atPath: sff.path) {
-                print("[StageInfo] WARNING: SFF not found: \(sff.path)")
+            // Check if file exists at the exact path
+            if FileManager.default.fileExists(atPath: targetURL.path) {
+                self.sffFile = targetURL
+            } else {
+                // Try case-insensitive lookup in the same directory
+                let directory = targetURL.deletingLastPathComponent()
+                let targetFilename = targetURL.lastPathComponent.lowercased()
+                
+                if let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil),
+                   let match = files.first(where: { $0.lastPathComponent.lowercased() == targetFilename }) {
+                    self.sffFile = match
+                } else {
+                    self.sffFile = nil
+                    print("[StageInfo] WARNING: SFF not found (case-insensitive): \(targetURL.path)")
+                }
             }
         } else {
             self.sffFile = nil

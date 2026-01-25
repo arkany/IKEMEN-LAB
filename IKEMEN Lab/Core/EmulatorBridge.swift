@@ -265,6 +265,15 @@ class IkemenBridge: ObservableObject {
         switch result {
         case .success:
             print("Successfully activated collection: \(collection.name)")
+            
+            // Set screenpack - use collection's screenpack or reset to default
+            if let screenpackPath = collection.screenpackPath, !screenpackPath.isEmpty {
+                self.setActiveScreenpackByPath(screenpackPath)
+            } else {
+                // Reset to default screenpack when collection has none
+                self.setActiveScreenpackByPath("data/system.def")
+            }
+            
             DispatchQueue.main.async {
                 ToastManager.shared.showSuccess(
                     title: "Collection activated",
@@ -275,7 +284,6 @@ class IkemenBridge: ObservableObject {
                     }
                 )
             }
-            // If screenpack also changed, we might need to update config.json (not implemented yet)
             
         case .failure(let error):
             print("Failed to activate collection: \(error)")
@@ -606,13 +614,11 @@ class IkemenBridge: ObservableObject {
     
     /// Read the active motif/screenpack path from Ikemen's config
     private func readActiveMotifFromConfig(in workingDir: URL) -> String? {
-        // Ikemen GO uses save/config.ini for the Motif setting
+        // IKEMEN GO uses save/config.ini for the Motif setting
         let configIniPath = workingDir.appendingPathComponent("save/config.ini")
-        
         if let content = try? String(contentsOf: configIniPath, encoding: .utf8) {
             for line in content.components(separatedBy: .newlines) {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
-                // Look for "Motif = value" (case-insensitive key)
                 if trimmed.lowercased().hasPrefix("motif") && trimmed.contains("=") {
                     if let equalsIndex = trimmed.firstIndex(of: "=") {
                         let value = String(trimmed[trimmed.index(after: equalsIndex)...])
@@ -656,8 +662,7 @@ class IkemenBridge: ObservableObject {
             
             var content = try String(contentsOf: configPath, encoding: .utf8)
             
-            // Replace the Motif line in [Config] section
-            // Pattern: Motif followed by spaces/tabs, =, spaces/tabs, then the value
+            // Replace the Motif line
             let motifPattern = #"(Motif\s*=\s*).+"#
             if let regex = try? NSRegularExpression(pattern: motifPattern, options: []) {
                 let range = NSRange(content.startIndex..., in: content)
@@ -674,6 +679,47 @@ class IkemenBridge: ObservableObject {
             print("Set active screenpack to: \(relativePath)")
             
             // Reload screenpacks to update active state
+            loadScreenpacks()
+            
+        } catch {
+            print("Failed to set active screenpack: \(error)")
+        }
+    }
+    
+    /// Set the active screenpack by path (used when activating collections)
+    func setActiveScreenpackByPath(_ path: String) {
+        guard let workingDir = engineWorkingDirectory else { return }
+        
+        // path is like "data/Masters_Project" - need to add system.def
+        let relativePath = path.hasSuffix("system.def") ? path : "\(path)/system.def"
+        
+        // IKEMEN GO uses config.ini for settings
+        let configPath = workingDir.appendingPathComponent("save/config.ini")
+        
+        do {
+            guard FileManager.default.fileExists(atPath: configPath.path) else {
+                print("config.ini not found at \(configPath.path)")
+                return
+            }
+            
+            var content = try String(contentsOf: configPath, encoding: .utf8)
+            
+            // Replace the Motif line - handles various spacing formats
+            // Pattern: Motif followed by spaces/tabs, =, spaces/tabs, then the value
+            let motifPattern = #"(Motif\s*=\s*).+"#
+            if let regex = try? NSRegularExpression(pattern: motifPattern, options: []) {
+                let range = NSRange(content.startIndex..., in: content)
+                content = regex.stringByReplacingMatches(
+                    in: content,
+                    options: [],
+                    range: range,
+                    withTemplate: "$1\(relativePath)"
+                )
+            }
+            
+            try content.write(to: configPath, atomically: true, encoding: .utf8)
+            
+            print("Set active screenpack to: \(relativePath)")
             loadScreenpacks()
             
         } catch {

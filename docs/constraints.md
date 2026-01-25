@@ -102,6 +102,74 @@ Apple's updated guidelines now permit emulators:
 
 ---
 
+## IKEMEN GO Engine Specifics
+
+These are technical details discovered while integrating with IKEMEN GO that are important for future development.
+
+### Configuration Files
+
+| File | Format | Purpose |
+|------|--------|---------|
+| `save/config.ini` | INI | **Primary config** - IKEMEN GO reads settings from here |
+| `save/config.json` | JSON | Secondary/legacy - Not actively used by engine |
+| `save/stats.json` | JSON | Player statistics |
+
+**Important**: When changing the active screenpack (Motif), update `save/config.ini`, NOT `config.json`. The engine ignores `config.json` for the Motif setting.
+
+Example config.ini Motif line:
+```ini
+Motif            = data/Masters_Project/system.def
+```
+
+### Screenpack Structure
+
+Screenpacks are stored in `data/` subdirectories:
+- Default: `data/system.def` (or `data/big/system.def`)
+- Custom: `data/[ScreenpackName]/system.def`
+
+Each screenpack folder contains:
+- `system.def` - Main screenpack definition
+- `system.sff` - Sprites
+- `system.snd` - Sounds
+- `fight.def` - Lifebars definition
+- `select.def` - Character/stage roster (we redirect to global)
+
+### select.def Handling
+
+When installing screenpacks, redirect their `select.def` to use the global one:
+```ini
+select = ../select.def       ; Points to data/select.def (managed by IKEMEN Lab)
+```
+
+This allows IKEMEN Lab to manage the roster independently of the screenpack.
+
+### File Path Case Sensitivity
+
+MUGEN/IKEMEN content often has **case mismatches** between DEF references and actual files:
+- DEF may reference `Skeletor3.sff`
+- Actual file may be `skeletor3.sff`
+
+**Solution**: Always do case-insensitive file lookups when resolving paths from DEF files.
+
+### Stage File Organization
+
+Stages can be organized two ways:
+1. **Folder-based**: `stages/StageName/StageName.def` + `StageName.sff`
+2. **Loose files**: `stages/StageName.def` + `stages/StageName.sff`
+
+Fullgame packages often use loose files. When importing, restructure into folders for cleaner organization.
+
+### Fullgame Package Detection
+
+A folder is considered a "fullgame" if it has 2+ of:
+- `chars/` directory with character folders
+- `stages/` directory with .def files  
+- `data/` directory with screenpack files (system.def, system.sff)
+
+Optional extras: `font/`, `sound/` directories.
+
+---
+
 ## References
 
 - [MAME License](https://github.com/mamedev/mame/blob/master/COPYING)

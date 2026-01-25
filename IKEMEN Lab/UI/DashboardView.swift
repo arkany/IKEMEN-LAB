@@ -598,7 +598,7 @@ class DashboardView: NSView {
         }
         
         NSLayoutConstraint.activate([
-            dropZoneView.heightAnchor.constraint(equalToConstant: 140),
+            dropZoneView.heightAnchor.constraint(equalToConstant: 170),
         ])
         
         leftColumn.addArrangedSubview(dropZoneView)
@@ -1635,6 +1635,7 @@ class DashboardDropZone: NSView, ThemeApplicable {
     private var iconView: NSImageView!
     private var label: NSTextField!
     private var subLabel: NSTextField!
+    private var fullgameToggle: NSButton!
 
     override func mouseDown(with event: NSEvent) {
         if let onClick = onClick {
@@ -1717,12 +1718,21 @@ class DashboardDropZone: NSView, ThemeApplicable {
         subLabel.maximumNumberOfLines = 2
         addSubview(subLabel)
         
+        // Fullgame mode toggle
+        fullgameToggle = NSButton(checkboxWithTitle: "Fullgame mode", target: self, action: #selector(fullgameToggleChanged))
+        fullgameToggle.translatesAutoresizingMaskIntoConstraints = false
+        fullgameToggle.font = DesignFonts.caption(size: 11)
+        fullgameToggle.state = AppSettings.shared.fullgameImportEnabled ? .on : .off
+        fullgameToggle.contentTintColor = DesignColors.textTertiary
+        fullgameToggle.toolTip = "Import entire MUGEN/IKEMEN packages as collections, including characters, stages, screenpack, fonts, and sounds."
+        addSubview(fullgameToggle)
+        
         NSLayoutConstraint.activate([
             // Icon container: 48x48 centered
             iconContainer.widthAnchor.constraint(equalToConstant: 48),
             iconContainer.heightAnchor.constraint(equalToConstant: 48),
             iconContainer.centerXAnchor.constraint(equalTo: centerXAnchor),
-            iconContainer.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -32),
+            iconContainer.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -40),
             
             // Icon centered in container
             iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
@@ -1735,6 +1745,10 @@ class DashboardDropZone: NSView, ThemeApplicable {
             subLabel.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 4),
             subLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 24),
             subLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -24),
+            
+            // Fullgame toggle below sub-label
+            fullgameToggle.centerXAnchor.constraint(equalTo: centerXAnchor),
+            fullgameToggle.topAnchor.constraint(equalTo: subLabel.bottomAnchor, constant: 12),
         ])
     }
     
@@ -1801,6 +1815,10 @@ class DashboardDropZone: NSView, ThemeApplicable {
             CATransaction.commit()
         }
     }
+    
+    @objc private func fullgameToggleChanged() {
+        AppSettings.shared.fullgameImportEnabled = (fullgameToggle.state == .on)
+    }
 
     func applyTheme() {
         layer?.backgroundColor = bgDefault.cgColor
@@ -1808,6 +1826,7 @@ class DashboardDropZone: NSView, ThemeApplicable {
         iconContainer.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
         iconView.contentTintColor = DesignColors.textSecondary
+        fullgameToggle.contentTintColor = DesignColors.textTertiary
         refreshThemeLabels(in: self)
         updateAppearance(animated: false)
     }
@@ -2467,16 +2486,34 @@ class RecentInstallRow: NSView, ThemeApplicable {
         // Name label
         nameLabel = NSTextField(labelWithString: install.name)
         nameLabel.font = DesignFonts.body(size: 14)
-        tagThemeLabel(nameLabel, role: .primary)
         nameLabel.lineBreakMode = .byTruncatingTail
         nameStack.addArrangedSubview(nameLabel)
         
         // Author label (from metadata)
         authorLabel = NSTextField(labelWithString: install.author)
         authorLabel.font = DesignFonts.body(size: 12)
-        tagThemeLabel(authorLabel, role: .tertiary)
         authorLabel.lineBreakMode = .byTruncatingTail
         nameStack.addArrangedSubview(authorLabel)
+        
+        // Check if content still exists on disk
+        let isDeleted = !install.existsOnDisk
+        
+        // Apply styling based on deletion state
+        if isDeleted {
+            // Strikethrough for deleted items
+            let nameAttr = NSMutableAttributedString(string: install.name)
+            nameAttr.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: NSRange(location: 0, length: nameAttr.length))
+            nameAttr.addAttribute(.foregroundColor, value: DesignColors.textTertiary, range: NSRange(location: 0, length: nameAttr.length))
+            nameLabel.attributedStringValue = nameAttr
+            
+            let authorAttr = NSMutableAttributedString(string: install.author)
+            authorAttr.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: NSRange(location: 0, length: authorAttr.length))
+            authorAttr.addAttribute(.foregroundColor, value: DesignColors.textTertiary, range: NSRange(location: 0, length: authorAttr.length))
+            authorLabel.attributedStringValue = authorAttr
+        } else {
+            tagThemeLabel(nameLabel, role: .primary)
+            tagThemeLabel(authorLabel, role: .tertiary)
+        }
         
         // Type badge with colored dot
         let isCharacter = install.type == "character"
@@ -2515,12 +2552,13 @@ class RecentInstallRow: NSView, ThemeApplicable {
         dateLabel.alignment = .left
         addSubview(dateLabel)
         
-        // Status toggle
+        // Status toggle (hidden for deleted items)
         statusToggle = NSSwitch()
         statusToggle.translatesAutoresizingMaskIntoConstraints = false
         statusToggle.state = .on  // Default to enabled
         statusToggle.target = self
         statusToggle.action = #selector(statusToggled(_:))
+        statusToggle.isHidden = isDeleted  // Hide toggle for deleted items
         addSubview(statusToggle)
         
         NSLayoutConstraint.activate([

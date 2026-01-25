@@ -34,6 +34,10 @@
   - Only show when a collection is active
   - Add green **+** button on "Available" characters to quick-add to roster
   - Makes it clear these are just not in the current roster, not broken
+  - **BUG:** Badges don't refresh when switching collections — must reload Characters view
+- [ ] **Window header not draggable** — Custom header doesn't behave like standard macOS title bar
+  - Make header area draggable to move window
+  - Support standard title bar behaviors (double-click to zoom, etc.)
 
 ### ✅ Recently Completed (January 2026)
 - [x] **Collections UI Polish**
@@ -52,13 +56,34 @@
   - [x] "Launch" button on collection activation toast
 
 ### 🔄 In Progress
-- [ ] **Import Collection from Project Folder** — NEXT SESSION
-  - Test folder: `~/Downloads/motu_masters_project_v2a`
-  - Scan folder for chars/, stages/, data/, fonts/, plugins/, sound/
-  - Create new collection with all characters and stages
-  - Option to copy/link assets to main IKEMEN GO installation
-  - Import screenpack from data/ if present
-  - Import custom fonts, plugins, sound packs
+- [ ] **Fullgame Import Mode** — IN PROGRESS
+  - Test folder: `~/Downloads/motu_masters_project_v2a` (MOTU Masters Project)
+  - **Toggle UI**: Add "Fullgame mode" checkbox to DashboardDropZone and Open Panel accessory
+  - **Detection**: Scan folder for `chars/`, `stages/`, `data/system.def`, `font/`, `sound/`
+  - **Content Installation**:
+    - Characters: Install each subfolder in `chars/` via existing `installCharacter()`
+    - Stages: Handle loose files (create subfolders), install via `installStage()`
+    - Screenpack: Install `data/` contents via `installScreenpack()`
+    - Fonts: Copy `font/*.fnt` to IKEMEN GO `font/`
+    - Sounds: Copy `sound/*.mp3` to IKEMEN GO `sound/`
+  - **Auto-Create Collection**: Parse screenpack name from `system.def` (fallback to folder name), create collection with all imported content
+  - **Per-Item Duplicates**: Show per-item prompt with "Apply to remaining" option, continue batch on skip/overwrite
+  - **Safety**: Backup select.def before any modification, handle partial failures gracefully
+  - **Progress**: Show inline progress ("Installing 3/7...") in status label
+  - **Post-Import**: Refresh character/stage browsers, show summary toast
+
+  **Implementation Steps:**
+  1. ✅ Add `fullgameImportEnabled` to AppSettings + protocol + mocks
+  2. ✅ Add toggle to DashboardDropZone UI
+  3. ✅ Add toggle to Open Panel accessory view
+  4. ✅ Create `FullgameImporter` service with `scanFullgamePackage()` and `installFullgame()`
+  5. ✅ Add `installFonts()` and `installSounds()` to FullgameImporter
+  6. ✅ Add loose-stage restructuring logic
+  7. ✅ Add `CollectionNameResolver` for nice naming
+  8. ✅ Wire fullgame path in `handleDroppedFiles()` and Open Panel flow
+  9. ✅ Implement per-item duplicate handling with "Apply to remaining"
+  10. ✅ Add helper in CollectionStore to create collection from import results
+  11. [ ] Add tests for detection, naming, and partial failure
 
 ### 📋 Up Next
 - [ ] **Drag & Drop to Collections** — Drag characters from Characters view onto a Collection in sidebar

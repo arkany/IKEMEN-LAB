@@ -46,8 +46,16 @@ public struct RecentInstall: Codable, FetchableRecord {
     public var name: String
     public var type: String            // "character" or "stage"
     public var installedAt: Date
-    public var folderPath: String       // Path to character folder or stage def file
+    public var folderPath: String       // Full path to character folder or stage def file
     public var author: String           // Author for display
+    
+    /// Check if the content still exists on disk
+    public var existsOnDisk: Bool {
+        // folderPath is already the full path from the database
+        // For characters: full path to character directory
+        // For stages: full path to .def file
+        return FileManager.default.fileExists(atPath: folderPath)
+    }
 }
 
 /// Metadata scraped from web browser extension

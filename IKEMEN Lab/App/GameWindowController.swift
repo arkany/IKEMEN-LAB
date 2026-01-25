@@ -2646,8 +2646,21 @@ class GameWindowController: NSWindowController {
         openPanel.canChooseDirectories = true
         openPanel.canChooseFiles = true
         
+        // Create accessory view with fullgame toggle
+        let accessoryView = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 32))
+        let fullgameToggle = NSButton(checkboxWithTitle: "Fullgame mode (import as collection)", target: nil, action: nil)
+        fullgameToggle.state = AppSettings.shared.fullgameImportEnabled ? .on : .off
+        fullgameToggle.toolTip = "Import entire MUGEN/IKEMEN packages as collections, including characters, stages, screenpack, fonts, and sounds."
+        fullgameToggle.frame = NSRect(x: 10, y: 4, width: 280, height: 24)
+        accessoryView.addSubview(fullgameToggle)
+        openPanel.accessoryView = accessoryView
+        
         openPanel.beginSheetModal(for: window!) { [weak self] response in
             guard response == .OK else { return }
+            
+            // Update setting based on toggle state
+            AppSettings.shared.fullgameImportEnabled = (fullgameToggle.state == .on)
+            
             self?.handleDroppedFiles(openPanel.urls)
         }
     }
@@ -2663,6 +2676,18 @@ class GameWindowController: NSWindowController {
                 FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
                 
                 if isDirectory.boolValue {
+                    // Check if fullgame mode is enabled and this looks like a fullgame
+                    print("[GameWindowController] Dropped folder: \(url.path)")
+                    print("[GameWindowController] Fullgame mode enabled: \(AppSettings.shared.fullgameImportEnabled)")
+                    if AppSettings.shared.fullgameImportEnabled {
+                        let manifest = FullgameImporter.shared.scanFullgamePackage(at: url)
+                        print("[GameWindowController] Is fullgame: \(manifest.isFullgame)")
+                        if manifest.isFullgame {
+                            print("[GameWindowController] Starting fullgame install...")
+                            installFullgame(manifest: manifest)
+                            continue
+                        }
+                    }
                     installFromFolder(url)
                 }
             }
@@ -2791,6 +2816,141 @@ class GameWindowController: NSWindowController {
                         subtitle: error.localizedDescription
                     )
                 }
+            }
+        }
+    }
+    
+    // MARK: - Fullgame Installation
+    
+    private func installFullgame(manifest: FullgameManifest) {
+        guard let workingDir = ikemenBridge.workingDirectory else {
+            ToastManager.shared.showError(title: "No IKEMEN GO folder", subtitle: "Please set up IKEMEN GO first.")
+            return
+        }
+        
+        let totalItems = manifest.characters.count + manifest.stages.count + (manifest.screenpack != nil ? 1 : 0)
+        statusLabel.stringValue = "Installing fullgame (0/\(totalItems))..."
+        statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
+        
+        // Track duplicate handling choice
+        var duplicateAction: DuplicateAction = .ask
+        let duplicateLock = NSLock()
+        
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do {
+                var itemsProcessed = 0
+                
+                let result = try FullgameImporter.shared.installFullgame(
+                    manifest: manifest,
+                    to: workingDir
+                ) { [weak self] itemName, itemType in
+                    // Duplicate handler - called on background thread, need to sync to main for UI
+                    var action: DuplicateAction = .ask
+                    
+                    duplicateLock.lock()
+                    let currentAction = duplicateAction
+                    duplicateLock.unlock()
+                    
+                    // If we already have a "all" decision, use it
+                    if currentAction == .overwriteAll || currentAction == .skipAll {
+                        return currentAction
+                    }
+                    
+                    // Otherwise, ask the user
+                    let semaphore = DispatchSemaphore(value: 0)
+                    
+                    DispatchQueue.main.async {
+                        self?.promptForDuplicateAction(name: itemName, type: itemType) { chosenAction in
+                            action = chosenAction
+                            
+                            // Store "all" decisions
+                            if chosenAction == .overwriteAll || chosenAction == .skipAll {
+                                duplicateLock.lock()
+                                duplicateAction = chosenAction
+                                duplicateLock.unlock()
+                            }
+                            
+                            semaphore.signal()
+                        }
+                    }
+                    
+                    semaphore.wait()
+                    return action
+                }
+                
+                DispatchQueue.main.async {
+                    self?.statusLabel.stringValue = "Installed!"
+                    self?.statusLabel.textColor = DesignColors.positive
+                    
+                    // Show summary toast
+                    if result.totalInstalled > 0 {
+                        var title = "Fullgame imported!"
+                        if let collection = result.collectionCreated {
+                            title = "Created \"\(collection.name)\""
+                        }
+                        
+                        ToastManager.shared.showSuccess(
+                            title: title,
+                            subtitle: "Installed \(result.summary)"
+                        )
+                    }
+                    
+                    // Show warnings for failures
+                    if result.totalFailed > 0 {
+                        var failedItems: [String] = []
+                        failedItems.append(contentsOf: result.charactersFailed.map { "\($0.name) (character)" })
+                        failedItems.append(contentsOf: result.stagesFailed.map { "\($0.name) (stage)" })
+                        if let screenpackError = result.screenpackFailed {
+                            failedItems.append("Screenpack: \(screenpackError)")
+                        }
+                        
+                        ToastManager.shared.showError(
+                            title: "\(result.totalFailed) item(s) failed",
+                            subtitle: failedItems.prefix(3).joined(separator: ", ")
+                        )
+                    }
+                    
+                    // Refresh views
+                    self?.dashboardView.refreshStats()
+                    self?.ikemenBridge.loadContent()
+                    
+                    // Post notification for browsers to refresh
+                    NotificationCenter.default.post(name: .contentChanged, object: nil)
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self?.statusLabel.stringValue = "Failed"
+                    self?.statusLabel.textColor = DesignColors.redAccent
+                    
+                    ToastManager.shared.showError(
+                        title: "Fullgame import failed",
+                        subtitle: error.localizedDescription
+                    )
+                }
+            }
+        }
+    }
+    
+    private func promptForDuplicateAction(name: String, type: String, completion: @escaping (DuplicateAction) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = "Duplicate \(type.capitalized)"
+        alert.informativeText = "'\(name)' is already installed. What would you like to do?"
+        alert.addButton(withTitle: "Overwrite")
+        alert.addButton(withTitle: "Skip")
+        alert.addButton(withTitle: "Overwrite All")
+        alert.addButton(withTitle: "Skip All")
+        alert.alertStyle = .warning
+        
+        alert.beginSheetModal(for: self.window!) { response in
+            switch response {
+            case .alertFirstButtonReturn:
+                completion(.overwrite)
+            case .alertSecondButtonReturn:
+                completion(.skip)
+            case .alertThirdButtonReturn:
+                completion(.overwriteAll)
+            default:
+                completion(.skipAll)
             }
         }
     }
