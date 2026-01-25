@@ -18,6 +18,13 @@ struct Collection: Codable, Identifiable, Hashable {
     var createdAt: Date
     var modifiedAt: Date
     
+    // Smart Collection fields
+    var isSmartCollection: Bool             // True if this is a smart collection
+    var smartRules: [FilterRule]?           // Filter rules for smart collections
+    var smartRuleOperator: RuleOperator?    // How to combine rules (.all or .any)
+    var includeCharacters: Bool?            // Apply rules to characters
+    var includeStages: Bool?                // Apply rules to stages
+    
     init(id: UUID = UUID(), name: String, icon: String = "folder.fill") {
         self.id = id
         self.name = name
@@ -32,7 +39,20 @@ struct Collection: Codable, Identifiable, Hashable {
         self.isActive = false
         self.createdAt = Date()
         self.modifiedAt = Date()
+        self.isSmartCollection = false
+        self.smartRules = nil
+        self.smartRuleOperator = nil
+        self.includeCharacters = nil
+        self.includeStages = nil
     }
+}
+
+// MARK: - RuleOperator
+
+/// How to combine multiple filter rules
+enum RuleOperator: String, Codable {
+    case all    // All rules must match (AND)
+    case any    // Any rule can match (OR)
 }
 
 // MARK: - RosterEntry
