@@ -18,6 +18,9 @@ class CollectionsSidebarSection: NSView {
     /// Called when "New Smart Collection..." is clicked
     var onNewSmartCollectionClicked: (() -> Void)?
     
+    /// Called when "Edit Smart Collection..." is clicked
+    var onEditSmartCollectionClicked: ((Collection) -> Void)?
+    
     // UI Elements
     private var headerLabel: NSTextField!
     private var collectionsStack: NSStackView!
@@ -245,6 +248,16 @@ class CollectionsSidebarSection: NSView {
         // Setup context menu
         let menu = NSMenu()
         
+        // Smart collection: Add edit option
+        if collection.isSmartCollection {
+            let editItem = NSMenuItem(title: "Edit Smart Collection...", action: #selector(editSmartCollection(_:)), keyEquivalent: "")
+            editItem.representedObject = collection.id
+            editItem.target = self
+            editItem.image = NSImage(systemSymbolName: "pencil", accessibilityDescription: nil)
+            menu.addItem(editItem)
+            menu.addItem(NSMenuItem.separator())
+        }
+        
         if !collection.isDefault {
             let renameItem = NSMenuItem(title: "Rename...", action: #selector(renameCollection(_:)), keyEquivalent: "")
             renameItem.representedObject = collection.id
@@ -431,6 +444,14 @@ class CollectionsSidebarSection: NSView {
     
     @objc private func createNewSmartCollection() {
         onNewSmartCollectionClicked?()
+    }
+    
+    @objc private func editSmartCollection(_ sender: NSMenuItem) {
+        guard let collectionId = sender.representedObject as? UUID,
+              let collection = collectionStore.collection(withId: collectionId),
+              collection.isSmartCollection else { return }
+        
+        onEditSmartCollectionClicked?(collection)
     }
     
     @objc private func renameCollection(_ sender: NSMenuItem) {

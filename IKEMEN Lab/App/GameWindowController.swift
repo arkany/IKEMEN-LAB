@@ -392,6 +392,11 @@ class GameWindowController: NSWindowController {
             self?.showSmartCollectionDialog()
         }
         
+        // Handle edit smart collection request
+        collectionsSidebarSection.onEditSmartCollectionClicked = { [weak self] collection in
+            self?.showSmartCollectionDialog(editing: collection)
+        }
+        
         // === Bottom Section ===
         let bottomArea = NSView()
         bottomArea.translatesAutoresizingMaskIntoConstraints = false
