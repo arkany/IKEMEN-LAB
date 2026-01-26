@@ -246,6 +246,97 @@ class TagDetector {
     
     // MARK: - Public Methods
     
+    /// Infer tags from primitive values (used by SmartCollectionEvaluator)
+    func detectTags(folderName: String, displayName: String, author: String) -> [String] {
+        var tags: Set<String> = []
+        
+        // Gather sources to check (case-insensitive)
+        let folderNameLower = folderName.lowercased()
+        let displayNameLower = displayName.lowercased()
+        let authorLower = author.lowercased()
+        
+        // Combined search text for general pattern matching
+        let searchText = [folderNameLower, displayNameLower, authorLower].joined(separator: " ")
+        let range = NSRange(searchText.startIndex..., in: searchText)
+        
+        // Detect source games
+        for (pattern, tag, useWordBoundary) in sourceGamePatterns {
+            if useWordBoundary {
+                if containsWord(pattern, in: searchText) {
+                    tags.insert(tag)
+                }
+            } else if searchText.contains(pattern) {
+                tags.insert(tag)
+            }
+        }
+        
+        // Special handling for "sf" - only match if not "sfx"
+        if let regex = TagDetector.sfRegex,
+           regex.firstMatch(in: searchText, options: [], range: range) != nil {
+            tags.insert("Street Fighter")
+        }
+        
+        // Detect franchises
+        for (pattern, tag, useWordBoundary) in franchisePatterns {
+            if useWordBoundary {
+                if containsWord(pattern, in: searchText) {
+                    tags.insert(tag)
+                }
+            } else if searchText.contains(pattern) {
+                tags.insert(tag)
+            }
+        }
+        
+        // Detect styles with special handling
+        for (pattern, tag, matchAuthor) in stylePatterns {
+            if matchAuthor {
+                // Check author specifically for style patterns (POTS, Infinite)
+                if containsWord(pattern, in: authorLower) {
+                    tags.insert(tag)
+                }
+            } else {
+                // Check folder or author for style patterns (CVS Style, MVC Style)
+                if folderNameLower.contains(pattern) || authorLower.contains(pattern) {
+                    tags.insert(tag)
+                }
+            }
+        }
+        
+        // Special case: Street Fighter characters (also add Capcom franchise)
+        for sfCharacter in streetFighterCharacters {
+            if containsWord(sfCharacter, in: searchText) {
+                tags.insert("Street Fighter")
+                tags.insert("Capcom")
+                break
+            }
+        }
+        
+        // Detect quality/type - check folder name AND author
+        let qualitySearchText = folderNameLower + " " + authorLower
+        
+        // Exact patterns (multi-word or with delimiters)
+        for (pattern, tag) in qualityExactPatterns {
+            if qualitySearchText.contains(pattern) {
+                tags.insert(tag)
+            }
+        }
+        
+        // Word patterns - require word boundary matching
+        for (pattern, tag) in qualityWordPatterns {
+            if containsWord(pattern, in: qualitySearchText) {
+                tags.insert(tag)
+            }
+        }
+        
+        // Special case: Mortal Kombat with mk followed by number
+        if let regex = TagDetector.mkRegex,
+           regex.firstMatch(in: searchText, options: [], range: range) != nil {
+            tags.insert("Mortal Kombat")
+        }
+        
+        return Array(tags).sorted()
+    }
+    
     /// Infer tags from a CharacterInfo
     func detectTags(for character: CharacterInfo) -> [String] {
         var tags: Set<String> = []

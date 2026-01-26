@@ -194,8 +194,17 @@ class CollectionsSidebarSection: NSView {
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         stack.addArrangedSubview(spacer)
         
-        // Count badge
-        let countLabel = NSTextField(labelWithString: "\(collection.characters.count)")
+        // Count badge - evaluate smart collections dynamically
+        let itemCount: Int
+        if collection.isSmartCollection {
+            let evaluator = SmartCollectionEvaluator()
+            let result = evaluator.evaluate(collection)
+            itemCount = result.characters.count + result.stages.count
+        } else {
+            itemCount = collection.characters.count
+        }
+        
+        let countLabel = NSTextField(labelWithString: "\(itemCount)")
         countLabel.translatesAutoresizingMaskIntoConstraints = false
         countLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
         countLabel.textColor = DesignColors.textDisabled

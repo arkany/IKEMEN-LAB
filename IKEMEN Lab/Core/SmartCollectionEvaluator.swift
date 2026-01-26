@@ -92,10 +92,20 @@ class SmartCollectionEvaluator {
         case .author:
             return evaluateStringField(character.author, rule: rule)
         case .tag:
-            // Combine inferred tags and custom tags
-            let inferredTags = character.tags ?? ""
-            let customTags = (try? metadataStore.customTags(for: character.id))?.joined(separator: ",") ?? ""
-            let allTags = [inferredTags, customTags].filter { !$0.isEmpty }.joined(separator: ",")
+            // Dynamically compute inferred tags using TagDetector (don't rely on stale DB data)
+            let inferredTags = TagDetector.shared.detectTags(
+                folderName: character.id,
+                displayName: character.name,
+                author: character.author
+            )
+            let customTags = (try? metadataStore.customTags(for: character.id)) ?? []
+            
+            // Combine all tags, removing duplicates
+            var allTagsSet = Set<String>()
+            for tag in inferredTags + customTags {
+                allTagsSet.insert(tag.lowercased())
+            }
+            let allTags = allTagsSet.joined(separator: ",")
             return evaluateTagField(allTags, rule: rule)
         case .installedAt:
             return evaluateDateField(character.installedAt, rule: rule)
