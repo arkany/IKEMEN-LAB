@@ -27,6 +27,10 @@
 ## Current Focus
 
 ### 🐛 Known Bugs
+- [ ] **Smart Collections: Tag matching inconsistent** — Some characters with detected tags (e.g., Superman with DC) not matching in smart collection rules
+  - Tags display correctly in details panel but don't match in evaluator
+  - Need to debug TagDetector.detectTags(folderName:displayName:author:) vs detectTags(for: CharacterInfo)
+  - May be rule value serialization or TagInputView issue
 - [ ] **Collections: Character names incorrect** — Showing folder names instead of display names from DEF files
 - [ ] **Collections: Stage thumbnails not loading** — All stages showing placeholder icon instead of preview images
 - [ ] **Characters: "UNREGISTERED" badge is confusing** — Users think something is broken
