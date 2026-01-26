@@ -850,6 +850,9 @@ public final class ContentManager {
             try? MetadataStore.shared.indexCharacter(info)
         }
         
+        // Notify that content has changed
+        NotificationCenter.default.post(name: .contentChanged, object: nil)
+        
         // Check for portrait issues and generate warning
         var warnings = validateCharacterPortrait(in: destPath)
         
@@ -984,6 +987,9 @@ public final class ContentManager {
         for stageName in installedStages {
             try addStageToSelectDef(stageName, in: workingDir)
         }
+        
+        // Notify that content has changed
+        NotificationCenter.default.post(name: .contentChanged, object: nil)
         
         var result: String
         if installedStages.count == 1 {
@@ -1690,6 +1696,9 @@ public final class ContentManager {
         // Then move the character directory to Trash
         try fileManager.trashItem(at: character.path, resultingItemURL: nil)
         print("Moved character directory to Trash: \(character.path.lastPathComponent)")
+        
+        // Notify that content has changed
+        NotificationCenter.default.post(name: .contentChanged, object: nil)
     }
     
     /// Remove a character entry from select.def
