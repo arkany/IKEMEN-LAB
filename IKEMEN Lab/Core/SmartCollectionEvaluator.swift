@@ -92,7 +92,11 @@ class SmartCollectionEvaluator {
         case .author:
             return evaluateStringField(character.author, rule: rule)
         case .tag:
-            return evaluateTagField(character.tags, rule: rule)
+            // Combine inferred tags and custom tags
+            let inferredTags = character.tags ?? ""
+            let customTags = (try? metadataStore.customTags(for: character.id))?.joined(separator: ",") ?? ""
+            let allTags = [inferredTags, customTags].filter { !$0.isEmpty }.joined(separator: ",")
+            return evaluateTagField(allTags, rule: rule)
         case .installedAt:
             return evaluateDateField(character.installedAt, rule: rule)
         case .sourceGame:
@@ -167,18 +171,40 @@ class SmartCollectionEvaluator {
     
     /// Evaluate a tag field (comma-separated tags)
     private func evaluateTagField(_ tagsString: String?, rule: FilterRule) -> Bool {
-        let tags = tagsString?.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) } ?? []
-        let searchTag = rule.value.trimmingCharacters(in: .whitespaces)
+        let characterTags = tagsString?.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() } ?? []
+        
+        // The rule value can be a single tag or comma-separated list of tags to search for
+        let searchTags = rule.value.components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+            .filter { !$0.isEmpty }
+        
+        // Empty search tags = no match
+        guard !searchTags.isEmpty else {
+            switch rule.comparison {
+            case .isEmpty:
+                return characterTags.isEmpty
+            case .isNotEmpty:
+                return !characterTags.isEmpty
+            default:
+                return false
+            }
+        }
         
         switch rule.comparison {
         case .contains:
-            return tags.contains { $0.lowercased() == searchTag.lowercased() }
+            // Match if character has ANY of the search tags
+            return searchTags.contains { searchTag in
+                characterTags.contains(searchTag)
+            }
         case .notContains:
-            return !tags.contains { $0.lowercased() == searchTag.lowercased() }
+            // Match if character has NONE of the search tags
+            return !searchTags.contains { searchTag in
+                characterTags.contains(searchTag)
+            }
         case .isEmpty:
-            return tags.isEmpty
+            return characterTags.isEmpty
         case .isNotEmpty:
-            return !tags.isEmpty
+            return !characterTags.isEmpty
         case .equals, .notEquals, .greaterThan, .lessThan, .withinDays:
             return false
         }
