@@ -17,6 +17,25 @@ class CollectionEditorView: NSView {
     private var collection: Collection?
     private var cancellables = Set<AnyCancellable>()
     
+    // For smart collections, store the evaluated results
+    private var evaluatedCharacters: [RosterEntry] = []
+    private var evaluatedStages: [String] = []
+    
+    // Use these for display (handles both regular and smart collections)
+    private var displayCharacters: [RosterEntry] {
+        if let collection = collection, collection.isSmartCollection {
+            return evaluatedCharacters
+        }
+        return collection?.characters ?? []
+    }
+    
+    private var displayStages: [String] {
+        if let collection = collection, collection.isSmartCollection {
+            return evaluatedStages
+        }
+        return collection?.stages ?? []
+    }
+    
     // Callbacks
     var onBackClicked: (() -> Void)?
     var onActivateClicked: ((Collection) -> Void)?
@@ -809,6 +828,22 @@ class CollectionEditorView: NSView {
     
     func configure(with collection: Collection) {
         self.collection = collection
+        
+        // For smart collections, evaluate the rules to get matching content
+        if collection.isSmartCollection {
+            let evaluator = SmartCollectionEvaluator()
+            let result = evaluator.evaluate(collection)
+            
+            // Convert character IDs to RosterEntries
+            evaluatedCharacters = result.characters.map { characterId in
+                RosterEntry.character(folder: characterId, def: nil)
+            }
+            evaluatedStages = result.stages
+        } else {
+            evaluatedCharacters = []
+            evaluatedStages = []
+        }
+        
         updateUI()
     }
     
@@ -818,8 +853,8 @@ class CollectionEditorView: NSView {
         guard let collection = collection else { return }
         
         titleLabel.stringValue = collection.name
-        rosterCountLabel.stringValue = "(\(collection.characters.count))"
-        stagesCountLabel.stringValue = "(\(collection.stages.count))"
+        rosterCountLabel.stringValue = "(\(displayCharacters.count))"
+        stagesCountLabel.stringValue = "(\(displayStages.count))"
         
         // Screenpack
         if let screenpackPath = collection.screenpackPath {
@@ -841,6 +876,11 @@ class CollectionEditorView: NSView {
             lifebarsDescLabel.stringValue = "Standard 2-Player"
         }
         
+        // For smart collections, hide the add buttons since content is dynamic
+        let isSmartCollection = collection.isSmartCollection
+        addCharactersButton.isHidden = isSmartCollection
+        addStagesButton.isHidden = isSmartCollection
+        
         updateActivateButton()
         
         // Reload collection views
@@ -852,7 +892,7 @@ class CollectionEditorView: NSView {
     }
     
     private func updateCollectionViewHeights() {
-        guard let collection = collection else { return }
+        guard collection != nil else { return }
         
         // Calculate roster height based on item count and available width
         let availableWidth = rosterContainerView.frame.width > 0 ? rosterContainerView.frame.width : (bounds.width - 48)
@@ -861,7 +901,7 @@ class CollectionEditorView: NSView {
         let spacing: CGFloat = 16
         
         let rosterColumns = max(1, Int((availableWidth + spacing) / (rosterItemWidth + spacing)))
-        let rosterRows = collection.characters.isEmpty ? 0 : Int(ceil(Double(collection.characters.count) / Double(rosterColumns)))
+        let rosterRows = displayCharacters.isEmpty ? 0 : Int(ceil(Double(displayCharacters.count) / Double(rosterColumns)))
         let rosterHeight = max(120, CGFloat(rosterRows) * (rosterItemHeight + spacing) - spacing)
         rosterHeightConstraint?.constant = rosterHeight
         
@@ -870,7 +910,7 @@ class CollectionEditorView: NSView {
         let stageItemHeight: CGFloat = 120
         
         let stageColumns = max(1, Int((availableWidth + spacing) / (stageItemWidth + spacing)))
-        let stageRows = collection.stages.isEmpty ? 0 : Int(ceil(Double(collection.stages.count) / Double(stageColumns)))
+        let stageRows = displayStages.isEmpty ? 0 : Int(ceil(Double(displayStages.count) / Double(stageColumns)))
         let stagesHeight = max(120, CGFloat(stageRows) * (stageItemHeight + spacing) - spacing)
         stagesHeightConstraint?.constant = stagesHeight
         
@@ -1136,12 +1176,12 @@ extension CollectionEditorView: NSTextFieldDelegate {
 
 extension CollectionEditorView: NSCollectionViewDataSource {
     func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
-        guard let collection = collection else { return 0 }
+        guard collection != nil else { return 0 }
         
         if collectionView == rosterCollectionView {
-            return collection.characters.count
+            return displayCharacters.count
         } else if collectionView == stagesCollectionView {
-            return collection.stages.count
+            return displayStages.count
         }
         return 0
     }
@@ -1149,13 +1189,15 @@ extension CollectionEditorView: NSCollectionViewDataSource {
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
         if collectionView == rosterCollectionView {
             let item = collectionView.makeItem(withIdentifier: RosterEntryItem.identifier, for: indexPath) as! RosterEntryItem
-            if let entry = collection?.characters[indexPath.item] {
+            if indexPath.item < displayCharacters.count {
+                let entry = displayCharacters[indexPath.item]
                 item.configure(with: entry)
             }
             return item
         } else if collectionView == stagesCollectionView {
             let item = collectionView.makeItem(withIdentifier: StageEntryItem.identifier, for: indexPath) as! StageEntryItem
-            if let stageFolder = collection?.stages[indexPath.item] {
+            if indexPath.item < displayStages.count {
+                let stageFolder = displayStages[indexPath.item]
                 item.configure(with: stageFolder)
             }
             return item
@@ -1179,6 +1221,8 @@ extension CollectionEditorView: NSCollectionViewDelegate {
     
     // Drag and drop for reordering roster
     func collectionView(_ collectionView: NSCollectionView, canDragItemsAt indexPaths: Set<IndexPath>, with event: NSEvent) -> Bool {
+        // Disable drag for smart collections (content is dynamic)
+        guard let collection = collection, !collection.isSmartCollection else { return false }
         return collectionView == rosterCollectionView
     }
     
