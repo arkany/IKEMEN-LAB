@@ -62,6 +62,9 @@
 		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
 		10EEA1562F26FD3800830402 /* FilterRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EEA1552F26FD3800830402 /* FilterRule.swift */; };
 		10EEA1582F26FD4F00830402 /* SmartCollectionEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EEA1572F26FD4F00830402 /* SmartCollectionEvaluator.swift */; };
+		8AAE522EB50CF047E76A9FDD /* TagInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ED2C89E1980D4067655FBD /* TagInputView.swift */; };
+		B45E588DFFF3CBED6E8405E4 /* RuleRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89D2A6BCC5E78DE80B65F73 /* RuleRowView.swift */; };
+		F9902EFF5EF06BC5A4F68C6F /* SmartCollectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8665BC29980FC0BDF6D13F6B /* SmartCollectionSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -155,10 +158,13 @@
 		202 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		204 /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameController.framework; path = System/Library/Frameworks/GameController.framework; sourceTree = SDKROOT; };
+		21ED2C89E1980D4067655FBD /* TagInputView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TagInputView.swift; sourceTree = "<group>"; };
+		8665BC29980FC0BDF6D13F6B /* SmartCollectionSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SmartCollectionSheet.swift; sourceTree = "<group>"; };
+		F89D2A6BCC5E78DE80B65F73 /* RuleRowView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RuleRowView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		10AF34FF2F19FDAC00A8F377 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		10AF34FF2F19FDAC00A8F377 /* Exceptions for "IKEMEN Lab Browser Extension" folder in "IKEMEN Lab Browser Extension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -168,8 +174,29 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		1071BF212F10ABCB00D9D1CA /* IKEMEN Lab Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "IKEMEN Lab Tests"; sourceTree = "<group>"; };
-		10AF34E42F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (10AF34FF2F19FDAC00A8F377 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = "IKEMEN Lab Browser Extension"; sourceTree = "<group>"; };
+		1071BF212F10ABCB00D9D1CA /* IKEMEN Lab Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = "IKEMEN Lab Tests";
+			sourceTree = "<group>";
+		};
+		10AF34E42F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				10AF34FF2F19FDAC00A8F377 /* Exceptions for "IKEMEN Lab Browser Extension" folder in "IKEMEN Lab Browser Extension" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = "IKEMEN Lab Browser Extension";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -324,6 +351,9 @@
 				144 /* ScreenpackPickerSheet.swift */,
 				146 /* AboutWindowController.swift */,
 				150 /* NewCollectionSheet.swift */,
+				8665BC29980FC0BDF6D13F6B /* SmartCollectionSheet.swift */,
+				F89D2A6BCC5E78DE80B65F73 /* RuleRowView.swift */,
+				21ED2C89E1980D4067655FBD /* TagInputView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -377,8 +407,6 @@
 				1071BF212F10ABCB00D9D1CA /* IKEMEN Lab Tests */,
 			);
 			name = "IKEMEN Lab Tests";
-			packageProductDependencies = (
-			);
 			productName = "IKEMEN Lab Tests";
 			productReference = 1071BF202F10ABCB00D9D1CA /* IKEMEN Lab Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -399,8 +427,6 @@
 				10AF34E42F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */,
 			);
 			name = "IKEMEN Lab Browser Extension";
-			packageProductDependencies = (
-			);
 			productName = "IKEMEN Lab Browser Extension";
 			productReference = 10AF34E32F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -564,6 +590,9 @@
 				049 /* Injectable.swift in Sources */,
 				050 /* NewCollectionSheet.swift in Sources */,
 				051 /* FullgameImporter.swift in Sources */,
+				F9902EFF5EF06BC5A4F68C6F /* SmartCollectionSheet.swift in Sources */,
+				B45E588DFFF3CBED6E8405E4 /* RuleRowView.swift in Sources */,
+				8AAE522EB50CF047E76A9FDD /* TagInputView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

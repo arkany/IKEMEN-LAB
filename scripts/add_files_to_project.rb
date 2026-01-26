@@ -7,9 +7,10 @@ project = Xcodeproj::Project.open('IKEMEN Lab.xcodeproj')
 main_target = project.targets.find { |t| t.name == 'IKEMEN Lab' }
 test_target = project.targets.find { |t| t.name == 'IKEMEN Lab Tests' }
 
-# Find the Core and Models groups
+# Find the Core, Models, and UI groups
 core_group = project.main_group.find_subpath('IKEMEN Lab/Core', false)
 models_group = project.main_group.find_subpath('IKEMEN Lab/Models', false)
+ui_group = project.main_group.find_subpath('IKEMEN Lab/UI', false)
 
 # Add FilterRule.swift to Models
 existing = models_group.children.find { |f| f.respond_to?(:path) && f.path == 'FilterRule.swift' }
@@ -31,28 +32,16 @@ else
   puts "SmartCollectionEvaluator.swift already exists"
 end
 
-# For the test target, we need to find the correct group
-# The Tests folder might be set up differently
-project.targets.each do |target|
-  next unless target.name == 'IKEMEN Lab Tests'
-  
-  # Find the tests group in the project
-  tests_group = project.main_group.children.find { |g| g.respond_to?(:path) && g.path == 'IKEMEN Lab Tests' }
-  if tests_group.nil?
-    tests_group = project.main_group.children.find { |g| g.respond_to?(:name) && g.name == 'IKEMEN Lab Tests' }
-  end
-  
-  if tests_group
-    existing = tests_group.children.find { |f| f.respond_to?(:path) && f.path == 'SmartCollectionEvaluatorTests.swift' }
-    unless existing
-      file_ref = tests_group.new_file('SmartCollectionEvaluatorTests.swift')
-      target.source_build_phase.add_file_reference(file_ref)
-      puts "Added SmartCollectionEvaluatorTests.swift"
-    else
-      puts "SmartCollectionEvaluatorTests.swift already exists"
-    end
+# Add UI files
+ui_files = ['SmartCollectionSheet.swift', 'RuleRowView.swift', 'TagInputView.swift']
+ui_files.each do |filename|
+  existing = ui_group.children.find { |f| f.respond_to?(:path) && f.path == filename }
+  unless existing
+    file_ref = ui_group.new_file(filename)
+    main_target.source_build_phase.add_file_reference(file_ref)
+    puts "Added #{filename}"
   else
-    puts "Could not find IKEMEN Lab Tests group"
+    puts "#{filename} already exists"
   end
 end
 
