@@ -65,6 +65,7 @@ class TagInputView: NSView, NSTextFieldDelegate {
         stackView.orientation = .horizontal
         stackView.spacing = 6
         stackView.alignment = .centerY
+        stackView.distribution = .fill
         containerView.addSubview(stackView)
         
         // Input field
@@ -78,6 +79,11 @@ class TagInputView: NSView, NSTextFieldDelegate {
         inputField.isBezeled = false
         inputField.focusRingType = .none
         inputField.delegate = self
+        inputField.cell?.usesSingleLineMode = true
+        inputField.cell?.wraps = false
+        inputField.cell?.isScrollable = true
+        inputField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        inputField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         stackView.addArrangedSubview(inputField)
         
         NSLayoutConstraint.activate([
@@ -88,9 +94,10 @@ class TagInputView: NSView, NSTextFieldDelegate {
             
             stackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
             stackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
-            stackView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            stackView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 4),
+            stackView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -4),
             
-            inputField.widthAnchor.constraint(greaterThanOrEqualToConstant: 80),
+            inputField.widthAnchor.constraint(greaterThanOrEqualToConstant: 60),
         ])
     }
     

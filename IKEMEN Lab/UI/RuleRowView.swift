@@ -25,6 +25,7 @@ class RuleRowView: NSView {
     private var valueContainer: NSView!
     private var valueTextField: NSTextField?
     private var valuePopup: NSPopUpButton?
+    private var valueComboBox: NSComboBox?
     private var tagInputView: TagInputView?
     private var deleteButton: NSButton!
     
@@ -236,12 +237,14 @@ class RuleRowView: NSView {
         valueTextField = nil
         valuePopup?.removeFromSuperview()
         valuePopup = nil
+        valueComboBox?.removeFromSuperview()
+        valueComboBox = nil
         tagInputView?.removeFromSuperview()
         tagInputView = nil
         
         switch field {
         case .tag:
-            // Tag input with chips
+            // Tag input with chips for multiple tags
             let tagInput = TagInputView()
             tagInput.translatesAutoresizingMaskIntoConstraints = false
             tagInput.delegate = self
@@ -327,12 +330,38 @@ class RuleRowView: NSView {
         textField.target = self
         textField.action = #selector(valueChanged)
         
-        // Add padding by using a custom cell
-        let cell = NSTextFieldCell()
+        // Use custom cell for vertical centering and padding
+        let cell = PaddedTextFieldCell(textCell: "")
+        cell.font = textField.font
+        cell.textColor = textField.textColor
+        cell.drawsBackground = false
         cell.wraps = false
         cell.isScrollable = true
+        cell.usesSingleLineMode = true
+        textField.cell = cell
         
         return textField
+    }
+    
+    private func createComboBox() -> NSComboBox {
+        let comboBox = NSComboBox()
+        comboBox.translatesAutoresizingMaskIntoConstraints = false
+        comboBox.font = DesignFonts.label(size: 11)
+        comboBox.textColor = textPrimary
+        comboBox.backgroundColor = inputBgColor
+        comboBox.drawsBackground = true
+        comboBox.isBezeled = false
+        comboBox.wantsLayer = true
+        comboBox.layer?.cornerRadius = 4
+        comboBox.layer?.borderWidth = 1
+        comboBox.layer?.borderColor = inputBorderColor.cgColor
+        comboBox.focusRingType = .none
+        comboBox.target = self
+        comboBox.action = #selector(valueChanged)
+        comboBox.usesDataSource = false
+        comboBox.hasVerticalScroller = true
+        comboBox.numberOfVisibleItems = 8
+        return comboBox
     }
     
     private func placeholderForField(_ field: FilterField) -> String {
@@ -352,8 +381,10 @@ class RuleRowView: NSView {
         } else if let popup = valuePopup {
             // For boolean fields
             popup.selectItem(at: value.lowercased() == "true" ? 0 : 1)
+        } else if let comboBox = valueComboBox {
+            comboBox.stringValue = value
         } else if let tagInput = tagInputView {
-            // For tag fields
+            // For tag fields - value is comma-separated
             let tags = value.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             tagInput.setTags(tags)
         }
@@ -364,6 +395,8 @@ class RuleRowView: NSView {
             return textField.stringValue
         } else if let popup = valuePopup {
             return popup.indexOfSelectedItem == 0 ? "true" : "false"
+        } else if let comboBox = valueComboBox {
+            return comboBox.stringValue
         } else if let tagInput = tagInputView {
             return tagInput.tags.joined(separator: ",")
         }
@@ -441,5 +474,38 @@ extension RuleRowView: TagInputViewDelegate {
     func tagInputViewDidChange(_ tagInput: TagInputView) {
         updateCurrentRule()
         delegate?.ruleRowViewDidChange(self)
+    }
+}
+
+// MARK: - Vertically Centered Text Field Cell
+
+/// Text field cell that centers text vertically and adds horizontal padding
+private class PaddedTextFieldCell: NSTextFieldCell {
+    private let horizontalPadding: CGFloat = 8
+    
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        var newRect = super.drawingRect(forBounds: rect)
+        
+        // Add horizontal padding
+        newRect.origin.x += horizontalPadding
+        newRect.size.width -= horizontalPadding * 2
+        
+        // Center vertically
+        let textSize = attributedStringValue.size()
+        let heightDelta = newRect.height - textSize.height
+        if heightDelta > 0 {
+            newRect.origin.y += heightDelta / 2
+            newRect.size.height -= heightDelta
+        }
+        
+        return newRect
+    }
+    
+    override func select(withFrame rect: NSRect, in controlView: NSView, editor textObj: NSText, delegate: Any?, start selStart: Int, length selLength: Int) {
+        super.select(withFrame: drawingRect(forBounds: rect), in: controlView, editor: textObj, delegate: delegate, start: selStart, length: selLength)
+    }
+    
+    override func edit(withFrame rect: NSRect, in controlView: NSView, editor textObj: NSText, delegate: Any?, event: NSEvent?) {
+        super.edit(withFrame: drawingRect(forBounds: rect), in: controlView, editor: textObj, delegate: delegate, event: event)
     }
 }

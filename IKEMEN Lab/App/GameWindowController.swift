@@ -2044,12 +2044,28 @@ class GameWindowController: NSWindowController {
     private func showSmartCollectionDialog(editing collection: Collection? = nil) {
         guard let window = window, let contentView = window.contentView else { return }
         
-        // Create dimming overlay
-        let overlay = NSView(frame: contentView.bounds)
+        // Create blur + dimming overlay that blocks clicks
+        let overlay = ClickBlockingView(frame: contentView.bounds)
         overlay.wantsLayer = true
-        overlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.5).cgColor
-        overlay.alphaValue = 0
         overlay.autoresizingMask = [.width, .height]
+        
+        // Add visual effect view for blur
+        let blurView = NSVisualEffectView(frame: overlay.bounds)
+        blurView.autoresizingMask = [.width, .height]
+        blurView.blendingMode = .behindWindow
+        blurView.material = .fullScreenUI
+        blurView.state = .active
+        blurView.alphaValue = 0.85
+        overlay.addSubview(blurView)
+        
+        // Add dark tint on top of blur
+        let tintView = NSView(frame: overlay.bounds)
+        tintView.wantsLayer = true
+        tintView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.3).cgColor
+        tintView.autoresizingMask = [.width, .height]
+        overlay.addSubview(tintView)
+        
+        overlay.alphaValue = 0
         contentView.addSubview(overlay)
         newCollectionOverlay = overlay
         
@@ -3433,4 +3449,22 @@ private class AppToggleHandler: NSObject {
 // MARK: - Flipped View for top-aligned scroll content
 private class FlippedView: NSView {
     override var isFlipped: Bool { true }
+}
+
+// MARK: - Click Blocking View
+
+/// View that intercepts all mouse events to prevent clicks passing through to views below
+private class ClickBlockingView: NSView {
+    override func mouseDown(with event: NSEvent) {
+        // Consume the click - don't pass to superview
+    }
+    
+    override func mouseUp(with event: NSEvent) {
+        // Consume the click
+    }
+    
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // Return self to capture all clicks within bounds
+        return bounds.contains(point) ? self : nil
+    }
 }

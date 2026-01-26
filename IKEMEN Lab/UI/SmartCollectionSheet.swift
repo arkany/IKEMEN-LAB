@@ -28,6 +28,7 @@ class SmartCollectionSheet: NSViewController {
     private var rulesStackView: NSStackView!
     private var matchCountLabel: NSTextField!
     private var createButton: NSButton!
+    private var addConditionButton: NSButton!
     
     private var ruleRowViews: [RuleRowView] = []
     
@@ -173,7 +174,8 @@ class SmartCollectionSheet: NSViewController {
         bodyScrollView.borderType = .noBorder
         view.addSubview(bodyScrollView)
         
-        bodyContentView = NSView()
+        // Use flipped view for top-aligned content
+        bodyContentView = FlippedContentView()
         bodyContentView.translatesAutoresizingMaskIntoConstraints = false
         bodyScrollView.documentView = bodyContentView
         
@@ -243,34 +245,38 @@ class SmartCollectionSheet: NSViewController {
         rulesStackView.spacing = 8
         bodyContentView.addSubview(rulesStackView)
         
-        // Add Condition button
-        let addButton = NSButton()
-        addButton.translatesAutoresizingMaskIntoConstraints = false
-        addButton.title = ""
-        addButton.bezelStyle = .regularSquare
-        addButton.isBordered = false
-        addButton.target = self
-        addButton.action = #selector(addRuleTapped)
-        
-        let addButtonContent = NSStackView()
-        addButtonContent.translatesAutoresizingMaskIntoConstraints = false
-        addButtonContent.orientation = .horizontal
-        addButtonContent.spacing = 6
-        addButtonContent.alignment = .centerY
+        // Add Condition button - use a clickable stack view for proper hit testing
+        addConditionButton = NSButton()
+        addConditionButton.translatesAutoresizingMaskIntoConstraints = false
+        addConditionButton.title = ""
+        addConditionButton.bezelStyle = .regularSquare
+        addConditionButton.isBordered = false
+        addConditionButton.target = self
+        addConditionButton.action = #selector(addRuleTapped)
+        addConditionButton.wantsLayer = true
+        bodyContentView.addSubview(addConditionButton)
         
         let plusIcon = NSImageView()
+        plusIcon.translatesAutoresizingMaskIntoConstraints = false
         plusIcon.image = NSImage(systemSymbolName: "plus.circle", accessibilityDescription: nil)
         plusIcon.contentTintColor = DesignColors.positive
         plusIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
+        addConditionButton.addSubview(plusIcon)
         
         let addLabel = NSTextField(labelWithString: "Add Condition")
+        addLabel.translatesAutoresizingMaskIntoConstraints = false
         addLabel.font = DesignFonts.label(size: 11)
         addLabel.textColor = DesignColors.positive
+        addConditionButton.addSubview(addLabel)
         
-        addButtonContent.addArrangedSubview(plusIcon)
-        addButtonContent.addArrangedSubview(addLabel)
-        addButton.addSubview(addButtonContent)
-        bodyContentView.addSubview(addButton)
+        // Position icon and label within button
+        NSLayoutConstraint.activate([
+            plusIcon.leadingAnchor.constraint(equalTo: addConditionButton.leadingAnchor),
+            plusIcon.centerYAnchor.constraint(equalTo: addConditionButton.centerYAnchor),
+            addLabel.leadingAnchor.constraint(equalTo: plusIcon.trailingAnchor, constant: 6),
+            addLabel.centerYAnchor.constraint(equalTo: addConditionButton.centerYAnchor),
+            addLabel.trailingAnchor.constraint(equalTo: addConditionButton.trailingAnchor),
+        ])
         
         NSLayoutConstraint.activate([
             bodyScrollView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
@@ -309,12 +315,10 @@ class SmartCollectionSheet: NSViewController {
             rulesStackView.leadingAnchor.constraint(equalTo: bodyContentView.leadingAnchor, constant: 24),
             rulesStackView.trailingAnchor.constraint(equalTo: bodyContentView.trailingAnchor, constant: -24),
             
-            addButton.topAnchor.constraint(equalTo: rulesStackView.bottomAnchor, constant: 12),
-            addButton.leadingAnchor.constraint(equalTo: bodyContentView.leadingAnchor, constant: 24),
-            addButton.bottomAnchor.constraint(equalTo: bodyContentView.bottomAnchor, constant: -24),
-            
-            addButtonContent.centerXAnchor.constraint(equalTo: addButton.centerXAnchor),
-            addButtonContent.centerYAnchor.constraint(equalTo: addButton.centerYAnchor),
+            addConditionButton.topAnchor.constraint(equalTo: rulesStackView.bottomAnchor, constant: 12),
+            addConditionButton.leadingAnchor.constraint(equalTo: bodyContentView.leadingAnchor, constant: 24),
+            addConditionButton.heightAnchor.constraint(equalToConstant: 24),
+            addConditionButton.bottomAnchor.constraint(equalTo: bodyContentView.bottomAnchor, constant: -24),
         ])
     }
     
@@ -514,4 +518,11 @@ extension SmartCollectionSheet: RuleRowViewDelegate {
 protocol SmartCollectionSheetDelegate: AnyObject {
     func smartCollectionSheet(_ sheet: SmartCollectionSheet, didCreateCollectionNamed name: String, rules: [FilterRule], ruleOperator: RuleOperator)
     func smartCollectionSheet(_ sheet: SmartCollectionSheet, didUpdateCollection id: UUID, name: String, rules: [FilterRule], ruleOperator: RuleOperator)
+}
+
+// MARK: - FlippedContentView
+
+/// NSView subclass that uses flipped coordinates for top-aligned layout
+private class FlippedContentView: NSView {
+    override var isFlipped: Bool { true }
 }
