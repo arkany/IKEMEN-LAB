@@ -27,7 +27,7 @@ class SmartCollectionEvaluator {
         
         // Evaluate characters
         if includeCharacters {
-            let characters = metadataStore.allCharacters()
+            let characters = (try? metadataStore.allCharacters()) ?? []
             matchingCharacters = characters
                 .filter { character in
                     evaluateRules(rules, for: character, operator: ruleOperator)
@@ -37,7 +37,7 @@ class SmartCollectionEvaluator {
         
         // Evaluate stages
         if includeStages {
-            let stages = metadataStore.allStages()
+            let stages = (try? metadataStore.allStages()) ?? []
             matchingStages = stages
                 .filter { stage in
                     evaluateRules(rules, for: stage, operator: ruleOperator)

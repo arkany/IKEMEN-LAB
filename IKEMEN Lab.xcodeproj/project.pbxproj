@@ -60,6 +60,8 @@
 		10AF34FB2F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 10AF34E32F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		10B1001C2F0114A400EC215A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001B2F0114A400EC215A /* DashboardView.swift */; };
 		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
+		10EEA1562F26FD3800830402 /* FilterRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EEA1552F26FD3800830402 /* FilterRule.swift */; };
+		10EEA1582F26FD4F00830402 /* SmartCollectionEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EEA1572F26FD4F00830402 /* SmartCollectionEvaluator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -107,6 +109,8 @@
 		10AF34E32F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "IKEMEN Lab Browser Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		10B1001B2F0114A400EC215A /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		10B1001E2F0114A500EC215A /* ToastNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastNotification.swift; sourceTree = "<group>"; };
+		10EEA1552F26FD3800830402 /* FilterRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterRule.swift; sourceTree = "<group>"; };
+		10EEA1572F26FD4F00830402 /* SmartCollectionEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartCollectionEvaluator.swift; sourceTree = "<group>"; };
 		112 /* IKEMEN Lab-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "IKEMEN Lab-Bridging-Header.h"; sourceTree = "<group>"; };
 		113 /* CharacterBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterBrowserView.swift; sourceTree = "<group>"; };
 		114 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
@@ -265,6 +269,7 @@
 		412 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				10EEA1572F26FD4F00830402 /* SmartCollectionEvaluator.swift */,
 				417 /* Protocols */,
 				104 /* EmulatorBridge.swift */,
 				138 /* CollectionStore.swift */,
@@ -326,6 +331,7 @@
 		415 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				10EEA1552F26FD3800830402 /* FilterRule.swift */,
 				118 /* CharacterInfo.swift */,
 				137 /* Collection.swift */,
 				119 /* StageInfo.swift */,
@@ -514,6 +520,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				001 /* AppDelegate.swift in Sources */,
+				10EEA1562F26FD3800830402 /* FilterRule.swift in Sources */,
 				002 /* GameWindowController.swift in Sources */,
 				003 /* MetalView.swift in Sources */,
 				004 /* EmulatorBridge.swift in Sources */,
@@ -536,6 +543,7 @@
 				027 /* StageGenerator.swift in Sources */,
 				028 /* MetadataStore.swift in Sources */,
 				030 /* ContentHeaderView.swift in Sources */,
+				10EEA1582F26FD4F00830402 /* SmartCollectionEvaluator.swift in Sources */,
 				031 /* FirstRunView.swift in Sources */,
 				032 /* ContentValidator.swift in Sources */,
 				033 /* TagDetector.swift in Sources */,

@@ -1,12 +1,6 @@
 import Foundation
 import AppKit
 
-// MARK: - Notifications
-
-extension Notification.Name {
-    static let contentChanged = Notification.Name("contentChanged")
-}
-
 // MARK: - Content Manager
 
 /// Manages installation, validation, and organization of MUGEN/Ikemen content
