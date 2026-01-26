@@ -387,6 +387,11 @@ class GameWindowController: NSWindowController {
             self?.showNewCollectionDialog()
         }
         
+        // Handle new smart collection request
+        collectionsSidebarSection.onNewSmartCollectionClicked = { [weak self] in
+            self?.showSmartCollectionDialog()
+        }
+        
         // === Bottom Section ===
         let bottomArea = NSView()
         bottomArea.translatesAutoresizingMaskIntoConstraints = false
@@ -1960,6 +1965,7 @@ class GameWindowController: NSWindowController {
     
     private var newCollectionOverlay: NSView?
     private var newCollectionSheet: NewCollectionSheet?
+    private var smartCollectionSheet: SmartCollectionSheet?
     
     private func showNewCollectionDialog() {
         guard let window = window, let contentView = window.contentView else { return }
@@ -2025,6 +2031,76 @@ class GameWindowController: NSWindowController {
             self?.newCollectionSheet?.removeFromSuperview()
             self?.newCollectionOverlay = nil
             self?.newCollectionSheet = nil
+        }
+    }
+    
+    // MARK: - Smart Collection Dialog
+    
+    private func showSmartCollectionDialog(editing collection: Collection? = nil) {
+        guard let window = window, let contentView = window.contentView else { return }
+        
+        // Create dimming overlay
+        let overlay = NSView(frame: contentView.bounds)
+        overlay.wantsLayer = true
+        overlay.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.5).cgColor
+        overlay.alphaValue = 0
+        overlay.autoresizingMask = [.width, .height]
+        contentView.addSubview(overlay)
+        newCollectionOverlay = overlay
+        
+        // Create the smart collection sheet
+        let sheet = SmartCollectionSheet(collection: collection)
+        sheet.delegate = self
+        
+        // Present as child view controller for proper lifecycle
+        let sheetView = sheet.view
+        sheetView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(sheetView)
+        
+        NSLayoutConstraint.activate([
+            sheetView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            sheetView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            sheetView.widthAnchor.constraint(equalToConstant: 640),
+            sheetView.heightAnchor.constraint(equalToConstant: 500),
+        ])
+        
+        smartCollectionSheet = sheet
+        
+        // Animate in
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.25
+            overlay.animator().alphaValue = 1
+        }
+        
+        // Scale animation for the sheet
+        sheetView.layer?.transform = CATransform3DMakeScale(0.95, 0.95, 1)
+        sheetView.alphaValue = 0
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            sheetView.animator().alphaValue = 1
+            sheetView.layer?.transform = CATransform3DIdentity
+        }
+        
+        // Click overlay to dismiss
+        let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(smartCollectionOverlayClicked))
+        overlay.addGestureRecognizer(clickGesture)
+    }
+    
+    @objc private func smartCollectionOverlayClicked() {
+        dismissSmartCollectionSheet()
+    }
+    
+    private func dismissSmartCollectionSheet() {
+        NSAnimationContext.runAnimationGroup { [weak self] context in
+            context.duration = 0.2
+            self?.newCollectionOverlay?.animator().alphaValue = 0
+            self?.smartCollectionSheet?.view.animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            self?.newCollectionOverlay?.removeFromSuperview()
+            self?.smartCollectionSheet?.view.removeFromSuperview()
+            self?.newCollectionOverlay = nil
+            self?.smartCollectionSheet = nil
         }
     }
     
@@ -3265,6 +3341,45 @@ class DropZoneView: NSView {
             }
             return false
         }
+    }
+}
+
+// MARK: - SmartCollectionSheetDelegate
+
+extension GameWindowController: SmartCollectionSheetDelegate {
+    
+    func smartCollectionSheet(_ sheet: SmartCollectionSheet, didCreateCollectionNamed name: String, rules: [FilterRule], ruleOperator: RuleOperator) {
+        // Create smart collection
+        var collection = CollectionStore.shared.createCollection(name: name, icon: "wand.and.stars")
+        collection.isSmartCollection = true
+        collection.smartRules = rules
+        collection.smartRuleOperator = ruleOperator
+        collection.includeCharacters = true
+        collection.includeStages = true
+        
+        CollectionStore.shared.update(collection)
+        
+        ToastManager.shared.showSuccess(title: "Created smart collection: \(name)")
+        
+        dismissSmartCollectionSheet()
+        
+        // Select the new collection
+        collectionsSidebarSection.selectCollection(collection)
+        handleCollectionSelected(collection)
+    }
+    
+    func smartCollectionSheet(_ sheet: SmartCollectionSheet, didUpdateCollection id: UUID, name: String, rules: [FilterRule], ruleOperator: RuleOperator) {
+        guard var collection = CollectionStore.shared.collection(withId: id) else { return }
+        
+        collection.name = name
+        collection.smartRules = rules
+        collection.smartRuleOperator = ruleOperator
+        
+        CollectionStore.shared.update(collection)
+        
+        ToastManager.shared.showSuccess(title: "Updated smart collection: \(name)")
+        
+        dismissSmartCollectionSheet()
     }
 }
 

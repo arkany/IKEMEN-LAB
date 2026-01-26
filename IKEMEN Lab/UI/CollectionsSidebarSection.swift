@@ -15,6 +15,9 @@ class CollectionsSidebarSection: NSView {
     /// Called when "New Collection..." is clicked
     var onNewCollectionClicked: (() -> Void)?
     
+    /// Called when "New Smart Collection..." is clicked
+    var onNewSmartCollectionClicked: (() -> Void)?
+    
     // UI Elements
     private var headerLabel: NSTextField!
     private var collectionsStack: NSStackView!
@@ -331,6 +334,21 @@ class CollectionsSidebarSection: NSView {
             container.layer?.backgroundColor = isHovered ? DesignColors.hoverBackground.cgColor : NSColor.clear.cgColor
         }
         
+        // Create context menu for collection type choice
+        let menu = NSMenu()
+        
+        let newCollectionItem = NSMenuItem(title: "New Collection", action: #selector(createNewRegularCollection), keyEquivalent: "")
+        newCollectionItem.target = self
+        newCollectionItem.image = NSImage(systemSymbolName: "folder", accessibilityDescription: nil)
+        menu.addItem(newCollectionItem)
+        
+        let newSmartItem = NSMenuItem(title: "New Smart Collection...", action: #selector(createNewSmartCollection), keyEquivalent: "")
+        newSmartItem.target = self
+        newSmartItem.image = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)
+        menu.addItem(newSmartItem)
+        
+        button.menu = menu
+        
         return button
     }
     
@@ -401,7 +419,18 @@ class CollectionsSidebarSection: NSView {
     }
     
     @objc private func newCollectionClicked(_ sender: NSButton) {
+        // Show menu on left click
+        if let menu = sender.menu {
+            NSMenu.popUpContextMenu(menu, with: NSApp.currentEvent!, for: sender)
+        }
+    }
+    
+    @objc private func createNewRegularCollection() {
         onNewCollectionClicked?()
+    }
+    
+    @objc private func createNewSmartCollection() {
+        onNewSmartCollectionClicked?()
     }
     
     @objc private func renameCollection(_ sender: NSMenuItem) {
