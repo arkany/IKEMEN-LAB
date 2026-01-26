@@ -1412,7 +1412,13 @@ class RosterEntryItem: NSCollectionViewItem {
         
         switch entry.entryType {
         case .character:
-            nameLabel.stringValue = entry.characterFolder ?? "Unknown"
+            // Look up character info for display name
+            var displayName = entry.characterFolder ?? "Unknown"
+            if let folder = entry.characterFolder,
+               let character = IkemenBridge.shared.characters.first(where: { $0.directory.lastPathComponent == folder }) {
+                displayName = character.displayName
+            }
+            nameLabel.stringValue = displayName
             nameLabel.textColor = DesignColors.textSecondary
             thumbnailView.image = NSImage(systemSymbolName: "person.fill", accessibilityDescription: nil)
             thumbnailView.contentTintColor = DesignColors.textSecondary
@@ -1616,7 +1622,13 @@ class StageEntryItem: NSCollectionViewItem {
     
     func configure(with folder: String) {
         self.stageFolder = folder
-        nameLabel.stringValue = folder
+        
+        // Look up stage info for display name
+        var displayName = folder
+        if let stage = IkemenBridge.shared.stages.first(where: { $0.id == folder }) {
+            displayName = stage.name
+        }
+        nameLabel.stringValue = displayName
         
         // Default icon
         thumbnailView.image = NSImage(systemSymbolName: "photo", accessibilityDescription: nil)
