@@ -1667,11 +1667,27 @@ class StageEntryItem: NSCollectionViewItem {
     func configure(with folder: String) {
         self.stageFolder = folder
         
-        // Look up stage info for display name
-        var displayName = folder
-        if let stage = IkemenBridge.shared.stages.first(where: { $0.id == folder }) {
-            displayName = stage.name
-        }
+        // Normalize the folder string - remove .def extension if present
+        let normalizedFolder = folder.lowercased().hasSuffix(".def")
+            ? String(folder.dropLast(4))
+            : folder
+        
+        // Look up stage info - match by ID (DEF name without extension) or by folder name
+        let stageInfo = IkemenBridge.shared.stages.first(where: { stage in
+            // Match by ID (DEF filename without extension)
+            if stage.id.lowercased() == normalizedFolder.lowercased() { return true }
+            
+            // Match by parent folder name (for stages in subfolders)
+            let parentFolder = stage.defFile.deletingLastPathComponent().lastPathComponent
+            if parentFolder.lowercased() != "stages" && parentFolder.lowercased() == normalizedFolder.lowercased() {
+                return true
+            }
+            
+            return false
+        })
+        
+        // Use display name from stage info or fallback to folder (cleaned up)
+        let displayName = stageInfo?.name ?? normalizedFolder
         nameLabel.stringValue = displayName
         
         // Default icon
@@ -1679,22 +1695,48 @@ class StageEntryItem: NSCollectionViewItem {
         thumbnailView.contentTintColor = DesignColors.textSecondary
         
         // Try to load stage thumbnail
-        loadThumbnail(for: folder)
+        loadThumbnail(for: normalizedFolder, stageInfo: stageInfo)
     }
     
-    private func loadThumbnail(for folder: String) {
-        guard let ikemenPath = IkemenBridge.shared.workingDirectory else { return }
-        let stagePath = ikemenPath.appendingPathComponent("stages/\(folder)")
+    private func loadThumbnail(for folder: String, stageInfo: StageInfo?) {
+        // Check cache first
+        let cacheKey = ImageCache.stagePreviewKey(for: folder)
+        if let cached = ImageCache.shared.get(cacheKey) {
+            thumbnailView.image = cached
+            thumbnailView.contentTintColor = nil
+            return
+        }
         
-        // Look for preview image
-        let possibleNames = ["\(folder).png", "preview.png", "\(folder).jpg", "preview.jpg"]
-        for name in possibleNames {
-            let imagePath = stagePath.appendingPathComponent(name)
-            if FileManager.default.fileExists(atPath: imagePath.path),
-               let image = NSImage(contentsOf: imagePath) {
-                thumbnailView.image = image
-                thumbnailView.contentTintColor = nil
-                break
+        // Load asynchronously
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var image: NSImage? = nil
+            
+            // First try PNG/JPG preview files
+            if let ikemenPath = IkemenBridge.shared.workingDirectory {
+                let stagePath = ikemenPath.appendingPathComponent("stages/\(folder)")
+                let possibleNames = ["\(folder).png", "preview.png", "\(folder).jpg", "preview.jpg"]
+                for name in possibleNames {
+                    let imagePath = stagePath.appendingPathComponent(name)
+                    if FileManager.default.fileExists(atPath: imagePath.path),
+                       let loadedImage = NSImage(contentsOf: imagePath) {
+                        image = loadedImage
+                        break
+                    }
+                }
+            }
+            
+            // Fall back to SFF extraction (like StageBrowserView)
+            if image == nil, let stage = stageInfo {
+                image = stage.loadPreviewImage()
+            }
+            
+            // Update UI on main thread
+            if let finalImage = image {
+                ImageCache.shared.set(finalImage, for: cacheKey)
+                DispatchQueue.main.async {
+                    self?.thumbnailView.image = finalImage
+                    self?.thumbnailView.contentTintColor = nil
+                }
             }
         }
     }

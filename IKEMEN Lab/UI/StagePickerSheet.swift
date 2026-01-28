@@ -219,8 +219,16 @@ class StagePickerSheet: NSViewController {
     }
     
     private func stageFolderName(for stage: StageInfo) -> String {
-        // Stage folder is the parent directory of the def file
-        return stage.defFile.deletingLastPathComponent().lastPathComponent
+        // Check if stage is in a subfolder or loose in stages/
+        let parentFolder = stage.defFile.deletingLastPathComponent().lastPathComponent
+        
+        // If parent is "stages", this is a loose stage - use DEF filename without extension
+        if parentFolder.lowercased() == "stages" {
+            return stage.id  // DEF filename without extension
+        }
+        
+        // Otherwise it's in a subfolder - use the folder name
+        return parentFolder
     }
     
     private func syncToCollection() {
