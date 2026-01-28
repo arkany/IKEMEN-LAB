@@ -1711,7 +1711,7 @@ class StageEntryItem: NSCollectionViewItem {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             var image: NSImage? = nil
             
-            // First try PNG/JPG preview files
+            // First try PNG/JPG preview files in stage folder
             if let ikemenPath = IkemenBridge.shared.workingDirectory {
                 let stagePath = ikemenPath.appendingPathComponent("stages/\(folder)")
                 let possibleNames = ["\(folder).png", "preview.png", "\(folder).jpg", "preview.jpg"]
@@ -1721,6 +1721,20 @@ class StageEntryItem: NSCollectionViewItem {
                        let loadedImage = NSImage(contentsOf: imagePath) {
                         image = loadedImage
                         break
+                    }
+                }
+                
+                // Also check for loose preview files in stages/ folder (not subfolders)
+                if image == nil {
+                    let stagesDir = ikemenPath.appendingPathComponent("stages")
+                    let loosePreviewNames = ["\(folder).png", "\(folder).jpg"]
+                    for name in loosePreviewNames {
+                        let imagePath = stagesDir.appendingPathComponent(name)
+                        if FileManager.default.fileExists(atPath: imagePath.path),
+                           let loadedImage = NSImage(contentsOf: imagePath) {
+                            image = loadedImage
+                            break
+                        }
                     }
                 }
             }
