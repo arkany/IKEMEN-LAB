@@ -1555,6 +1555,7 @@ class StageEntryItem: NSCollectionViewItem {
     
     private var containerView: NSView!
     private var thumbnailView: NSImageView!
+    private var placeholderStack: NSStackView!  // "No Thumbnail" placeholder
     private var nameLabel: NSTextField!
     private var stageFolder: String?
     private var trackingArea: NSTrackingArea?
@@ -1582,6 +1583,27 @@ class StageEntryItem: NSCollectionViewItem {
         thumbnailView.alphaValue = 0.6
         containerView.addSubview(thumbnailView)
         
+        // Placeholder stack for "No Thumbnail" message
+        placeholderStack = NSStackView()
+        placeholderStack.translatesAutoresizingMaskIntoConstraints = false
+        placeholderStack.orientation = .vertical
+        placeholderStack.alignment = .centerX
+        placeholderStack.spacing = 2
+        placeholderStack.isHidden = true
+        containerView.addSubview(placeholderStack)
+        
+        let placeholderTitle = NSTextField(labelWithString: "No Thumbnail")
+        placeholderTitle.font = DesignFonts.label(size: 11)
+        placeholderTitle.textColor = DesignColors.textTertiary
+        placeholderTitle.alignment = .center
+        placeholderStack.addArrangedSubview(placeholderTitle)
+        
+        let placeholderSubtitle = NSTextField(labelWithString: "9000,0 not in SFF")
+        placeholderSubtitle.font = DesignFonts.caption(size: 9)
+        placeholderSubtitle.textColor = DesignColors.textDisabled
+        placeholderSubtitle.alignment = .center
+        placeholderStack.addArrangedSubview(placeholderSubtitle)
+        
         // Name label below card (not overlaid)
         nameLabel = NSTextField(labelWithString: "")
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -1603,6 +1625,10 @@ class StageEntryItem: NSCollectionViewItem {
             thumbnailView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             thumbnailView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             
+            // Placeholder centered in container
+            placeholderStack.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            placeholderStack.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            
             // Name label below
             nameLabel.topAnchor.constraint(equalTo: containerView.bottomAnchor, constant: 6),
             nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 2),
@@ -1610,6 +1636,17 @@ class StageEntryItem: NSCollectionViewItem {
         ])
         
         setupTrackingArea()
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        thumbnailView.image = nil
+        thumbnailView.alphaValue = 0.6
+        placeholderStack.isHidden = true
+        nameLabel.stringValue = ""
+        stageFolder = nil
+        containerView.layer?.borderWidth = 1
+        containerView.layer?.borderColor = DesignColors.borderSubtle.cgColor
     }
     
     private func setupTrackingArea() {
@@ -1672,29 +1709,19 @@ class StageEntryItem: NSCollectionViewItem {
             ? String(folder.dropLast(4))
             : folder
         
-        // Look up stage info - match by ID (DEF name without extension) or by folder name
+        // Look up stage info for display name
         let stageInfo = IkemenBridge.shared.stages.first(where: { stage in
-            // Match by ID (DEF filename without extension)
-            if stage.id.lowercased() == normalizedFolder.lowercased() { return true }
-            
-            // Match by parent folder name (for stages in subfolders)
-            let parentFolder = stage.defFile.deletingLastPathComponent().lastPathComponent
-            if parentFolder.lowercased() != "stages" && parentFolder.lowercased() == normalizedFolder.lowercased() {
-                return true
-            }
-            
-            return false
+            stage.id.lowercased() == normalizedFolder.lowercased()
         })
         
-        // Use display name from stage info or fallback to folder (cleaned up)
-        let displayName = stageInfo?.name ?? normalizedFolder
-        nameLabel.stringValue = displayName
+        nameLabel.stringValue = stageInfo?.name ?? normalizedFolder
         
-        // Default icon
-        thumbnailView.image = NSImage(systemSymbolName: "photo", accessibilityDescription: nil)
-        thumbnailView.contentTintColor = DesignColors.textSecondary
+        // Reset to placeholder state
+        thumbnailView.image = nil
+        thumbnailView.contentTintColor = nil
+        placeholderStack.isHidden = true
         
-        // Try to load stage thumbnail
+        // Try to load thumbnail
         loadThumbnail(for: normalizedFolder, stageInfo: stageInfo)
     }
     
@@ -1702,8 +1729,7 @@ class StageEntryItem: NSCollectionViewItem {
         // Check cache first
         let cacheKey = ImageCache.stagePreviewKey(for: folder)
         if let cached = ImageCache.shared.get(cacheKey) {
-            thumbnailView.image = cached
-            thumbnailView.contentTintColor = nil
+            showThumbnail(cached)
             return
         }
         
@@ -1711,48 +1737,32 @@ class StageEntryItem: NSCollectionViewItem {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             var image: NSImage? = nil
             
-            // First try PNG/JPG preview files in stage folder
-            if let ikemenPath = IkemenBridge.shared.workingDirectory {
-                let stagePath = ikemenPath.appendingPathComponent("stages/\(folder)")
-                let possibleNames = ["\(folder).png", "preview.png", "\(folder).jpg", "preview.jpg"]
-                for name in possibleNames {
-                    let imagePath = stagePath.appendingPathComponent(name)
-                    if FileManager.default.fileExists(atPath: imagePath.path),
-                       let loadedImage = NSImage(contentsOf: imagePath) {
-                        image = loadedImage
-                        break
-                    }
-                }
-                
-                // Also check for loose preview files in stages/ folder (not subfolders)
-                if image == nil {
-                    let stagesDir = ikemenPath.appendingPathComponent("stages")
-                    let loosePreviewNames = ["\(folder).png", "\(folder).jpg"]
-                    for name in loosePreviewNames {
-                        let imagePath = stagesDir.appendingPathComponent(name)
-                        if FileManager.default.fileExists(atPath: imagePath.path),
-                           let loadedImage = NSImage(contentsOf: imagePath) {
-                            image = loadedImage
-                            break
-                        }
-                    }
-                }
-            }
-            
-            // Fall back to SFF extraction (like StageBrowserView)
-            if image == nil, let stage = stageInfo {
+            // Try SFF extraction first (most common source)
+            if let stage = stageInfo {
                 image = stage.loadPreviewImage()
             }
             
             // Update UI on main thread
-            if let finalImage = image {
-                ImageCache.shared.set(finalImage, for: cacheKey)
-                DispatchQueue.main.async {
-                    self?.thumbnailView.image = finalImage
-                    self?.thumbnailView.contentTintColor = nil
+            DispatchQueue.main.async {
+                if let finalImage = image {
+                    ImageCache.shared.set(finalImage, for: cacheKey)
+                    self?.showThumbnail(finalImage)
+                } else {
+                    self?.showPlaceholder()
                 }
             }
         }
+    }
+    
+    private func showThumbnail(_ image: NSImage) {
+        thumbnailView.image = image
+        thumbnailView.alphaValue = 0.8
+        placeholderStack.isHidden = true
+    }
+    
+    private func showPlaceholder() {
+        thumbnailView.image = nil
+        placeholderStack.isHidden = false
     }
     
     private func updateBorderForSelection() {

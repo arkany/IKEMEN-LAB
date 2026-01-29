@@ -455,8 +455,9 @@ public struct SFFv1Parser: SFFVersionParser {
         let width = Int(xmax - xmin + 1)
         let height = Int(ymax - ymin + 1)
         
-        // Allow larger images for stage backgrounds (up to 4096x4096)
-        guard width > 0, width <= 4096, height > 0, height <= 4096 else { return nil }
+        // Allow larger images for stage backgrounds (up to 8192x8192)
+        // Stage backgrounds can be very large panoramic images
+        guard width > 0, width <= 8192, height > 0, height <= 8192 else { return nil }
         guard bitsPerPixel == 8 else { return nil }
         
         let bytesPerLine = Int(UInt16(data[66]) | (UInt16(data[67]) << 8))
