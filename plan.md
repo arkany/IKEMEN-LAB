@@ -73,9 +73,17 @@
 - [x] **Toast Notifications**
   - [x] Added action button support to toast system
   - [x] "Launch" button on collection activation toast
+- [x] **Smart Collections UI** ✅ COMPLETE
+  - [x] Rule builder with field/comparison/value inputs
+  - [x] Author field autocomplete from database
+  - [x] Boolean toggles for Is HD / Has AI fields
+  - [x] Tag input with autocomplete suggestions
+  - [x] Collection name validation with error state
+  - [x] Cancel/dismiss button fixes
 
 ### 🔄 In Progress
 - [ ] **Stage thumbnail loading** — Some stages still missing thumbnails due to DEF/SFF path issues
+- [ ] **Smart Collections tag matching** — Need to verify tag matching works with new UI
 
 ### 📋 Up Next
 - [ ] **Drag & Drop to Collections** — Drag characters from Characters view onto a Collection in sidebar
