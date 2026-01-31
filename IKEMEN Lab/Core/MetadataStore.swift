@@ -461,6 +461,47 @@ public final class MetadataStore {
         try reindexCharacters(from: workingDir)
         try reindexStages(from: workingDir)
     }
+    
+    // MARK: - Distinct Values for Autocomplete
+    
+    /// Get all distinct authors from characters
+    public func distinctAuthors() throws -> [String] {
+        try dbQueue?.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT DISTINCT author
+                FROM characters
+                WHERE author != '' AND author IS NOT NULL
+                ORDER BY author COLLATE NOCASE
+            """)
+            return rows.compactMap { $0["author"] as String? }
+        } ?? []
+    }
+    
+    /// Get all distinct source games from characters
+    public func distinctSourceGames() throws -> [String] {
+        try dbQueue?.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT DISTINCT sourceGame
+                FROM characters
+                WHERE sourceGame != '' AND sourceGame IS NOT NULL
+                ORDER BY sourceGame COLLATE NOCASE
+            """)
+            return rows.compactMap { $0["sourceGame"] as String? }
+        } ?? []
+    }
+    
+    /// Get all distinct styles from characters
+    public func distinctStyles() throws -> [String] {
+        try dbQueue?.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT DISTINCT style
+                FROM characters
+                WHERE style != '' AND style IS NOT NULL
+                ORDER BY style COLLATE NOCASE
+            """)
+            return rows.compactMap { $0["style"] as String? }
+        } ?? []
+    }
 
     // MARK: - Custom Tag Operations
 

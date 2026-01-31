@@ -24,6 +24,8 @@ class SmartCollectionSheet: NSViewController {
     private var footerView: NSView!
     
     private var nameTextField: NSTextField!
+    private var nameTextFieldWrapper: NSView!
+    private var nameErrorLabel: NSTextField!
     private var matchPopup: NSPopUpButton!
     private var rulesStackView: NSStackView!
     private var matchCountLabel: NSTextField!
@@ -72,6 +74,11 @@ class SmartCollectionSheet: NSViewController {
         }
         
         updateMatchCount()
+        
+        // Focus on name field after a brief delay to allow view to be added to window
+        DispatchQueue.main.async { [weak self] in
+            self?.view.window?.makeFirstResponder(self?.nameTextField)
+        }
     }
     
     // MARK: - Setup
@@ -187,14 +194,14 @@ class SmartCollectionSheet: NSViewController {
         bodyContentView.addSubview(nameLabel)
         
         // Name input wrapper (for padding)
-        let textFieldWrapper = NSView()
-        textFieldWrapper.translatesAutoresizingMaskIntoConstraints = false
-        textFieldWrapper.wantsLayer = true
-        textFieldWrapper.layer?.backgroundColor = DesignColors.inputBackground.cgColor
-        textFieldWrapper.layer?.cornerRadius = 8
-        textFieldWrapper.layer?.borderWidth = 1
-        textFieldWrapper.layer?.borderColor = DesignColors.borderHover.cgColor
-        bodyContentView.addSubview(textFieldWrapper)
+        nameTextFieldWrapper = NSView()
+        nameTextFieldWrapper.translatesAutoresizingMaskIntoConstraints = false
+        nameTextFieldWrapper.wantsLayer = true
+        nameTextFieldWrapper.layer?.backgroundColor = DesignColors.inputBackground.cgColor
+        nameTextFieldWrapper.layer?.cornerRadius = 8
+        nameTextFieldWrapper.layer?.borderWidth = 1
+        nameTextFieldWrapper.layer?.borderColor = DesignColors.borderHover.cgColor
+        bodyContentView.addSubview(nameTextFieldWrapper)
         
         nameTextField = NSTextField()
         nameTextField.translatesAutoresizingMaskIntoConstraints = false
@@ -206,7 +213,16 @@ class SmartCollectionSheet: NSViewController {
         nameTextField.focusRingType = .none
         nameTextField.placeholderString = "Enter collection name..."
         nameTextField.stringValue = collection?.name ?? ""
-        textFieldWrapper.addSubview(nameTextField)
+        nameTextField.delegate = self
+        nameTextFieldWrapper.addSubview(nameTextField)
+        
+        // Error label (hidden by default)
+        nameErrorLabel = NSTextField(labelWithString: "Collection name is required")
+        nameErrorLabel.translatesAutoresizingMaskIntoConstraints = false
+        nameErrorLabel.font = DesignFonts.label(size: 10)
+        nameErrorLabel.textColor = DesignColors.negative
+        nameErrorLabel.isHidden = true
+        bodyContentView.addSubview(nameErrorLabel)
         
         // Match row: "Match [All/Any] of the following rules:"
         let matchLabel1 = NSTextField(labelWithString: "Match")
@@ -292,16 +308,19 @@ class SmartCollectionSheet: NSViewController {
             nameLabel.topAnchor.constraint(equalTo: bodyContentView.topAnchor, constant: 24),
             nameLabel.leadingAnchor.constraint(equalTo: bodyContentView.leadingAnchor, constant: 24),
             
-            textFieldWrapper.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 8),
-            textFieldWrapper.leadingAnchor.constraint(equalTo: bodyContentView.leadingAnchor, constant: 24),
-            textFieldWrapper.trailingAnchor.constraint(equalTo: bodyContentView.trailingAnchor, constant: -24),
-            textFieldWrapper.heightAnchor.constraint(equalToConstant: 36),
+            nameTextFieldWrapper.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 8),
+            nameTextFieldWrapper.leadingAnchor.constraint(equalTo: bodyContentView.leadingAnchor, constant: 24),
+            nameTextFieldWrapper.trailingAnchor.constraint(equalTo: bodyContentView.trailingAnchor, constant: -24),
+            nameTextFieldWrapper.heightAnchor.constraint(equalToConstant: 36),
             
-            nameTextField.leadingAnchor.constraint(equalTo: textFieldWrapper.leadingAnchor, constant: 12),
-            nameTextField.trailingAnchor.constraint(equalTo: textFieldWrapper.trailingAnchor, constant: -12),
-            nameTextField.centerYAnchor.constraint(equalTo: textFieldWrapper.centerYAnchor),
+            nameTextField.leadingAnchor.constraint(equalTo: nameTextFieldWrapper.leadingAnchor, constant: 12),
+            nameTextField.trailingAnchor.constraint(equalTo: nameTextFieldWrapper.trailingAnchor, constant: -12),
+            nameTextField.centerYAnchor.constraint(equalTo: nameTextFieldWrapper.centerYAnchor),
             
-            matchLabel1.topAnchor.constraint(equalTo: textFieldWrapper.bottomAnchor, constant: 24),
+            nameErrorLabel.topAnchor.constraint(equalTo: nameTextFieldWrapper.bottomAnchor, constant: 4),
+            nameErrorLabel.leadingAnchor.constraint(equalTo: nameTextFieldWrapper.leadingAnchor),
+            
+            matchLabel1.topAnchor.constraint(equalTo: nameTextFieldWrapper.bottomAnchor, constant: 24),
             matchLabel1.leadingAnchor.constraint(equalTo: bodyContentView.leadingAnchor, constant: 24),
             
             matchPopup.centerYAnchor.constraint(equalTo: matchLabel1.centerYAnchor),
@@ -476,13 +495,14 @@ class SmartCollectionSheet: NSViewController {
     }
     
     @objc private func cancelTapped() {
-        dismiss(nil)
+        delegate?.smartCollectionSheetDidCancel(self)
     }
     
     @objc private func createTapped() {
         let name = nameTextField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else {
-            nameTextField.becomeFirstResponder()
+            // Show error state
+            showNameError()
             return
         }
         
@@ -496,6 +516,47 @@ class SmartCollectionSheet: NSViewController {
         }
         
         dismiss(nil)
+    }
+    
+    private func showNameError() {
+        // Show error border
+        nameTextFieldWrapper.layer?.borderColor = DesignColors.negative.cgColor
+        nameTextFieldWrapper.layer?.borderWidth = 2
+        
+        // Show error label
+        nameErrorLabel.isHidden = false
+        
+        // Focus on name field
+        view.window?.makeFirstResponder(nameTextField)
+        
+        // Shake animation
+        let animation = CAKeyframeAnimation(keyPath: "transform.translation.x")
+        animation.timingFunction = CAMediaTimingFunction(name: .linear)
+        animation.duration = 0.4
+        animation.values = [-8, 8, -6, 6, -4, 4, -2, 2, 0]
+        nameTextFieldWrapper.layer?.add(animation, forKey: "shake")
+    }
+    
+    private func hideNameError() {
+        // Restore normal border
+        nameTextFieldWrapper.layer?.borderColor = DesignColors.borderHover.cgColor
+        nameTextFieldWrapper.layer?.borderWidth = 1
+        
+        // Hide error label
+        nameErrorLabel.isHidden = true
+    }
+}
+
+// MARK: - NSTextFieldDelegate
+
+extension SmartCollectionSheet: NSTextFieldDelegate {
+    func controlTextDidChange(_ obj: Notification) {
+        // Clear error when user starts typing in name field
+        if let textField = obj.object as? NSTextField, textField === nameTextField {
+            if !nameErrorLabel.isHidden {
+                hideNameError()
+            }
+        }
     }
 }
 
@@ -518,6 +579,7 @@ extension SmartCollectionSheet: RuleRowViewDelegate {
 protocol SmartCollectionSheetDelegate: AnyObject {
     func smartCollectionSheet(_ sheet: SmartCollectionSheet, didCreateCollectionNamed name: String, rules: [FilterRule], ruleOperator: RuleOperator)
     func smartCollectionSheet(_ sheet: SmartCollectionSheet, didUpdateCollection id: UUID, name: String, rules: [FilterRule], ruleOperator: RuleOperator)
+    func smartCollectionSheetDidCancel(_ sheet: SmartCollectionSheet)
 }
 
 // MARK: - FlippedContentView

@@ -26,6 +26,7 @@ class RuleRowView: NSView {
     private var valueTextField: NSTextField?
     private var valuePopup: NSPopUpButton?
     private var valueComboBox: NSComboBox?
+    private var valueSwitch: NSSwitch?
     private var tagInputView: TagInputView?
     private var deleteButton: NSButton!
     
@@ -38,17 +39,15 @@ class RuleRowView: NSView {
     private var textMuted: NSColor { DesignColors.textTertiary }
     private var deleteHoverColor: NSColor { DesignColors.negative }
     
-    // MARK: - Field Options (from HTML)
+    // MARK: - Field Options
     
     private let fieldOptions: [(title: String, field: FilterField)] = [
         ("Name", .name),
         ("Author", .author),
         ("Tags", .tag),
         ("Date Added", .installedAt),
-        ("Source Game", .sourceGame),
         ("Is HD", .isHD),
         ("Has AI", .hasAI),
-        ("Style", .style),
     ]
     
     // MARK: - Initialization
@@ -176,7 +175,7 @@ class RuleRowView: NSView {
         let comparisons: [(title: String, op: ComparisonOperator)]
         
         switch field {
-        case .name, .author, .sourceGame, .style:
+        case .name, .author:
             comparisons = [
                 ("is", .equals),
                 ("is not", .notEquals),
@@ -197,9 +196,9 @@ class RuleRowView: NSView {
                 ("after", .greaterThan),
             ]
         case .isHD, .hasAI:
+            // Simplified: no comparison needed, just true/false
             comparisons = [
                 ("is", .equals),
-                ("is not", .notEquals),
             ]
         case .totalWidth:
             comparisons = [
@@ -207,7 +206,8 @@ class RuleRowView: NSView {
                 ("greater than", .greaterThan),
                 ("less than", .lessThan),
             ]
-        case .hasMusic, .resolution:
+        case .hasMusic, .resolution, .sourceGame, .style:
+            // sourceGame and style are not currently populated
             comparisons = [
                 ("is", .equals),
                 ("is not", .notEquals),
@@ -239,8 +239,13 @@ class RuleRowView: NSView {
         valuePopup = nil
         valueComboBox?.removeFromSuperview()
         valueComboBox = nil
+        valueSwitch?.removeFromSuperview()
+        valueSwitch = nil
         tagInputView?.removeFromSuperview()
         tagInputView = nil
+        
+        // Show comparison popup by default (hidden for boolean fields)
+        comparisonPopup.isHidden = false
         
         switch field {
         case .tag:
@@ -259,20 +264,30 @@ class RuleRowView: NSView {
             ])
             
         case .isHD, .hasAI:
-            // Boolean popup (true/false)
-            let popup = createPopup(width: 100)
-            popup.addItems(withTitles: ["Yes", "No"])
-            popup.translatesAutoresizingMaskIntoConstraints = false
-            popup.target = self
-            popup.action = #selector(valueChanged)
-            valueContainer.addSubview(popup)
-            valuePopup = popup
+            // Simplified boolean - hide comparison popup, show toggle switch
+            comparisonPopup.isHidden = true
             
+            let toggle = NSSwitch()
+            toggle.translatesAutoresizingMaskIntoConstraints = false
+            toggle.target = self
+            toggle.action = #selector(valueChanged)
+            toggle.state = .on  // Default to "yes"
+            
+            // Apply appearance filter to change the accent color
+            toggle.wantsLayer = true
+            if let filter = CIFilter(name: "CIColorMonochrome") {
+                filter.setValue(CIColor(color: NSColor.white), forKey: "inputColor")
+                filter.setValue(1.0, forKey: "inputIntensity")
+                toggle.layer?.filters = [filter]
+            }
+            
+            valueContainer.addSubview(toggle)
+            valueSwitch = toggle
+            
+            // Float the toggle to the right (near the delete button)
             NSLayoutConstraint.activate([
-                popup.leadingAnchor.constraint(equalTo: valueContainer.leadingAnchor),
-                popup.trailingAnchor.constraint(equalTo: valueContainer.trailingAnchor),
-                popup.topAnchor.constraint(equalTo: valueContainer.topAnchor),
-                popup.bottomAnchor.constraint(equalTo: valueContainer.bottomAnchor),
+                toggle.trailingAnchor.constraint(equalTo: valueContainer.trailingAnchor),
+                toggle.centerYAnchor.constraint(equalTo: valueContainer.centerYAnchor),
             ])
             
         case .installedAt:
@@ -298,8 +313,28 @@ class RuleRowView: NSView {
                 daysLabel.centerYAnchor.constraint(equalTo: valueContainer.centerYAnchor),
             ])
             
+        case .author:
+            // Autocomplete combo box with suggestions from database
+            let comboBox = createComboBox()
+            comboBox.placeholderString = placeholderForField(field)
+            comboBox.completes = true  // Enable autocomplete
+            comboBox.delegate = self
+            
+            // Load suggestions from database
+            loadSuggestionsForComboBox(comboBox, field: field)
+            
+            valueContainer.addSubview(comboBox)
+            valueComboBox = comboBox
+            
+            NSLayoutConstraint.activate([
+                comboBox.leadingAnchor.constraint(equalTo: valueContainer.leadingAnchor),
+                comboBox.trailingAnchor.constraint(equalTo: valueContainer.trailingAnchor),
+                comboBox.topAnchor.constraint(equalTo: valueContainer.topAnchor),
+                comboBox.bottomAnchor.constraint(equalTo: valueContainer.bottomAnchor),
+            ])
+            
         default:
-            // Standard text input
+            // Standard text input (name, etc.)
             let textField = createTextField()
             textField.placeholderString = placeholderForField(field)
             valueContainer.addSubview(textField)
@@ -314,6 +349,24 @@ class RuleRowView: NSView {
         }
     }
     
+    private func loadSuggestionsForComboBox(_ comboBox: NSComboBox, field: FilterField) {
+        var suggestions: [String] = []
+        
+        do {
+            switch field {
+            case .author:
+                suggestions = try MetadataStore.shared.distinctAuthors()
+            default:
+                break
+            }
+        } catch {
+            print("Failed to load suggestions for \(field): \(error)")
+        }
+        
+        comboBox.removeAllItems()
+        comboBox.addItems(withObjectValues: suggestions)
+    }
+    
     private func createTextField() -> NSTextField {
         let textField = NSTextField()
         textField.translatesAutoresizingMaskIntoConstraints = false
@@ -322,6 +375,8 @@ class RuleRowView: NSView {
         textField.backgroundColor = inputBgColor
         textField.drawsBackground = true
         textField.isBezeled = false
+        textField.isEditable = true
+        textField.isSelectable = true
         textField.wantsLayer = true
         textField.layer?.cornerRadius = 4
         textField.layer?.borderWidth = 1
@@ -338,6 +393,7 @@ class RuleRowView: NSView {
         cell.wraps = false
         cell.isScrollable = true
         cell.usesSingleLineMode = true
+        cell.isEditable = true
         textField.cell = cell
         
         return textField
@@ -348,10 +404,11 @@ class RuleRowView: NSView {
         comboBox.translatesAutoresizingMaskIntoConstraints = false
         comboBox.font = DesignFonts.label(size: 11)
         comboBox.textColor = textPrimary
-        comboBox.backgroundColor = inputBgColor
-        comboBox.drawsBackground = true
+        comboBox.drawsBackground = false
         comboBox.isBezeled = false
+        comboBox.isBordered = false
         comboBox.wantsLayer = true
+        comboBox.layer?.backgroundColor = inputBgColor.cgColor
         comboBox.layer?.cornerRadius = 4
         comboBox.layer?.borderWidth = 1
         comboBox.layer?.borderColor = inputBorderColor.cgColor
@@ -361,6 +418,15 @@ class RuleRowView: NSView {
         comboBox.usesDataSource = false
         comboBox.hasVerticalScroller = true
         comboBox.numberOfVisibleItems = 8
+        comboBox.isButtonBordered = false
+        comboBox.isEditable = true
+        comboBox.isSelectable = true
+        
+        // Style the cell for padding
+        if let cell = comboBox.cell as? NSComboBoxCell {
+            cell.drawsBackground = false
+        }
+        
         return comboBox
     }
     
@@ -368,8 +434,6 @@ class RuleRowView: NSView {
         switch field {
         case .name: return "Character name..."
         case .author: return "Author name..."
-        case .sourceGame: return "Street Fighter, Marvel..."
-        case .style: return "POTS, MvC2..."
         case .tag: return "Type to add tag..."
         default: return ""
         }
@@ -379,8 +443,11 @@ class RuleRowView: NSView {
         if let textField = valueTextField {
             textField.stringValue = value
         } else if let popup = valuePopup {
-            // For boolean fields
+            // For boolean fields (legacy)
             popup.selectItem(at: value.lowercased() == "true" ? 0 : 1)
+        } else if let toggle = valueSwitch {
+            // For boolean toggle
+            toggle.state = value.lowercased() == "true" ? .on : .off
         } else if let comboBox = valueComboBox {
             comboBox.stringValue = value
         } else if let tagInput = tagInputView {
@@ -395,6 +462,8 @@ class RuleRowView: NSView {
             return textField.stringValue
         } else if let popup = valuePopup {
             return popup.indexOfSelectedItem == 0 ? "true" : "false"
+        } else if let toggle = valueSwitch {
+            return toggle.state == .on ? "true" : "false"
         } else if let comboBox = valueComboBox {
             return comboBox.stringValue
         } else if let tagInput = tagInputView {
@@ -472,6 +541,26 @@ class RuleRowView: NSView {
 
 extension RuleRowView: TagInputViewDelegate {
     func tagInputViewDidChange(_ tagInput: TagInputView) {
+        updateCurrentRule()
+        delegate?.ruleRowViewDidChange(self)
+    }
+}
+
+// MARK: - NSComboBoxDelegate
+
+extension RuleRowView: NSComboBoxDelegate {
+    func comboBoxSelectionDidChange(_ notification: Notification) {
+        updateCurrentRule()
+        delegate?.ruleRowViewDidChange(self)
+    }
+    
+    func controlTextDidChange(_ obj: Notification) {
+        // Handle text changes in combo box for live filtering
+        updateCurrentRule()
+        delegate?.ruleRowViewDidChange(self)
+    }
+    
+    func controlTextDidEndEditing(_ obj: Notification) {
         updateCurrentRule()
         delegate?.ruleRowViewDidChange(self)
     }

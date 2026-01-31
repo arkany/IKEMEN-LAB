@@ -3402,6 +3402,10 @@ extension GameWindowController: SmartCollectionSheetDelegate {
         
         dismissSmartCollectionSheet()
     }
+    
+    func smartCollectionSheetDidCancel(_ sheet: SmartCollectionSheet) {
+        dismissSmartCollectionSheet()
+    }
 }
 
 // MARK: - NSWindowDelegate
