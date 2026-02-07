@@ -177,7 +177,7 @@ class CharacterDetailsView: NSView {
         heroNameLabel?.textColor = DesignColors.textPrimary
         heroDateLabel?.textColor = DesignColors.textSecondary
         sourceInfoHeader?.textColor = DesignColors.textSecondary
-        sourceUrlLabel?.textColor = NSColor.systemBlue
+        sourceUrlLabel?.textColor = DesignColors.link
         scrapedDescriptionLabel?.textColor = DesignColors.textSecondary
         tagsHeader?.textColor = DesignColors.textSecondary
         attributesHeader?.textColor = DesignColors.textPrimary
@@ -366,7 +366,7 @@ class CharacterDetailsView: NSView {
         sourceUrlLabel = NSTextField(labelWithString: "")
         sourceUrlLabel.translatesAutoresizingMaskIntoConstraints = false
         sourceUrlLabel.font = DesignFonts.caption(size: 11)
-        sourceUrlLabel.textColor = NSColor.systemBlue
+        sourceUrlLabel.textColor = DesignColors.link
         sourceUrlLabel.isBordered = false
         sourceUrlLabel.drawsBackground = false
         sourceUrlLabel.lineBreakMode = .byTruncatingMiddle

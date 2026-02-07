@@ -2458,7 +2458,7 @@ class CutoffDividerView: NSView, NSCollectionViewElement {
         // Visible count label (left side)
         visibleCountLabel = NSTextField(labelWithString: "")
         visibleCountLabel.font = DesignFonts.caption(size: 12)
-        visibleCountLabel.textColor = NSColor.systemGreen
+        visibleCountLabel.textColor = DesignColors.positive
         visibleCountLabel.alignment = .left
         visibleCountLabel.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(visibleCountLabel)
@@ -2466,7 +2466,7 @@ class CutoffDividerView: NSView, NSCollectionViewElement {
         // Hidden count label (right side)
         hiddenCountLabel = NSTextField(labelWithString: "")
         hiddenCountLabel.font = DesignFonts.caption(size: 12)
-        hiddenCountLabel.textColor = NSColor.systemOrange
+        hiddenCountLabel.textColor = DesignColors.warning
         hiddenCountLabel.alignment = .right
         hiddenCountLabel.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(hiddenCountLabel)

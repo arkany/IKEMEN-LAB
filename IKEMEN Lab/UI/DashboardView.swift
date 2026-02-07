@@ -267,7 +267,7 @@ class DashboardView: NSView {
             launchTitleLabel.stringValue = "Stop Game"
             launchIconView.image = NSImage(systemSymbolName: "gamecontroller.fill", accessibilityDescription: nil)
             lastPlayedLabel.stringValue = "Game is running"
-            lastPlayedLabel.textColor = NSColor.systemGreen
+            lastPlayedLabel.textColor = DesignColors.positive
         } else {
             launchTitleLabel.stringValue = "Launch Game"
             launchIconView.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: nil)
@@ -286,9 +286,9 @@ class DashboardView: NSView {
         launchIconContainer?.layer?.shadowColor = DesignColors.borderStrong.cgColor
         launchIconView?.contentTintColor = DesignColors.textPrimary
         
-        if healthStatusLabel.textColor != NSColor.systemGreen &&
-           healthStatusLabel.textColor != NSColor.systemRed &&
-           healthStatusLabel.textColor != NSColor.systemOrange {
+        if healthStatusLabel.textColor != DesignColors.positive &&
+           healthStatusLabel.textColor != DesignColors.negative &&
+           healthStatusLabel.textColor != DesignColors.warning {
             healthStatusLabel.textColor = themeTextColor(for: .tertiary)
         }
         
@@ -1056,7 +1056,7 @@ class DashboardView: NSView {
         healthBadge = NSView()
         healthBadge.translatesAutoresizingMaskIntoConstraints = false
         healthBadge.wantsLayer = true
-        healthBadge.layer?.backgroundColor = NSColor.systemRed.cgColor
+        healthBadge.layer?.backgroundColor = DesignColors.negative.cgColor
         healthBadge.layer?.cornerRadius = 10
         healthBadge.isHidden = true
         iconWrapper.addSubview(healthBadge)
@@ -1399,7 +1399,7 @@ class DashboardView: NSView {
         // Update status text
         if errorCount == 0 && warningCount == 0 {
             healthStatusLabel.stringValue = "✓ All content validated successfully"
-            healthStatusLabel.textColor = NSColor.systemGreen
+            healthStatusLabel.textColor = DesignColors.positive
             healthBadge.isHidden = true
             fixAllButton.isHidden = true
             hideHealthDetails()
@@ -1414,12 +1414,12 @@ class DashboardView: NSView {
             }
             status += " — click to expand"
             healthStatusLabel.stringValue = status
-            healthStatusLabel.textColor = errorCount > 0 ? NSColor.systemRed : NSColor.systemOrange
+            healthStatusLabel.textColor = errorCount > 0 ? DesignColors.negative : DesignColors.warning
             
             // Show badge with error count
             healthBadge.isHidden = false
             healthBadgeLabel.stringValue = "\(totalIssues)"
-            healthBadge.layer?.backgroundColor = errorCount > 0 ? NSColor.systemRed.cgColor : NSColor.systemOrange.cgColor
+            healthBadge.layer?.backgroundColor = errorCount > 0 ? DesignColors.negative.cgColor : DesignColors.warning.cgColor
             
             // Show Fix All button if there are fixable issues
             fixAllButton.isHidden = fixableCount == 0
@@ -1501,9 +1501,9 @@ class DashboardView: NSView {
         severityIcon.translatesAutoresizingMaskIntoConstraints = false
         let (iconName, iconColor): (String, NSColor) = {
             switch issue.severity {
-            case .error: return ("xmark.circle.fill", NSColor.systemRed)
-            case .warning: return ("exclamationmark.triangle.fill", NSColor.systemOrange)
-            case .info: return ("info.circle.fill", NSColor.systemBlue)
+            case .error: return ("xmark.circle.fill", DesignColors.negative)
+            case .warning: return ("exclamationmark.triangle.fill", DesignColors.warning)
+            case .info: return ("info.circle.fill", DesignColors.info)
             }
         }()
         severityIcon.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
@@ -1541,9 +1541,9 @@ class DashboardView: NSView {
         if issue.isFixable {
             let fixBadge = NSTextField(labelWithString: "FIXABLE")
             fixBadge.font = NSFont.systemFont(ofSize: 8, weight: .bold)
-            fixBadge.textColor = NSColor.systemGreen
+            fixBadge.textColor = DesignColors.positive
             fixBadge.wantsLayer = true
-            fixBadge.layer?.backgroundColor = NSColor.systemGreen.withAlphaComponent(0.15).cgColor
+            fixBadge.layer?.backgroundColor = DesignColors.positive.withAlphaComponent(0.15).cgColor
             fixBadge.layer?.cornerRadius = 3
             row.addArrangedSubview(fixBadge)
         }
@@ -2423,8 +2423,8 @@ class RecentInstallRow: NSView, ThemeApplicable {
     private var statusToggle: NSSwitch!
     
     // Colors for type badges
-    private let charBadgeColor = NSColor(red: 0.4, green: 0.5, blue: 0.9, alpha: 1.0)  // Blue/indigo
-    private let stageBadgeColor = NSColor(red: 0.7, green: 0.4, blue: 0.9, alpha: 1.0) // Purple/violet
+    private let charBadgeColor = DesignColors.badgeCharacter
+    private let stageBadgeColor = DesignColors.badgeStage
     
     init(install: RecentInstall, showBorder: Bool) {
         self.install = install
