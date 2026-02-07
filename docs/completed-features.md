@@ -129,6 +129,26 @@ This document tracks all completed features and resolved issues for historical r
   - `Models/CharacterInfo.swift` - Character metadata struct
   - `Models/StageInfo.swift` - Stage metadata struct
   - `Shared/UIHelpers.swift` - DesignColors, DesignFonts, BrowserLayout
+- Split `ContentManager.swift` god object into focused services:
+  - `Core/InstallCoordinator.swift` - Installation orchestration
+  - `Core/StageCreationController.swift` - Stage creation logic
+  - `Core/IkemenConfigManager.swift` - INI config read/write (eliminates hardcoded paths)
+  - `Core/VRAMMonitor.swift` - VRAM monitoring
+- Split `GameWindowController.swift` (3,250 → 2,392 lines, 9 new files):
+  - `UI/NavButton.swift` - Sidebar navigation button
+  - `UI/DropZoneView.swift` - Content drop zone overlay
+  - `UI/ClickBlockingView.swift` - Click-through blocking view
+  - `UI/SettingsView.swift` - Settings panel
+  - `Shared/NSView+Extensions.swift` - View extensions
+- Split `DashboardView.swift` (2,833 → 1,449 lines, 6 new files):
+  - `UI/DashboardTheme.swift` - Theme tagging system
+  - `UI/DashboardDropZone.swift` - Drag & drop install zone
+  - `UI/HoverableStatCard.swift` - Glass panel stat card
+  - `UI/HoverableToolButton.swift` - Tool button with hover effect
+  - `UI/HoverableLaunchCard.swift` - Launch card with gradient overlay
+  - `UI/RecentInstallRow.swift` - Recently installed content row
+- Error handling refactor (Result types, typed errors)
+- Dependency injection infrastructure
 
 ### Architecture Improvements
 - DRY: Shared fonts/colors in UIHelpers.swift

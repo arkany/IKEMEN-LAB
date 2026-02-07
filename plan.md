@@ -26,69 +26,16 @@
 
 ## Current Focus
 
-### 🐛 Known Bugs
-- [ ] **Smart Collections: Tag matching inconsistent** — Some characters with detected tags (e.g., Superman with DC) not matching in smart collection rules
-  - Tags display correctly in details panel but don't match in evaluator
-  - Need to debug TagDetector.detectTags(folderName:displayName:author:) vs detectTags(for: CharacterInfo)
-  - May be rule value serialization or TagInputView issue
+### 🐛 Known Bugs (Backlog)
+- [ ] **Smart Collections: Tag matching inconsistent** — Some characters with detected tags not matching in smart collection rules
 - [ ] **Collections: Character names incorrect** — Showing folder names instead of display names from DEF files
-- [ ] **Collections: Stage thumbnails not loading** — All stages showing placeholder icon instead of preview images
-- [ ] **Characters: "UNREGISTERED" badge is confusing** — Users think something is broken
-  - Replace with section dividers: "In Roster" / "Available"
-  - Only show when a collection is active
-  - Add green **+** button on "Available" characters to quick-add to roster
-  - Makes it clear these are just not in the current roster, not broken
-  - **BUG:** Badges don't refresh when switching collections — must reload Characters view
+- [ ] **Collections: Stage thumbnails not loading** — Some stages showing placeholder icon
+- [ ] **Characters: "UNREGISTERED" badge UX** — Replace with "In Roster" / "Available" section dividers
 - [ ] **Window header not draggable** — Custom header doesn't behave like standard macOS title bar
-  - Make header area draggable to move window
-  - Support standard title bar behaviors (double-click to zoom, etc.)
 
-### ✅ Recently Completed (January 2026)
-- [x] **Fullgame Import Mode** ✅ COMPLETE
-  - [x] Toggle in drop zone and Open Panel for fullgame import mode
-  - [x] Detection: Scan folder for `chars/`, `stages/`, `data/`, `font/`, `sound/`
-  - [x] Auto-creates collection with characters, stages, screenpack
-  - [x] Tracks fonts/sounds owned by collection (deleted when collection removed)
-  - [x] Per-item duplicate handling with "Apply to remaining" option
-  - [x] Case-insensitive SFF file lookup for stage thumbnails
-  - [x] Loose stage restructuring during import
-- [x] **Screenpack Activation**
-  - [x] Activating collection sets screenpack in IKEMEN GO config.ini
-  - [x] Collections without screenpack reset to default
-  - [x] Fixed config file handling (uses .ini not .json)
-- [x] **Recently Installed Improvements**
-  - [x] Strikethrough styling for deleted items
-  - [x] Hidden toggle for items that no longer exist on disk
-- [x] **Collections UI Polish**
-  - [x] Removed max-height constraints on roster/stages sections
-  - [x] Dynamic height calculation based on content
-  - [x] Fixed nested scroll view blocking parent scroll
-  - [x] Section header icon/text vertical alignment
-  - [x] Hover zoom effect on character/stage thumbnails (centered scale-105)
-  - [x] Delete button fixed to perfect 32×32 circle (NSView approach)
-  - [x] Character details panel action buttons fixed sizing (NSView approach)
-- [x] **Add Characters/Stages Sheets**
-  - [x] Fixed sheet presentation (beginSheet instead of presentAsSheet)
-  - [x] Fixed sheet dismissal (endSheet on parent window)
-- [x] **Toast Notifications**
-  - [x] Added action button support to toast system
-  - [x] "Launch" button on collection activation toast
-- [x] **Smart Collections UI** ✅ COMPLETE
-  - [x] Rule builder with field/comparison/value inputs
-  - [x] Author field autocomplete from database
-  - [x] Boolean toggles for Is HD / Has AI fields
-  - [x] Tag input with autocomplete suggestions
-  - [x] Collection name validation with error state
-  - [x] Cancel/dismiss button fixes
-
-### 🔄 In Progress
-- [ ] **Stage thumbnail loading** — Some stages still missing thumbnails due to DEF/SFF path issues
-- [ ] **Smart Collections tag matching** — Need to verify tag matching works with new UI
-
-### 📋 Up Next
+### 📋 Up Next (Post-1.0)
 - [ ] **Drag & Drop to Collections** — Drag characters from Characters view onto a Collection in sidebar
-- [ ] **Bulk Add to Collection** — Multi-select characters, right-click "Add to Collection" (respects selection count)
-- [ ] **Smart Collections** — Auto-populated collections based on tags (e.g., "All Marvel characters")
+- [ ] **Bulk Add to Collection** — Multi-select characters, right-click "Add to Collection"
 - [ ] Screenpack Browser UI overhaul (match Character Browser design)
 - [ ] Existing installation import
 - [ ] Add-ons Browser
@@ -100,45 +47,61 @@
 ### 🧪 Alpha Release ✅
 All alpha tasks complete!
 
-### 🎉 v0.5.0 — Current Release
+### 🎉 v0.5.0
 | Feature | Status |
 |---------|--------|
 | **Light/Dark Theme** | ✅ Done |
-| ├─ Full theme support across all views | ✅ Done |
-| └─ Theme toggle in Settings | ✅ Done |
 | **Custom Tags System** | ✅ Done |
-| ├─ Add/edit/delete custom tags | ✅ Done |
-| ├─ Recent tags dropdown | ✅ Done |
-| ├─ Case-insensitive matching | ✅ Done |
-| ├─ Tag search integration | ✅ Done |
-| ├─ Grid card tag badges | ✅ Done |
-| └─ Bulk tag assignment | ✅ Done |
 | **Browser Extension** | ✅ Done |
-| ├─ Safari extension bundled | ✅ Done |
-| ├─ One-click install from MUGEN Archive | ✅ Done |
-| ├─ Metadata scraping | ✅ Done |
-| └─ Dashboard CTA for extension | ✅ Done |
 | **Unregistered Content Detection** | ✅ Done |
-| ├─ Visual badges in browsers | ✅ Done |
-| └─ Filter by registration status | ✅ Done |
 | **Character Cutoff Indicator** | ✅ Done |
-| └─ Shows when roster exceeds screenpack slots | ✅ Done |
 | **First-Run Experience** | ✅ Done |
-| └─ Import mode choice | ✅ Done |
 | **Duplicate Detection** | ✅ Done |
-| ├─ Pre-install warning | ✅ Done |
-| ├─ Badge display in browser | ✅ Done |
-| └─ Metadata-based detection | ✅ Done |
 | **Update Checker** | ✅ Done |
-| └─ Custom About window | ✅ Done |
 
-### 🧩 v1 — Collections & Curation
+### 🎉 v1.0.0 — Current Release
+| Feature | Status |
+|---------|--------|
+| **Collections System (Phases 1-4)** | ✅ Done |
+| ├─ Collection CRUD with JSON persistence | ✅ Done |
+| ├─ Collection editor with character grid, drag-to-reorder | ✅ Done |
+| ├─ Picker sheets for characters, stages, screenpacks | ✅ Done |
+| ├─ Activate collection → generate select.def + backup | ✅ Done |
+| └─ "Add to Collection" context menu | ✅ Done |
+| **Smart Collections UI** | ✅ Done |
+| ├─ Rule builder with field/comparison/value inputs | ✅ Done |
+| ├─ Author field autocomplete from database | ✅ Done |
+| ├─ Boolean toggles for Is HD / Has AI fields | ✅ Done |
+| └─ Tag input with autocomplete suggestions | ✅ Done |
+| **Fullgame Import Mode** | ✅ Done |
+| ├─ Auto-create collection from MUGEN/IKEMEN packages | ✅ Done |
+| ├─ Per-item duplicate handling with "Apply to remaining" | ✅ Done |
+| └─ Tracks fonts/sounds owned by collection | ✅ Done |
+| **Screenpack Activation** | ✅ Done |
+| └─ Activating collection sets screenpack in config.ini | ✅ Done |
+| **Collections UI Polish** | ✅ Done |
+| ├─ Dynamic height, hover effects, delete buttons | ✅ Done |
+| └─ Sheet presentation/dismissal fixes | ✅ Done |
+| **Toast Notifications** | ✅ Done |
+| └─ Action button support ("Launch" on activation) | ✅ Done |
+| **Code Quality** | ✅ Done |
+| ├─ ContentManager split (god object → focused services) | ✅ Done |
+| ├─ GameWindowController split (3250 → 2392 lines, 9 files) | ✅ Done |
+| ├─ DashboardView split (2833 → 1449 lines, 6 files) | ✅ Done |
+| ├─ Error handling refactor (Result types, typed errors) | ✅ Done |
+| ├─ IkemenConfigManager (eliminates hardcoded paths) | ✅ Done |
+| └─ Dependency injection infrastructure | ✅ Done |
+
+### 🧩 v1.1 — Polish & Fixes
 | Feature | Status |
 |---------|--------|
 | **Screenpack Browser Overhaul** | 📋 Todo |
 | ├─ Match Character Browser design | 📋 Todo |
 | └─ README/setup notes display | 📋 Todo |
 | Existing installation import | 📋 Todo |
+| Drag & Drop to Collections | 📋 Todo |
+| Bulk Add to Collection | 📋 Todo |
+| Smart Collections tag matching fix | 📋 Todo |
 
 ### ⚡ v2 — Smart Features
 | Feature | Status |
@@ -225,6 +188,14 @@ All alpha tasks complete!
 ---
 
 ## Technical Debt
+
+### Resolved ✅
+- [x] Split ContentManager god object into focused services
+- [x] Split GameWindowController (3,250 → 2,392 lines, 9 new files)
+- [x] Split DashboardView (2,833 → 1,449 lines, 6 new files)
+- [x] Error handling refactor (Result types, typed errors)
+- [x] IkemenConfigManager (eliminates hardcoded config paths)
+- [x] Dependency injection infrastructure
 
 ### Deferred
 - [ ] Extract generic `ContentBrowserView<T>` — Views share UIHelpers but have different item types
