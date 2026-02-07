@@ -19,6 +19,9 @@ enum IkemenError: LocalizedError {
     case installFailed(String)
     case invalidContent(String)
     case duplicateContent(String)
+    case selectDefNotFound
+    case fileWriteFailed(URL, String)
+    case metadataError(String)
     
     var errorDescription: String? {
         switch self {
@@ -34,6 +37,12 @@ enum IkemenError: LocalizedError {
             return "Invalid content: \(reason)"
         case .duplicateContent(let name):
             return "Content already exists: \(name)"
+        case .selectDefNotFound:
+            return "select.def not found"
+        case .fileWriteFailed(let url, let reason):
+            return "Failed to write \(url.lastPathComponent): \(reason)"
+        case .metadataError(let reason):
+            return "Metadata error: \(reason)"
         }
     }
     
@@ -51,6 +60,12 @@ enum IkemenError: LocalizedError {
             return "The content file may be corrupted or in an unsupported format."
         case .duplicateContent:
             return "Do you want to replace the existing content?"
+        case .selectDefNotFound:
+            return "Make sure a valid Ikemen GO installation is selected."
+        case .fileWriteFailed:
+            return "Check that you have write permissions and the disk is not full."
+        case .metadataError:
+            return "Try refreshing the content library."
         }
     }
 }

@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import os.log
 
 // MARK: - Content Installer
 
@@ -14,6 +15,7 @@ public final class ContentInstaller {
     // MARK: - Properties
     
     private let fileManager = FileManager.default
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.ikemenlab", category: "ContentInstaller")
     
     // MARK: - Initialization
     
@@ -287,8 +289,12 @@ public final class ContentInstaller {
         }
         
         if modified {
-            try? content.write(to: systemDefPath, atomically: true, encoding: .utf8)
-            print("Redirected screenpack to global select.def: \(screenpackPath.lastPathComponent)")
+            do {
+                try content.write(to: systemDefPath, atomically: true, encoding: .utf8)
+                Self.logger.info("Redirected screenpack to global select.def: \(screenpackPath.lastPathComponent)")
+            } catch {
+                Self.logger.error("Failed to write screenpack redirect: \(error.localizedDescription)")
+            }
         }
     }
     
@@ -342,7 +348,11 @@ public final class ContentInstaller {
             
             // Find the def entry for this character
             let defEntry = findCharacterDefEntry(charName: charName, in: charFolder)
-            try? SelectDefManager.shared.addCharacterToSelectDefFile(defEntry, selectDefPath: selectDefPath)
+            do {
+                try SelectDefManager.shared.addCharacterToSelectDefFile(defEntry, selectDefPath: selectDefPath)
+            } catch {
+                Self.logger.warning("Failed to sync character \(charName) to screenpack select.def: \(error.localizedDescription)")
+            }
         }
     }
     
@@ -368,7 +378,7 @@ public final class ContentInstaller {
             }
         }
         
-        print("Redirected \(syncedCount) screenpack(s) to global select.def")
+        Self.logger.info("Redirected \(syncedCount) screenpack(s) to global select.def")
         return syncedCount
     }
     
@@ -454,7 +464,11 @@ public final class ContentInstaller {
         if let contents = try? fileManager.contentsOfDirectory(at: destPath, includingPropertiesForKeys: nil),
            let defFile = contents.first(where: { $0.pathExtension.lowercased() == "def" }) {
             let info = CharacterInfo(directory: destPath, defFile: defFile)
-            try? MetadataStore.shared.indexCharacter(info)
+            do {
+                try MetadataStore.shared.indexCharacter(info)
+            } catch {
+                Self.logger.warning("Failed to index character metadata: \(error.localizedDescription)")
+            }
         }
         
         // Notify that content has changed
@@ -580,7 +594,11 @@ public final class ContentInstaller {
                 
                 // Index in metadata database
                 let info = StageInfo(defFile: destPath)
-                try? MetadataStore.shared.indexStage(info)
+                do {
+                    try MetadataStore.shared.indexStage(info)
+                } catch {
+                    Self.logger.warning("Failed to index stage metadata: \(error.localizedDescription)")
+                }
             }
         }
         

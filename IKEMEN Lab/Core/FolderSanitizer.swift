@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import os.log
 
 // MARK: - Folder Sanitizer
 
@@ -14,6 +15,7 @@ public final class FolderSanitizer {
     // MARK: - Properties
     
     private let fileManager = FileManager.default
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.ikemenlab", category: "FolderSanitizer")
     
     // MARK: - Initialization
     
@@ -287,7 +289,7 @@ public final class FolderSanitizer {
         // Clear image cache for old name
         ImageCache.shared.clearCharacter(currentName)
         
-        print("Renamed character folder: \(currentName) → \(newName)")
+        Self.logger.info("Renamed character folder: \(currentName) → \(newName)")
         
         return newPath
     }
@@ -340,7 +342,7 @@ public final class FolderSanitizer {
         let defFile = stage.defFile
         
         guard fileManager.fileExists(atPath: defFile.path) else {
-            throw NSError(domain: "FolderSanitizer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Stage DEF file not found"])
+            throw IkemenError.contentNotFound("Stage DEF file: \(defFile.lastPathComponent)")
         }
         
         // Read the current content
@@ -362,7 +364,7 @@ public final class FolderSanitizer {
         // Write back
         try content.write(to: defFile, atomically: true, encoding: .utf8)
         
-        print("Renamed stage: \(stage.name) → \(newName)")
+        Self.logger.info("Renamed stage: \(stage.name) → \(newName)")
     }
     
     /// Check if a stage has a suspicious name (single letter, etc.)
