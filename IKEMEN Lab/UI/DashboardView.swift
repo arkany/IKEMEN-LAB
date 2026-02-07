@@ -174,6 +174,8 @@ class DashboardView: NSView {
     private var healthDetailHeightConstraint: NSLayoutConstraint!
     private var isHealthDetailExpanded = false
     private var themeObserver: NSObjectProtocol?
+    private var contentObserver: NSObjectProtocol?
+    private var gameStatusObserver: NSObjectProtocol?
     
     // MARK: - Initialization
     
@@ -242,11 +244,11 @@ class DashboardView: NSView {
     }
     
     private func setupObservers() {
-        NotificationCenter.default.addObserver(forName: .contentChanged, object: nil, queue: .main) { [weak self] _ in
+        contentObserver = NotificationCenter.default.addObserver(forName: .contentChanged, object: nil, queue: .main) { [weak self] _ in
             self?.refresh()
         }
         
-        NotificationCenter.default.addObserver(forName: .gameStatusChanged, object: nil, queue: .main) { [weak self] _ in
+        gameStatusObserver = NotificationCenter.default.addObserver(forName: .gameStatusChanged, object: nil, queue: .main) { [weak self] _ in
             self?.updateLaunchCardUI()
         }
         
@@ -1613,8 +1615,8 @@ class DashboardView: NSView {
     }
     
     deinit {
-        if let themeObserver = themeObserver {
-            NotificationCenter.default.removeObserver(themeObserver)
+        [themeObserver, contentObserver, gameStatusObserver].compactMap { $0 }.forEach {
+            NotificationCenter.default.removeObserver($0)
         }
     }
 }
