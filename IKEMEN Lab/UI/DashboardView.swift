@@ -119,12 +119,6 @@ fileprivate protocol ThemeApplicable: AnyObject {
     func applyTheme()
 }
 
-/// A flipped NSView that draws content from top-left instead of bottom-left
-/// Used for scroll view document views to align content to top
-private class FlippedView: NSView {
-    override var isFlipped: Bool { true }
-}
-
 /// Dashboard view - the main landing page with stats, quick actions, and recent activity
 class DashboardView: NSView {
     

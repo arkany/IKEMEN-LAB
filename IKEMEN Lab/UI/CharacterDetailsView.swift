@@ -1,12 +1,6 @@
 import Cocoa
 import Combine
 
-/// A flipped NSView that draws content from top-left instead of bottom-left
-/// Used for scroll view document views to align content to top
-private class FlippedView: NSView {
-    override var isFlipped: Bool { true }
-}
-
 /// A detail panel showing character metadata
 /// Matches HTML design: hero header with gradient, quick stats, attributes, move list
 /// Always visible when Characters tab is active (no close button)

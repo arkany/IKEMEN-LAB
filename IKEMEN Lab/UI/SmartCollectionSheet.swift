@@ -182,7 +182,7 @@ class SmartCollectionSheet: NSViewController {
         view.addSubview(bodyScrollView)
         
         // Use flipped view for top-aligned content
-        bodyContentView = FlippedContentView()
+        bodyContentView = FlippedView()
         bodyContentView.translatesAutoresizingMaskIntoConstraints = false
         bodyScrollView.documentView = bodyContentView
         
@@ -582,9 +582,4 @@ protocol SmartCollectionSheetDelegate: AnyObject {
     func smartCollectionSheetDidCancel(_ sheet: SmartCollectionSheet)
 }
 
-// MARK: - FlippedContentView
 
-/// NSView subclass that uses flipped coordinates for top-aligned layout
-private class FlippedContentView: NSView {
-    override var isFlipped: Bool { true }
-}
