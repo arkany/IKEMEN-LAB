@@ -87,6 +87,13 @@ class CharacterBrowserView: NSView {
     private var activeScreenpackSlotLimit: Int = 0
     private var duplicateIds: Set<String> = []       // IDs of characters that have duplicates
     private var themeObserver: NSObjectProtocol?
+    private let portraitLoadQueue: OperationQueue = {
+        let queue = OperationQueue()
+        queue.name = "com.ikemenlab.portrait-loading"
+        queue.maxConcurrentOperationCount = 4
+        queue.qualityOfService = .userInitiated
+        return queue
+    }()
     
     // New collection sheet
     private var newCollectionOverlay: NSView?
@@ -340,6 +347,9 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
     // MARK: - Portrait Loading
     
     private func loadPortraitsAsync() {
+        // Cancel any in-flight portrait loads from a previous update
+        portraitLoadQueue.cancelAllOperations()
+        
         for character in characters {
             // Check local cache first (for current session quick access)
             if portraitCache[character.id] != nil { continue }
@@ -351,8 +361,11 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
                 continue
             }
             
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let operation = BlockOperation()
+            operation.addExecutionBlock { [weak self, weak operation] in
+                guard let operation, !operation.isCancelled else { return }
                 let portrait = character.getPortraitImage()
+                guard !operation.isCancelled else { return }
                 
                 DispatchQueue.main.async { [weak self] in
                     let finalImage = portrait ?? self?.createPlaceholderImage(for: character)
@@ -379,6 +392,7 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
                     }
                 }
             }
+            portraitLoadQueue.addOperation(operation)
         }
     }
     
