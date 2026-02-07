@@ -614,6 +614,14 @@ public struct VersionDateFormatter {
     }
 }
 
+// MARK: - Flipped View for Top-Aligned Scroll Content
+
+/// A flipped NSView that draws content from top-left instead of bottom-left.
+/// Used for scroll view document views to align content to top.
+class FlippedView: NSView {
+    override var isFlipped: Bool { true }
+}
+
 // MARK: - NSImage Tinting Extension
 
 extension NSImage {

@@ -3519,11 +3519,6 @@ private class AppToggleHandler: NSObject {
     }
 }
 
-// MARK: - Flipped View for top-aligned scroll content
-private class FlippedView: NSView {
-    override var isFlipped: Bool { true }
-}
-
 // MARK: - Click Blocking View
 
 /// View that intercepts mouse events on empty areas to prevent clicks passing through to views below
