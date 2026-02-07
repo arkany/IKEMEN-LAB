@@ -62,8 +62,11 @@
 		10B1001D2F0114A500EC215A /* ToastNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B1001E2F0114A500EC215A /* ToastNotification.swift */; };
 		10EEA1562F26FD3800830402 /* FilterRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EEA1552F26FD3800830402 /* FilterRule.swift */; };
 		10EEA1582F26FD4F00830402 /* SmartCollectionEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10EEA1572F26FD4F00830402 /* SmartCollectionEvaluator.swift */; };
+		7AE2F3930DD5FD4E0AC6F11A /* ContentInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD392812FFE90EA3F39540C4 /* ContentInstaller.swift */; };
 		8AAE522EB50CF047E76A9FDD /* TagInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ED2C89E1980D4067655FBD /* TagInputView.swift */; };
+		B385157FAC0DF745B08CCCB1 /* SelectDefManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6672FA5211E3F03652E582A6 /* SelectDefManager.swift */; };
 		B45E588DFFF3CBED6E8405E4 /* RuleRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89D2A6BCC5E78DE80B65F73 /* RuleRowView.swift */; };
+		DD6E651294061121DF9AB4B3 /* FolderSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10832ADC8237D7D0AFE5F94B /* FolderSanitizer.swift */; };
 		F9902EFF5EF06BC5A4F68C6F /* SmartCollectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8665BC29980FC0BDF6D13F6B /* SmartCollectionSheet.swift */; };
 /* End PBXBuildFile section */
 
@@ -108,6 +111,7 @@
 		107 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1071BF202F10ABCB00D9D1CA /* IKEMEN Lab Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "IKEMEN Lab Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		108 /* IKEMEN Lab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "IKEMEN Lab.entitlements"; sourceTree = "<group>"; };
+		10832ADC8237D7D0AFE5F94B /* FolderSanitizer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FolderSanitizer.swift; sourceTree = "<group>"; };
 		109 /* IKEMEN Lab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "IKEMEN Lab.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		10AF34E32F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "IKEMEN Lab Browser Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		10B1001B2F0114A400EC215A /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -159,7 +163,9 @@
 		203 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		204 /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameController.framework; path = System/Library/Frameworks/GameController.framework; sourceTree = SDKROOT; };
 		21ED2C89E1980D4067655FBD /* TagInputView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TagInputView.swift; sourceTree = "<group>"; };
+		6672FA5211E3F03652E582A6 /* SelectDefManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SelectDefManager.swift; sourceTree = "<group>"; };
 		8665BC29980FC0BDF6D13F6B /* SmartCollectionSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SmartCollectionSheet.swift; sourceTree = "<group>"; };
+		AD392812FFE90EA3F39540C4 /* ContentInstaller.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentInstaller.swift; sourceTree = "<group>"; };
 		F89D2A6BCC5E78DE80B65F73 /* RuleRowView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RuleRowView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -315,6 +321,9 @@
 				145 /* UpdateChecker.swift */,
 				148 /* DependencyContainer.swift */,
 				151 /* FullgameImporter.swift */,
+				10832ADC8237D7D0AFE5F94B /* FolderSanitizer.swift */,
+				AD392812FFE90EA3F39540C4 /* ContentInstaller.swift */,
+				6672FA5211E3F03652E582A6 /* SelectDefManager.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -593,6 +602,9 @@
 				F9902EFF5EF06BC5A4F68C6F /* SmartCollectionSheet.swift in Sources */,
 				B45E588DFFF3CBED6E8405E4 /* RuleRowView.swift in Sources */,
 				8AAE522EB50CF047E76A9FDD /* TagInputView.swift in Sources */,
+				DD6E651294061121DF9AB4B3 /* FolderSanitizer.swift in Sources */,
+				7AE2F3930DD5FD4E0AC6F11A /* ContentInstaller.swift in Sources */,
+				B385157FAC0DF745B08CCCB1 /* SelectDefManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
