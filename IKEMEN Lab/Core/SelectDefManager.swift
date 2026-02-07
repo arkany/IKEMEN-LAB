@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import os.log
 
 // MARK: - Select Def Manager
 
@@ -15,6 +16,7 @@ public final class SelectDefManager {
     // MARK: - Properties
     
     private let fileManager = FileManager.default
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.ikemenlab", category: "SelectDefManager")
     
     // MARK: - Initialization
     
@@ -45,10 +47,12 @@ public final class SelectDefManager {
             }
         }
         
-        try? content.write(to: selectDefPath, atomically: true, encoding: .utf8)
+        do {
+            try content.write(to: selectDefPath, atomically: true, encoding: .utf8)
+        } catch {
+            Self.logger.error("Failed to update select.def entry: \(error.localizedDescription)")
+        }
     }
-    
-    // MARK: - Character Order
     
     /// Read the character order from select.def
     /// Returns an array of character folder names in the order they appear
@@ -113,7 +117,7 @@ public final class SelectDefManager {
         let selectDefPath = workingDir.appendingPathComponent("data/select.def")
         
         guard fileManager.fileExists(atPath: selectDefPath.path) else {
-            throw NSError(domain: "SelectDefManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "select.def not found"])
+            throw IkemenError.selectDefNotFound
         }
         
         let content = try String(contentsOf: selectDefPath, encoding: .utf8)
@@ -181,7 +185,7 @@ public final class SelectDefManager {
         
         let newContent = newLines.joined(separator: "\n")
         try newContent.write(to: selectDefPath, atomically: true, encoding: .utf8)
-        print("Reordered characters in select.def")
+        Self.logger.info("Reordered characters in select.def")
     }
     
     /// Sort character lines according to the specified order
@@ -221,7 +225,11 @@ public final class SelectDefManager {
                 if fileManager.fileExists(atPath: item.path, isDirectory: &isDir), isDir.boolValue {
                     let screenpackSelectDef = item.appendingPathComponent("select.def")
                     if fileManager.fileExists(atPath: screenpackSelectDef.path) {
-                        try? addCharacterToSelectDefFile(charEntry, selectDefPath: screenpackSelectDef)
+                        do {
+                            try addCharacterToSelectDefFile(charEntry, selectDefPath: screenpackSelectDef)
+                        } catch {
+                            Self.logger.warning("Failed to add character to screenpack select.def: \(error.localizedDescription)")
+                        }
                     }
                 }
             }
@@ -231,7 +239,7 @@ public final class SelectDefManager {
     /// Add a character to a specific select.def file
     func addCharacterToSelectDefFile(_ charEntry: String, selectDefPath: URL) throws {
         guard fileManager.fileExists(atPath: selectDefPath.path) else {
-            print("Warning: select.def not found at \(selectDefPath.path)")
+            Self.logger.warning("select.def not found at \(selectDefPath.path)")
             return
         }
         
@@ -244,7 +252,7 @@ public final class SelectDefManager {
         let charPattern = "(?m)^\\s*\(NSRegularExpression.escapedPattern(for: folderName))(/|\\\\|\\s|,|$)"
         if let regex = try? NSRegularExpression(pattern: charPattern, options: .caseInsensitive),
            regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)) != nil {
-            print("Character \(charEntry) already in \(selectDefPath.lastPathComponent)")
+            Self.logger.debug("Character \(charEntry) already in \(selectDefPath.lastPathComponent)")
             return
         }
         
@@ -266,7 +274,7 @@ public final class SelectDefManager {
         
         content = newLines.joined(separator: "\n")
         try content.write(to: selectDefPath, atomically: true, encoding: .utf8)
-        print("Added \(charEntry) to \(selectDefPath.path)")
+        Self.logger.info("Added \(charEntry) to \(selectDefPath.lastPathComponent)")
     }
     
     /// Add a stage to select.def
@@ -286,7 +294,7 @@ public final class SelectDefManager {
                 let insertPosition = lineEnd.upperBound
                 content.insert(contentsOf: "\(stageEntry)\n", at: insertPosition)
                 try content.write(to: selectDefPath, atomically: true, encoding: .utf8)
-                print("Added stage \(stageName) to select.def")
+                Self.logger.info("Added stage \(stageName) to select.def")
             }
         }
     }
@@ -303,7 +311,7 @@ public final class SelectDefManager {
         let selectDefPath = workingDir.appendingPathComponent("data/select.def")
         
         guard fileManager.fileExists(atPath: selectDefPath.path) else {
-            throw IkemenError.installFailed("select.def not found")
+            throw IkemenError.selectDefNotFound
         }
         
         var content = try String(contentsOf: selectDefPath, encoding: .utf8)
@@ -339,7 +347,7 @@ public final class SelectDefManager {
                 // Comment out the line
                 newLines.append(";\(line)")
                 modified = true
-                print("Disabled stage: \(trimmedLine)")
+                Self.logger.info("Disabled stage: \(trimmedLine)")
             } else {
                 newLines.append(line)
             }
@@ -363,7 +371,7 @@ public final class SelectDefManager {
         let selectDefPath = workingDir.appendingPathComponent("data/select.def")
         
         guard fileManager.fileExists(atPath: selectDefPath.path) else {
-            throw IkemenError.installFailed("select.def not found")
+            throw IkemenError.selectDefNotFound
         }
         
         var content = try String(contentsOf: selectDefPath, encoding: .utf8)
@@ -395,7 +403,7 @@ public final class SelectDefManager {
                     // Uncomment the line
                     newLines.append(uncommented)
                     modified = true
-                    print("Enabled stage: \(uncommented)")
+                    Self.logger.info("Enabled stage: \(uncommented)")
                 } else {
                     newLines.append(line)
                 }
@@ -421,7 +429,11 @@ public final class SelectDefManager {
         try removeStageFromSelectDef(stage, in: workingDir)
         
         // Remove from metadata database
-        try? MetadataStore.shared.deleteStage(id: stage.id)
+        do {
+            try MetadataStore.shared.deleteStage(id: stage.id)
+        } catch {
+            Self.logger.warning("Failed to remove stage metadata: \(error.localizedDescription)")
+        }
         
         // Then move the stage files to Trash
         let stageDir = stage.defFile.deletingLastPathComponent()
@@ -431,15 +443,23 @@ public final class SelectDefManager {
         
         if stageDir.path == stagesDir.path {
             // Stage files are at root of stages/ - just trash the .def and .sff files
-            try? fileManager.trashItem(at: stage.defFile, resultingItemURL: nil)
-            if let sffFile = stage.sffFile {
-                try? fileManager.trashItem(at: sffFile, resultingItemURL: nil)
+            do {
+                try fileManager.trashItem(at: stage.defFile, resultingItemURL: nil)
+            } catch {
+                Self.logger.error("Failed to trash stage DEF file: \(error.localizedDescription)")
             }
-            print("Moved stage files to Trash: \(stage.defFile.lastPathComponent)")
+            if let sffFile = stage.sffFile {
+                do {
+                    try fileManager.trashItem(at: sffFile, resultingItemURL: nil)
+                } catch {
+                    Self.logger.error("Failed to trash stage SFF file: \(error.localizedDescription)")
+                }
+            }
+            Self.logger.info("Moved stage files to Trash: \(stage.defFile.lastPathComponent)")
         } else {
             // Stage is in its own subdirectory - trash the whole directory
             try fileManager.trashItem(at: stageDir, resultingItemURL: nil)
-            print("Moved stage directory to Trash: \(stageDir.lastPathComponent)")
+            Self.logger.info("Moved stage directory to Trash: \(stageDir.lastPathComponent)")
         }
         
         NotificationCenter.default.post(name: .contentChanged, object: nil)
@@ -478,7 +498,7 @@ public final class SelectDefManager {
             if !isOurStage {
                 newLines.append(line)
             } else {
-                print("Removed stage from select.def: \(matchLine)")
+                Self.logger.info("Removed stage from select.def: \(matchLine)")
             }
         }
         
@@ -555,7 +575,7 @@ public final class SelectDefManager {
         let selectDefPath = workingDir.appendingPathComponent("data/select.def")
         
         guard fileManager.fileExists(atPath: selectDefPath.path) else {
-            throw IkemenError.installFailed("select.def not found")
+            throw IkemenError.selectDefNotFound
         }
         
         var content = try String(contentsOf: selectDefPath, encoding: .utf8)
@@ -603,7 +623,7 @@ public final class SelectDefManager {
                 // Comment out the line
                 newLines.append(";\(line)")
                 modified = true
-                print("Disabled character: \(trimmedLine)")
+                Self.logger.info("Disabled character: \(trimmedLine)")
             } else {
                 newLines.append(line)
             }
@@ -627,7 +647,7 @@ public final class SelectDefManager {
         let selectDefPath = workingDir.appendingPathComponent("data/select.def")
         
         guard fileManager.fileExists(atPath: selectDefPath.path) else {
-            throw IkemenError.installFailed("select.def not found")
+            throw IkemenError.selectDefNotFound
         }
         
         var content = try String(contentsOf: selectDefPath, encoding: .utf8)
@@ -672,7 +692,7 @@ public final class SelectDefManager {
                     // Uncomment the line
                     newLines.append(uncommented)
                     modified = true
-                    print("Enabled character: \(uncommented)")
+                    Self.logger.info("Enabled character: \(uncommented)")
                 } else {
                     newLines.append(line)
                 }
@@ -738,11 +758,15 @@ public final class SelectDefManager {
         try removeCharacterFromSelectDef(character, in: workingDir)
         
         // Remove from metadata database
-        try? MetadataStore.shared.deleteCharacter(id: character.id)
+        do {
+            try MetadataStore.shared.deleteCharacter(id: character.id)
+        } catch {
+            Self.logger.warning("Failed to remove character metadata: \(error.localizedDescription)")
+        }
         
         // Then move the character directory to Trash
         try fileManager.trashItem(at: character.path, resultingItemURL: nil)
-        print("Moved character directory to Trash: \(character.path.lastPathComponent)")
+        Self.logger.info("Moved character directory to Trash: \(character.path.lastPathComponent)")
         
         // Notify that content has changed
         NotificationCenter.default.post(name: .contentChanged, object: nil)
@@ -792,7 +816,7 @@ public final class SelectDefManager {
             if !isOurCharacter {
                 newLines.append(line)
             } else {
-                print("Removed character from select.def: \(trimmedLine)")
+                Self.logger.info("Removed character from select.def: \(trimmedLine)")
             }
         }
         
