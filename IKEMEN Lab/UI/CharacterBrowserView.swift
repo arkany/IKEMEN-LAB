@@ -1679,7 +1679,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         let badge = NSView()
         badge.translatesAutoresizingMaskIntoConstraints = false
         badge.wantsLayer = true
-        badge.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.8).cgColor
+        badge.layer?.backgroundColor = DesignColors.imageLabelBackground.cgColor
         badge.layer?.cornerRadius = 4
         badge.layer?.borderWidth = 1
         badge.layer?.borderColor = DesignColors.borderHover.cgColor
@@ -1687,7 +1687,7 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         let label = NSTextField(labelWithString: text)
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = DesignFonts.caption(size: 9)
-        label.textColor = DesignColors.zinc200
+        label.textColor = DesignColors.textOnImageOverlay
         label.isBordered = false
         label.drawsBackground = false
         label.isEditable = false

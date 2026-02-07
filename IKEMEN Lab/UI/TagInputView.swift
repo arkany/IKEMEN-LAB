@@ -33,7 +33,7 @@ class TagInputView: NSView, NSTextFieldDelegate, NSTableViewDelegate, NSTableVie
     
     private var bgColor: NSColor { DesignColors.inputBackground }
     private var borderColor: NSColor { DesignColors.borderHover }
-    private var chipBgColor: NSColor { DesignColors.zinc800 }
+    private var chipBgColor: NSColor { DesignColors.buttonSecondaryBackground }
     private var chipBorderColor: NSColor { DesignColors.borderSubtle }
     private var chipTextColor: NSColor { DesignColors.textSecondary }
     private var textPrimary: NSColor { DesignColors.textPrimary }
@@ -298,7 +298,7 @@ class TagInputView: NSView, NSTextFieldDelegate, NSTableViewDelegate, NSTableVie
         
         let contentView = NSView()
         contentView.wantsLayer = true
-        contentView.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        contentView.layer?.backgroundColor = DesignColors.cardBackground.cgColor
         contentView.layer?.cornerRadius = 6
         contentView.layer?.borderWidth = 1
         contentView.layer?.borderColor = DesignColors.borderHover.cgColor
@@ -422,7 +422,7 @@ private class TagChipView: NSView {
     let tagName: String
     var onRemove: ((String) -> Void)?
     
-    private var bgColor: NSColor { DesignColors.zinc800 }
+    private var bgColor: NSColor { DesignColors.buttonSecondaryBackground }
     private var borderColor: NSColor { DesignColors.borderSubtle }
     private var textColor: NSColor { DesignColors.textSecondary }
     

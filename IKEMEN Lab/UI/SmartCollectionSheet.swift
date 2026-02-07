@@ -54,7 +54,7 @@ class SmartCollectionSheet: NSViewController {
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 640, height: 500))
         view.wantsLayer = true
-        view.layer?.backgroundColor = DesignColors.zinc950.cgColor
+        view.layer?.backgroundColor = DesignColors.background.cgColor
         view.layer?.cornerRadius = 12
         view.layer?.borderWidth = 1
         view.layer?.borderColor = DesignColors.borderHover.cgColor
@@ -100,7 +100,7 @@ class SmartCollectionSheet: NSViewController {
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
-        iconContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        iconContainer.layer?.backgroundColor = DesignColors.inputBackground.cgColor
         iconContainer.layer?.cornerRadius = 8
         iconContainer.layer?.borderWidth = 1
         iconContainer.layer?.borderColor = DesignColors.borderSubtle.cgColor
@@ -110,7 +110,7 @@ class SmartCollectionSheet: NSViewController {
         let iconImage = NSImageView()
         iconImage.translatesAutoresizingMaskIntoConstraints = false
         iconImage.image = NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)
-        iconImage.contentTintColor = DesignColors.zinc300
+        iconImage.contentTintColor = DesignColors.textSecondary
         iconImage.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular)
         iconContainer.addSubview(iconImage)
         
@@ -239,7 +239,7 @@ class SmartCollectionSheet: NSViewController {
         matchPopup.bezelStyle = .roundedDisclosure
         matchPopup.isBordered = false
         matchPopup.wantsLayer = true
-        matchPopup.layer?.backgroundColor = DesignColors.zinc900.cgColor
+        matchPopup.layer?.backgroundColor = DesignColors.inputBackground.cgColor
         matchPopup.layer?.cornerRadius = 4
         matchPopup.layer?.borderWidth = 1
         matchPopup.layer?.borderColor = DesignColors.borderHover.cgColor
@@ -345,7 +345,7 @@ class SmartCollectionSheet: NSViewController {
         footerView = NSView()
         footerView.translatesAutoresizingMaskIntoConstraints = false
         footerView.wantsLayer = true
-        footerView.layer?.backgroundColor = DesignColors.zinc900.withAlphaComponent(0.3).cgColor
+        footerView.layer?.backgroundColor = DesignColors.panelBackground.withAlphaComponent(0.5).cgColor
         view.addSubview(footerView)
         
         // Top border
@@ -382,15 +382,15 @@ class SmartCollectionSheet: NSViewController {
         createButton.isBordered = false
         createButton.font = DesignFonts.body(size: 13)
         createButton.wantsLayer = true
-        createButton.layer?.backgroundColor = NSColor.white.cgColor
+        createButton.layer?.backgroundColor = DesignColors.buttonPrimary.cgColor
         createButton.layer?.cornerRadius = 8
-        createButton.contentTintColor = DesignColors.zinc950
+        createButton.contentTintColor = DesignColors.buttonPrimaryText
         createButton.target = self
         createButton.action = #selector(createTapped)
         footerView.addSubview(createButton)
         
         // Add shadow to create button
-        createButton.layer?.shadowColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        createButton.layer?.shadowColor = DesignColors.buttonPrimary.withAlphaComponent(0.1).cgColor
         createButton.layer?.shadowOffset = CGSize(width: 0, height: 2)
         createButton.layer?.shadowRadius = 8
         createButton.layer?.shadowOpacity = 1
@@ -470,7 +470,7 @@ class SmartCollectionSheet: NSViewController {
         let text = NSMutableAttributedString()
         text.append(NSAttributedString(string: "\(total)", attributes: [
             .font: DesignFonts.body(size: 11),
-            .foregroundColor: DesignColors.zinc300
+            .foregroundColor: DesignColors.positive
         ]))
         text.append(NSAttributedString(string: " items match these rules", attributes: [
             .font: DesignFonts.label(size: 11),

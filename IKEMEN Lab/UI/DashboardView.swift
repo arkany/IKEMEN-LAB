@@ -13,6 +13,9 @@ fileprivate enum ThemeBackgroundRole: String {
     case zinc900
     case zinc800
     case borderSubtle
+    case featureCard
+    case featureCardIcon
+    case buttonSecondary
 }
 
 fileprivate enum ThemeBorderRole: String {
@@ -49,6 +52,12 @@ fileprivate func themeBackgroundColor(for role: ThemeBackgroundRole) -> NSColor 
         return DesignColors.zinc800
     case .borderSubtle:
         return DesignColors.borderSubtle
+    case .featureCard:
+        return DesignColors.panelBackground
+    case .featureCardIcon:
+        return DesignColors.inputBackground
+    case .buttonSecondary:
+        return DesignColors.buttonSecondaryBackground
     }
 }
 
@@ -1216,9 +1225,9 @@ class DashboardView: NSView {
         let card = NSView()
         card.translatesAutoresizingMaskIntoConstraints = false
         card.wantsLayer = true
-        card.layer?.backgroundColor = DesignColors.zinc950.cgColor
         card.layer?.cornerRadius = 12
         card.layer?.borderWidth = 1
+        tagThemeBackground(card, role: .featureCard)
         tagThemeBorder(card, role: .subtle)
         
         let cardStack = NSStackView()
@@ -1245,9 +1254,9 @@ class DashboardView: NSView {
         let iconContainer = NSView()
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.wantsLayer = true
-        iconContainer.layer?.backgroundColor = DesignColors.zinc900.cgColor
         iconContainer.layer?.cornerRadius = 12
         iconContainer.layer?.borderWidth = 1
+        tagThemeBackground(iconContainer, role: .featureCardIcon)
         tagThemeBorder(iconContainer, role: .subtle)
         
         let iconView = NSImageView()
@@ -1300,18 +1309,18 @@ class DashboardView: NSView {
         sitesRow.addArrangedSubview(siteLabel)
         cardStack.addArrangedSubview(sitesRow)
         
-        // Enable button (full width, styled, 42px height) - matches HTML: bg-zinc-800, rounded-lg, border-white/5
+        // Enable button (full width, styled, 42px height)
         let enableButton = NSButton(title: "Enable in Safari Settings  →", target: self, action: #selector(openSafariExtensionSettings))
         enableButton.bezelStyle = .smallSquare
         enableButton.isBordered = false
         enableButton.wantsLayer = true
         enableButton.layer?.cornerRadius = 8
-        enableButton.layer?.backgroundColor = DesignColors.zinc800.cgColor
         enableButton.layer?.borderWidth = 1
-        enableButton.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
         enableButton.font = DesignFonts.body(size: 13)
-        enableButton.contentTintColor = .white
+        enableButton.contentTintColor = DesignColors.textPrimary
         enableButton.translatesAutoresizingMaskIntoConstraints = false
+        tagThemeBackground(enableButton, role: .buttonSecondary)
+        tagThemeBorder(enableButton, role: .subtle)
         let heightConstraint = enableButton.heightAnchor.constraint(equalToConstant: 42)
         heightConstraint.priority = .required
         heightConstraint.isActive = true
@@ -2117,7 +2126,7 @@ class HoverableToolButton: NSView, ThemeApplicable {
     private func setupAppearance() {
         wantsLayer = true
         layer?.cornerRadius = 8
-        layer?.backgroundColor = DesignColors.zinc900.cgColor
+        layer?.backgroundColor = DesignColors.cardBackground.cgColor
         layer?.borderWidth = 1
         layer?.borderColor = DesignColors.borderSubtle.cgColor
     }
@@ -2131,10 +2140,10 @@ class HoverableToolButton: NSView, ThemeApplicable {
         
         if isHovered {
             layer?.borderColor = DesignColors.borderHover.cgColor
-            layer?.backgroundColor = DesignColors.zinc800.cgColor
+            layer?.backgroundColor = DesignColors.cardBackgroundHover.cgColor
         } else {
             layer?.borderColor = DesignColors.borderSubtle.cgColor
-            layer?.backgroundColor = DesignColors.zinc900.cgColor
+            layer?.backgroundColor = DesignColors.cardBackground.cgColor
         }
         
         CATransaction.commit()
@@ -2186,7 +2195,7 @@ class HoverableToolButton: NSView, ThemeApplicable {
     }
     
     func applyTheme() {
-        layer?.backgroundColor = DesignColors.zinc900.cgColor
+        layer?.backgroundColor = DesignColors.cardBackground.cgColor
         layer?.borderColor = DesignColors.borderSubtle.cgColor
         updateAppearance(animated: false)
     }

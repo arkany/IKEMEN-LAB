@@ -23,6 +23,8 @@ class ViewModeToggle: NSView {
     
     private var gridButton: NSButton!
     private var listButton: NSButton!
+    private var gridWrapper: NSView!
+    private var listWrapper: NSView!
     private var gridTrackingArea: NSTrackingArea?
     private var listTrackingArea: NSTrackingArea?
     private var isGridHovered = false
@@ -49,17 +51,17 @@ class ViewModeToggle: NSView {
         stack.alignment = .centerY
         addSubview(stack)
         
-        // Grid button
-        gridButton = createIconButton(symbolName: "square.grid.2x2", tooltip: "Grid view")
+        // Grid button with wrapper
+        (gridWrapper, gridButton) = createIconButton(symbolName: "square.grid.2x2", tooltip: "Grid view")
         gridButton.target = self
         gridButton.action = #selector(gridClicked)
-        stack.addArrangedSubview(gridButton)
+        stack.addArrangedSubview(gridWrapper)
         
-        // List button
-        listButton = createIconButton(symbolName: "list.bullet", tooltip: "List view")
+        // List button with wrapper
+        (listWrapper, listButton) = createIconButton(symbolName: "list.bullet", tooltip: "List view")
         listButton.target = self
         listButton.action = #selector(listClicked)
-        stack.addArrangedSubview(listButton)
+        stack.addArrangedSubview(listWrapper)
         
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: topAnchor),
@@ -72,43 +74,56 @@ class ViewModeToggle: NSView {
         setupTrackingAreas()
     }
     
-    private func createIconButton(symbolName: String, tooltip: String) -> NSButton {
+    private func createIconButton(symbolName: String, tooltip: String) -> (NSView, NSButton) {
+        // Wrapper view controls the exact size and background
+        let wrapper = NSView(frame: NSRect(x: 0, y: 0, width: 28, height: 28))
+        wrapper.translatesAutoresizingMaskIntoConstraints = false
+        wrapper.wantsLayer = true
+        wrapper.layer?.cornerRadius = 6
+        
+        // Button inside wrapper - transparent, just for clicks and icon
         let button = NSButton(frame: .zero)
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.setButtonType(.momentaryChange)
         button.isBordered = false
-        button.bezelStyle = .inline
-        button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: tooltip)
+        button.title = ""
+        button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: tooltip)?.withSymbolConfiguration(.init(pointSize: 14, weight: .medium))
         button.imagePosition = .imageOnly
         button.toolTip = tooltip
-        button.wantsLayer = true
-        button.layer?.cornerRadius = 4
+        wrapper.addSubview(button)
         
+        // Wrapper is exactly 28x28
         NSLayoutConstraint.activate([
-            button.widthAnchor.constraint(equalToConstant: 28),
-            button.heightAnchor.constraint(equalToConstant: 28),
+            wrapper.widthAnchor.constraint(equalToConstant: 28),
+            wrapper.heightAnchor.constraint(equalToConstant: 28),
+            // Button fills wrapper
+            button.topAnchor.constraint(equalTo: wrapper.topAnchor),
+            button.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+            button.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+            button.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
         ])
         
-        return button
+        return (wrapper, button)
     }
     
     private func setupTrackingAreas() {
-        // Grid button tracking
+        // Grid wrapper tracking
         gridTrackingArea = NSTrackingArea(
             rect: .zero,
             options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
             owner: self,
             userInfo: ["button": "grid"]
         )
-        gridButton.addTrackingArea(gridTrackingArea!)
+        gridWrapper.addTrackingArea(gridTrackingArea!)
         
-        // List button tracking
+        // List wrapper tracking
         listTrackingArea = NSTrackingArea(
             rect: .zero,
             options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
             owner: self,
             userInfo: ["button": "list"]
         )
-        listButton.addTrackingArea(listTrackingArea!)
+        listWrapper.addTrackingArea(listTrackingArea!)
     }
     
     override func mouseEntered(with event: NSEvent) {
@@ -136,28 +151,28 @@ class ViewModeToggle: NSView {
     }
     
     private func updateAppearance() {
-        // Grid button
+        // Grid button - background on wrapper, tint on button
         if currentMode == .grid {
             gridButton.contentTintColor = DesignColors.textPrimary
-            gridButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
+            gridWrapper.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
         } else if isGridHovered {
             gridButton.contentTintColor = DesignColors.textPrimary
-            gridButton.layer?.backgroundColor = NSColor.clear.cgColor
+            gridWrapper.layer?.backgroundColor = NSColor.clear.cgColor
         } else {
             gridButton.contentTintColor = DesignColors.textSecondary
-            gridButton.layer?.backgroundColor = NSColor.clear.cgColor
+            gridWrapper.layer?.backgroundColor = NSColor.clear.cgColor
         }
         
-        // List button
+        // List button - background on wrapper, tint on button
         if currentMode == .list {
             listButton.contentTintColor = DesignColors.textPrimary
-            listButton.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
+            listWrapper.layer?.backgroundColor = DesignColors.buttonSecondaryBackground.cgColor
         } else if isListHovered {
             listButton.contentTintColor = DesignColors.textPrimary
-            listButton.layer?.backgroundColor = NSColor.clear.cgColor
+            listWrapper.layer?.backgroundColor = NSColor.clear.cgColor
         } else {
             listButton.contentTintColor = DesignColors.textSecondary
-            listButton.layer?.backgroundColor = NSColor.clear.cgColor
+            listWrapper.layer?.backgroundColor = NSColor.clear.cgColor
         }
     }
 
@@ -449,12 +464,15 @@ class ContentHeaderView: NSView {
     var onSearch: ((String) -> Void)?
     var onHomeClicked: (() -> Void)?
     var onViewModeChanged: ((ViewModeToggle.Mode) -> Void)?
+    var onRefresh: (() -> Void)?
     
     // MARK: - Properties
     
     private var breadcrumbStack: NSStackView!
     private var searchField: StyledSearchField!
     private var viewModeToggle: ViewModeToggle!
+    private var refreshButton: NSButton!
+    private var refreshDivider: NSView!
     private var homeLabel: NSTextField!  // Legacy, kept for compatibility
     private var homeButtonRef: NSButton!
     private var chevronImage: NSImageView!
@@ -493,6 +511,7 @@ class ContentHeaderView: NSView {
         self.borderLayer = borderLayer
         
         setupBreadcrumb()
+        setupRefreshButton()
         setupViewModeToggle()
         setupSearchField()
         setupConstraints()
@@ -522,6 +541,8 @@ class ContentHeaderView: NSView {
                 .foregroundColor: DesignColors.textSecondary
             ]
         )
+        refreshButton.contentTintColor = DesignColors.textSecondary
+        refreshDivider.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
         viewModeToggle.refreshAppearance()
         searchField.refreshAppearance()
     }
@@ -600,6 +621,33 @@ class ContentHeaderView: NSView {
         addSubview(searchField)
     }
     
+    private func setupRefreshButton() {
+        // Refresh button
+        refreshButton = NSButton(frame: NSRect(x: 0, y: 0, width: 28, height: 28))
+        refreshButton.translatesAutoresizingMaskIntoConstraints = false
+        refreshButton.isBordered = false
+        refreshButton.bezelStyle = .smallSquare
+        refreshButton.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Refresh")?.withSymbolConfiguration(.init(pointSize: 14, weight: .medium))
+        refreshButton.imagePosition = .imageOnly
+        refreshButton.imageScaling = .scaleNone
+        refreshButton.toolTip = "Refresh"
+        refreshButton.contentTintColor = DesignColors.textSecondary
+        refreshButton.target = self
+        refreshButton.action = #selector(refreshClicked)
+        refreshButton.isHidden = true  // Hidden by default, shown for browser views
+        refreshButton.setContentHuggingPriority(.required, for: .horizontal)
+        refreshButton.setContentHuggingPriority(.required, for: .vertical)
+        addSubview(refreshButton)
+        
+        // Divider between refresh and view mode toggle
+        refreshDivider = NSView()
+        refreshDivider.translatesAutoresizingMaskIntoConstraints = false
+        refreshDivider.wantsLayer = true
+        refreshDivider.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        refreshDivider.isHidden = true  // Hidden by default
+        addSubview(refreshDivider)
+    }
+    
     private func setupViewModeToggle() {
         // View mode toggle (grid/list icons)
         viewModeToggle = ViewModeToggle(frame: .zero)
@@ -624,6 +672,18 @@ class ContentHeaderView: NSView {
             // Breadcrumb on left
             breadcrumbStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 32),
             breadcrumbStack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            
+            // Refresh button before divider
+            refreshButton.trailingAnchor.constraint(equalTo: refreshDivider.leadingAnchor, constant: -12),
+            refreshButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            refreshButton.widthAnchor.constraint(equalToConstant: 28),
+            refreshButton.heightAnchor.constraint(equalToConstant: 28),
+            
+            // Divider between refresh and view mode toggle
+            refreshDivider.trailingAnchor.constraint(equalTo: viewModeToggle.leadingAnchor, constant: -12),
+            refreshDivider.centerYAnchor.constraint(equalTo: centerYAnchor),
+            refreshDivider.widthAnchor.constraint(equalToConstant: 1),
+            refreshDivider.heightAnchor.constraint(equalToConstant: 20),
             
             // View mode toggle before search field (gap-4 = 16px)
             viewModeToggle.trailingAnchor.constraint(equalTo: searchField.leadingAnchor, constant: -16),
@@ -661,6 +721,12 @@ class ContentHeaderView: NSView {
         viewModeToggle.isHidden = !visible
     }
     
+    /// Show or hide the refresh button and divider
+    func setRefreshButtonVisible(_ visible: Bool) {
+        refreshButton.isHidden = !visible
+        refreshDivider.isHidden = !visible
+    }
+    
     /// Set the current view mode (without triggering callback)
     func setViewMode(_ mode: ViewModeToggle.Mode) {
         viewModeToggle.setMode(mode)
@@ -675,6 +741,10 @@ class ContentHeaderView: NSView {
     
     @objc private func homeClicked() {
         onHomeClicked?()
+    }
+    
+    @objc private func refreshClicked() {
+        onRefresh?()
     }
     
     // MARK: - Mouse Tracking

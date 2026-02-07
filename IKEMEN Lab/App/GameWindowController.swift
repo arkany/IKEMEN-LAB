@@ -793,6 +793,9 @@ class GameWindowController: NSWindowController {
         contentHeaderView.onViewModeChanged = { [weak self] mode in
             self?.handleViewModeChanged(mode)
         }
+        contentHeaderView.onRefresh = { [weak self] in
+            self?.refreshCurrentView()
+        }
         mainAreaView.addSubview(contentHeaderView)
         
         // Dashboard View
@@ -1040,6 +1043,68 @@ class GameWindowController: NSWindowController {
         // Note: stageBrowserView is always list view, doesn't support grid/list toggle
     }
     
+    private func refreshCurrentView() {
+        // Capture counts before refresh
+        let previousCharacterCount = IkemenBridge.shared.characters.count
+        let previousStageCount = IkemenBridge.shared.stages.count
+        let previousScreenpackCount = IkemenBridge.shared.screenpacks.count
+        
+        // Rescan content from disk
+        IkemenBridge.shared.loadContent()
+        
+        // Get new counts
+        let newCharacterCount = IkemenBridge.shared.characters.count
+        let newStageCount = IkemenBridge.shared.stages.count
+        let newScreenpackCount = IkemenBridge.shared.screenpacks.count
+        
+        // Then refresh the current view with updated data
+        switch selectedNavItem {
+        case .characters:
+            characterBrowserView?.refresh()
+            showRefreshNotification(
+                contentType: "character",
+                previous: previousCharacterCount,
+                current: newCharacterCount
+            )
+        case .stages:
+            stageBrowserView?.refresh()
+            showRefreshNotification(
+                contentType: "stage",
+                previous: previousStageCount,
+                current: newStageCount
+            )
+        case .addons:
+            screenpackBrowserView?.refresh()
+            showRefreshNotification(
+                contentType: "screenpack",
+                previous: previousScreenpackCount,
+                current: newScreenpackCount
+            )
+        default:
+            break
+        }
+    }
+    
+    private func showRefreshNotification(contentType: String, previous: Int, current: Int) {
+        let diff = current - previous
+        guard diff != 0 else { return }  // No changes, no notification
+        
+        let notification = NSUserNotification()
+        notification.title = "IKEMEN Lab"
+        
+        if diff > 0 {
+            let plural = diff == 1 ? contentType : "\(contentType)s"
+            notification.informativeText = "Found \(diff) new \(plural)"
+        } else {
+            let removed = abs(diff)
+            let plural = removed == 1 ? contentType : "\(contentType)s"
+            notification.informativeText = "Removed \(removed) \(plural)"
+        }
+        
+        notification.soundName = NSUserNotificationDefaultSoundName
+        NSUserNotificationCenter.default.deliver(notification)
+    }
+    
     private func updateMainAreaContent() {
         // Guard against being called before UI is fully initialized
         guard mainAreaView != nil else { return }
@@ -1065,6 +1130,10 @@ class GameWindowController: NSWindowController {
         // Note: stages is list-only so doesn't need toggle
         let showToggle = selectedNavItem == .characters || selectedNavItem == .addons
         contentHeaderView?.setViewModeToggleVisible(showToggle)
+        
+        // Show refresh button for content browsers (characters, stages, add-ons)
+        let showRefresh = selectedNavItem == .characters || selectedNavItem == .stages || selectedNavItem == .addons
+        contentHeaderView?.setRefreshButtonVisible(showRefresh)
         
         // Sync toggle state with current view mode
         contentHeaderView?.setViewMode(currentViewMode == .grid ? .grid : .list)
