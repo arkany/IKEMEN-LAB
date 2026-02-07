@@ -116,6 +116,11 @@ class GameWindowController: NSWindowController {
     // View mode state
     private var currentViewMode: BrowserViewMode = .grid
     
+    // Extracted coordinators
+    private let installCoordinator = InstallCoordinator()
+    private let stageCreationController = StageCreationController()
+    private let vramMonitor = VRAMMonitor()
+    
     // MARK: - State
     
     var isGameLoaded: Bool { ikemenBridge.isEngineRunning }
@@ -188,6 +193,7 @@ class GameWindowController: NSWindowController {
         setupSidebar()
         setupMainArea()
         setupConstraints()
+        setupCoordinators()
         applyTheme()
         
         // Initialize toast notifications with main area as parent
@@ -200,6 +206,48 @@ class GameWindowController: NSWindowController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.showFirstRunExperienceIfNeeded()
         }
+    }
+    
+    private func setupCoordinators() {
+        // Install coordinator
+        installCoordinator.window = window
+        installCoordinator.onStatusUpdate = { [weak self] message, color in
+            self?.statusLabel.stringValue = message
+            self?.statusLabel.textColor = color
+        }
+        installCoordinator.onContentChanged = { [weak self] in
+            self?.dashboardView.refreshStats()
+        }
+        
+        // Stage creation controller
+        stageCreationController.window = window
+        stageCreationController.onStatusUpdate = { [weak self] message in
+            self?.statusLabel.stringValue = message
+        }
+        stageCreationController.onStageCreated = { [weak self] in
+            self?.ikemenBridge.refreshStages()
+            self?.stageBrowserView.refresh()
+        }
+        
+        // VRAM monitor
+        vramMonitor.onUpdate = { [weak self] percentage, text in
+            guard let self = self else { return }
+            self.vramPercentLabel.stringValue = text
+            
+            if let superview = self.vramFillView.superview {
+                let trackWidth = superview.bounds.width
+                self.vramFillWidthConstraint.constant = trackWidth * CGFloat(percentage) / 100.0
+            }
+            
+            if percentage > 90 {
+                self.vramFillView.layer?.backgroundColor = DesignColors.redAccent.cgColor
+            } else if percentage > 70 {
+                self.vramFillView.layer?.backgroundColor = DesignColors.warning.cgColor
+            } else {
+                self.vramFillView.layer?.backgroundColor = AppSettings.shared.useLightTheme ? DesignColors.zinc400.cgColor : NSColor.white.withAlphaComponent(0.2).cgColor
+            }
+        }
+        vramMonitor.start()
     }
     
     // MARK: - First Run Experience
@@ -551,8 +599,7 @@ class GameWindowController: NSWindowController {
         vramFillWidthConstraint = vramFillView.widthAnchor.constraint(equalToConstant: 0)
         vramFillWidthConstraint.isActive = true
         
-        // Start VRAM monitoring
-        updateVRAMUsage()
+        // VRAM monitoring is handled by vramMonitor (initialized in setupCoordinators)
     }
     
     /// Create a new-style nav button matching the HTML design
@@ -806,7 +853,7 @@ class GameWindowController: NSWindowController {
             self?.launchIkemen()
         }
         dashboardView.onFilesDropped = { [weak self] urls in
-            self?.handleDroppedFiles(urls)
+            self?.installCoordinator.handleDroppedFiles(urls)
         }
         dashboardView.onRefreshStats = { [weak self] in
             self?.updateDashboardStats()
@@ -821,7 +868,7 @@ class GameWindowController: NSWindowController {
             self?.runContentValidation()
         }
         dashboardView.onInstallContent = { [weak self] in
-            self?.showInstallDialog()
+            self?.installCoordinator.showInstallDialog()
         }
         mainAreaView.addSubview(dashboardView)
         
@@ -829,14 +876,14 @@ class GameWindowController: NSWindowController {
         dropZoneView = DropZoneView(frame: .zero)
         dropZoneView.translatesAutoresizingMaskIntoConstraints = false
         dropZoneView.onFilesDropped = { [weak self] urls in
-            self?.handleDroppedFiles(urls)
+            self?.installCoordinator.handleDroppedFiles(urls)
         }
         // Apply new design styling
         dropZoneView.applyFigmaStyle(borderColor: DesignColors.borderDashed, textColor: DesignColors.textTertiary, font: DesignFonts.body(size: 14))
         mainAreaView.addSubview(dropZoneView)
         
         // Create Stage from PNG button (hidden by default, shown when on stages tab)
-        createStageButton = NSButton(title: "Create from PNG", target: self, action: #selector(createStageFromPNG(_:)))
+        createStageButton = NSButton(title: "Create from PNG", target: self, action: #selector(createStageFromPNGAction(_:)))
         createStageButton.translatesAutoresizingMaskIntoConstraints = false
         createStageButton.bezelStyle = .rounded
         createStageButton.isHidden = true
@@ -1598,8 +1645,9 @@ class GameWindowController: NSWindowController {
         // Remove any existing settings view
         mainAreaView.subviews.filter { $0.identifier?.rawValue == "settingsView" }.forEach { $0.removeFromSuperview() }
         
-        let settingsView = createSettingsView()
+        let settingsView = SettingsView()
         settingsView.identifier = NSUserInterfaceItemIdentifier("settingsView")
+        settingsView.parentView = mainAreaView
         mainAreaView.addSubview(settingsView)
         
         NSLayoutConstraint.activate([
@@ -1608,349 +1656,6 @@ class GameWindowController: NSWindowController {
             settingsView.trailingAnchor.constraint(equalTo: mainAreaView.trailingAnchor, constant: -24),
             settingsView.bottomAnchor.constraint(equalTo: mainAreaView.bottomAnchor, constant: -24),
         ])
-    }
-    
-    private func createSettingsView() -> NSView {
-        let container = NSView()
-        container.translatesAutoresizingMaskIntoConstraints = false
-        container.wantsLayer = true
-        
-        let scrollView = NSScrollView()
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = true
-        scrollView.drawsBackground = false
-        container.addSubview(scrollView)
-        
-        // Use a flipped view so content starts at the top
-        let contentView = FlippedView()
-        contentView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.documentView = contentView
-        
-        let stackView = NSStackView()
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        stackView.orientation = .vertical
-        stackView.spacing = 32
-        stackView.alignment = .leading
-        contentView.addSubview(stackView)
-        
-        // Title
-        let titleLabel = NSTextField(labelWithString: "Settings")
-        titleLabel.font = DesignFonts.header(size: 32)
-        titleLabel.textColor = DesignColors.textPrimary
-        stackView.addArrangedSubview(titleLabel)
-        
-        // Video Settings Section
-        let videoSection = createSettingsSection(title: "Video", settings: [
-            createResolutionSetting(),
-            createToggleSetting(label: "Fullscreen", key: "Fullscreen", section: "Video"),
-            createToggleSetting(label: "VSync", key: "VSync", section: "Video"),
-            createToggleSetting(label: "Borderless", key: "Borderless", section: "Video"),
-        ])
-        stackView.addArrangedSubview(videoSection)
-        
-        // Audio Settings Section
-        let audioSection = createSettingsSection(title: "Audio", settings: [
-            createVolumeSetting(label: "Master Volume", key: "MasterVolume"),
-            createVolumeSetting(label: "Music Volume", key: "BGMVolume"),
-            createVolumeSetting(label: "Sound Effects", key: "WavVolume"),
-        ])
-        stackView.addArrangedSubview(audioSection)
-        
-        // Appearance Section
-        let appearanceSection = createSettingsSection(title: "Appearance", settings: [
-            createAppToggleSetting(
-                label: "Light Mode",
-                description: "Switch between dark and light theme",
-                getValue: { AppSettings.shared.useLightTheme },
-                setValue: { AppSettings.shared.useLightTheme = $0 }
-            ),
-        ])
-        stackView.addArrangedSubview(appearanceSection)
-        
-        // Advanced Features Section
-        let advancedSection = createSettingsSection(title: "Advanced", settings: [
-            createAppToggleSetting(
-                label: "EXPERIMENTAL: Create Stage from PNG",
-                description: "Enable creating stages from PNG images (experimental feature)",
-                getValue: { AppSettings.shared.enablePNGStageCreation },
-                setValue: { AppSettings.shared.enablePNGStageCreation = $0 }
-            ),
-        ])
-        stackView.addArrangedSubview(advancedSection)
-        
-        // Maintenance Section
-        let maintenanceSection = createSettingsSection(title: "Maintenance", settings: [
-            createButtonSetting(
-                label: "Image Cache",
-                buttonTitle: "Clear Cache",
-                description: "Clears cached character portraits and stage previews. Use if images appear outdated.",
-                action: #selector(clearImageCache(_:))
-            ),
-        ])
-        stackView.addArrangedSubview(maintenanceSection)
-        
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            
-            stackView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
-        ])
-        
-        return container
-    }
-    
-    private func createSettingsSection(title: String, settings: [NSView]) -> NSView {
-        let section = NSStackView()
-        section.orientation = .vertical
-        section.spacing = 16
-        section.alignment = .leading
-        
-        let sectionTitle = NSTextField(labelWithString: title)
-        sectionTitle.font = DesignFonts.header(size: 20)
-        sectionTitle.textColor = DesignColors.textSecondary
-        section.addArrangedSubview(sectionTitle)
-        
-        for setting in settings {
-            section.addArrangedSubview(setting)
-        }
-        
-        return section
-    }
-    
-    private func createResolutionSetting() -> NSView {
-        let row = NSStackView()
-        row.orientation = .horizontal
-        row.spacing = 16
-        row.alignment = .centerY
-        
-        let label = NSTextField(labelWithString: "Resolution")
-        label.font = DesignFonts.body(size: 16)
-        label.textColor = DesignColors.textPrimary
-        label.widthAnchor.constraint(equalToConstant: 150).isActive = true
-        row.addArrangedSubview(label)
-        
-        let popup = NSPopUpButton()
-        popup.addItems(withTitles: [
-            "640×480 (4:3 SD)",
-            "1280×720 (720p HD)",
-            "1920×1080 (1080p Full HD)",
-            "2560×1440 (1440p QHD)",
-        ])
-        popup.tag = 1000
-        popup.target = self
-        popup.action = #selector(resolutionChanged(_:))
-        
-        // Load current value
-        if let config = loadIkemenConfig(),
-           let width = config["Video"]?["GameWidth"],
-           let height = config["Video"]?["GameHeight"] {
-            let resString = "\(width)×\(height)"
-            for (index, title) in popup.itemTitles.enumerated() {
-                if title.hasPrefix(resString) {
-                    popup.selectItem(at: index)
-                    break
-                }
-            }
-        }
-        
-        row.addArrangedSubview(popup)
-        return row
-    }
-    
-    private func createToggleSetting(label: String, key: String, section: String) -> NSView {
-        let row = NSStackView()
-        row.orientation = .horizontal
-        row.spacing = 16
-        row.alignment = .centerY
-        
-        let labelField = NSTextField(labelWithString: label)
-        labelField.font = DesignFonts.body(size: 16)
-        labelField.textColor = DesignColors.textPrimary
-        labelField.widthAnchor.constraint(equalToConstant: 150).isActive = true
-        row.addArrangedSubview(labelField)
-        
-        let toggle = NSSwitch()
-        toggle.target = self
-        toggle.action = #selector(toggleSettingChanged(_:))
-        toggle.identifier = NSUserInterfaceItemIdentifier("\(section).\(key)")
-        
-        // Load current value
-        if let config = loadIkemenConfig(),
-           let value = config[section]?[key] {
-            toggle.state = value == "1" ? .on : .off
-        }
-        
-        row.addArrangedSubview(toggle)
-        return row
-    }
-    
-    private func createVolumeSetting(label: String, key: String) -> NSView {
-        let row = NSStackView()
-        row.orientation = .horizontal
-        row.spacing = 16
-        row.alignment = .centerY
-        
-        let labelField = NSTextField(labelWithString: label)
-        labelField.font = DesignFonts.body(size: 16)
-        labelField.textColor = DesignColors.textPrimary
-        labelField.widthAnchor.constraint(equalToConstant: 150).isActive = true
-        row.addArrangedSubview(labelField)
-        
-        let slider = NSSlider()
-        slider.minValue = 0
-        slider.maxValue = 100
-        slider.intValue = 100
-        slider.widthAnchor.constraint(equalToConstant: 200).isActive = true
-        slider.target = self
-        slider.action = #selector(volumeSliderChanged(_:))
-        slider.identifier = NSUserInterfaceItemIdentifier("Sound.\(key)")
-        
-        // Load current value
-        if let config = loadIkemenConfig(),
-           let value = config["Sound"]?[key],
-           let intValue = Int(value) {
-            slider.intValue = Int32(intValue)
-        }
-        
-        let valueLabel = NSTextField(labelWithString: "\(slider.intValue)%")
-        valueLabel.font = DesignFonts.body(size: 14)
-        valueLabel.textColor = DesignColors.textSecondary
-        valueLabel.widthAnchor.constraint(equalToConstant: 50).isActive = true
-        valueLabel.identifier = NSUserInterfaceItemIdentifier("Sound.\(key).label")
-        
-        row.addArrangedSubview(slider)
-        row.addArrangedSubview(valueLabel)
-        return row
-    }
-    
-    /// Create a toggle setting backed by AppSettings (not Ikemen config)
-    private func createAppToggleSetting(label: String, description: String, getValue: @escaping () -> Bool, setValue: @escaping (Bool) -> Void) -> NSView {
-        let container = NSStackView()
-        container.orientation = .vertical
-        container.spacing = 4
-        container.alignment = .leading
-        
-        let row = NSStackView()
-        row.orientation = .horizontal
-        row.spacing = 16
-        row.alignment = .centerY
-        
-        let labelField = NSTextField(labelWithString: label)
-        labelField.font = DesignFonts.body(size: 16)
-        labelField.textColor = DesignColors.textPrimary
-        labelField.setContentCompressionResistancePriority(.required, for: .horizontal)
-        row.addArrangedSubview(labelField)
-        
-        let toggle = NSSwitch()
-        toggle.state = getValue() ? .on : .off
-        
-        // Create a wrapper to handle the toggle action
-        let handler = AppToggleHandler(getValue: getValue, setValue: setValue)
-        toggle.target = handler
-        toggle.action = #selector(AppToggleHandler.toggleChanged(_:))
-        objc_setAssociatedObject(toggle, &AppToggleHandler.associatedKey, handler, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        
-        row.addArrangedSubview(toggle)
-        container.addArrangedSubview(row)
-        
-        // Add description label
-        let descLabel = NSTextField(labelWithString: description)
-        descLabel.font = NSFont.systemFont(ofSize: 12)
-        descLabel.textColor = DesignColors.textSecondary
-        container.addArrangedSubview(descLabel)
-        
-        return container
-    }
-    
-    /// Create a button setting with label and description
-    private func createButtonSetting(label: String, buttonTitle: String, description: String, action: Selector) -> NSView {
-        let container = NSStackView()
-        container.orientation = .vertical
-        container.spacing = 4
-        container.alignment = .leading
-        
-        let row = NSStackView()
-        row.orientation = .horizontal
-        row.spacing = 16
-        row.alignment = .centerY
-        
-        let labelField = NSTextField(labelWithString: label)
-        labelField.font = DesignFonts.body(size: 16)
-        labelField.textColor = DesignColors.textPrimary
-        labelField.widthAnchor.constraint(equalToConstant: 200).isActive = true
-        row.addArrangedSubview(labelField)
-        
-        let button = NSButton(title: buttonTitle, target: self, action: action)
-        button.bezelStyle = .rounded
-        row.addArrangedSubview(button)
-        
-        container.addArrangedSubview(row)
-        
-        // Add description label
-        let descLabel = NSTextField(labelWithString: description)
-        descLabel.font = NSFont.systemFont(ofSize: 12)
-        descLabel.textColor = DesignColors.textSecondary
-        container.addArrangedSubview(descLabel)
-        
-        return container
-    }
-    
-    // MARK: - Settings Actions
-    
-    @objc private func resolutionChanged(_ sender: NSPopUpButton) {
-        let resolutions = [(640, 480), (1280, 720), (1920, 1080), (2560, 1440)]
-        let selected = resolutions[sender.indexOfSelectedItem]
-        saveIkemenConfigValue(section: "Video", key: "GameWidth", value: "\(selected.0)")
-        saveIkemenConfigValue(section: "Video", key: "GameHeight", value: "\(selected.1)")
-    }
-    
-    @objc private func toggleSettingChanged(_ sender: NSSwitch) {
-        guard let id = sender.identifier?.rawValue else { return }
-        let parts = id.split(separator: ".")
-        guard parts.count == 2 else { return }
-        let section = String(parts[0])
-        let key = String(parts[1])
-        saveIkemenConfigValue(section: section, key: key, value: sender.state == .on ? "1" : "0")
-    }
-    
-    @objc private func volumeSliderChanged(_ sender: NSSlider) {
-        guard let id = sender.identifier?.rawValue else { return }
-        let parts = id.split(separator: ".")
-        guard parts.count == 2 else { return }
-        let section = String(parts[0])
-        let key = String(parts[1])
-        
-        // Update label
-        let labelId = NSUserInterfaceItemIdentifier("\(section).\(key).label")
-        if let label = mainAreaView.viewWithIdentifier(labelId) as? NSTextField {
-            label.stringValue = "\(sender.intValue)%"
-        }
-        
-        saveIkemenConfigValue(section: section, key: key, value: "\(sender.intValue)")
-    }
-    
-    @objc private func clearImageCache(_ sender: NSButton) {
-        ImageCache.shared.clear()
-        
-        // Show confirmation
-        let alert = NSAlert()
-        alert.messageText = "Cache Cleared"
-        alert.informativeText = "The image cache has been cleared. Character portraits and stage previews will be reloaded."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
-        
-        // Refresh the current view to reload images
-        NotificationCenter.default.post(name: NSNotification.Name("ImageCacheCleared"), object: nil)
     }
     
     // MARK: - Collections
@@ -2194,193 +1899,10 @@ class GameWindowController: NSWindowController {
         }
     }
     
-    // MARK: - Stage Creation
+    // MARK: - Stage Creation (delegated to StageCreationController)
     
-    @objc private func createStageFromPNG(_ sender: NSButton) {
-        // Check if feature is enabled
-        guard AppSettings.shared.enablePNGStageCreation else {
-            showAlert(title: "Feature Disabled", message: "PNG stage creation is disabled. Enable it in Settings → Advanced.")
-            return
-        }
-        
-        // Open file picker for PNG
-        let openPanel = NSOpenPanel()
-        openPanel.title = "Select a PNG Image"
-        openPanel.message = "Choose a PNG image to use as a stage background"
-        openPanel.allowedContentTypes = [.png]
-        openPanel.allowsMultipleSelection = false
-        openPanel.canChooseDirectories = false
-        openPanel.canChooseFiles = true
-        
-        openPanel.beginSheetModal(for: window!) { [weak self] response in
-            guard response == .OK, let url = openPanel.url else { return }
-            self?.showStageCreationDialog(forImage: url)
-        }
-    }
-    
-    private func showStageCreationDialog(forImage imageURL: URL) {
-        // Get the stage name and author from the user
-        let alert = NSAlert()
-        alert.messageText = "Create Stage"
-        alert.informativeText = "Enter details for the new stage:"
-        alert.addButton(withTitle: "Create")
-        alert.addButton(withTitle: "Cancel")
-        
-        // Create a container for multiple fields
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 60))
-        
-        // Stage name field
-        let nameLabel = NSTextField(labelWithString: "Name:")
-        nameLabel.frame = NSRect(x: 0, y: 36, width: 50, height: 20)
-        container.addSubview(nameLabel)
-        
-        let nameInput = NSTextField(frame: NSRect(x: 55, y: 34, width: 245, height: 24))
-        nameInput.stringValue = imageURL.deletingPathExtension().lastPathComponent
-        nameInput.placeholderString = "Stage Name"
-        container.addSubview(nameInput)
-        
-        // Author field
-        let authorLabel = NSTextField(labelWithString: "Author:")
-        authorLabel.frame = NSRect(x: 0, y: 4, width: 50, height: 20)
-        container.addSubview(authorLabel)
-        
-        let authorInput = NSTextField(frame: NSRect(x: 55, y: 2, width: 245, height: 24))
-        authorInput.stringValue = NSFullUserName()
-        authorInput.placeholderString = "Your Name"
-        container.addSubview(authorInput)
-        
-        alert.accessoryView = container
-        
-        alert.beginSheetModal(for: window!) { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            
-            let stageName = nameInput.stringValue.trimmingCharacters(in: .whitespaces)
-            guard !stageName.isEmpty else {
-                self?.showAlert(title: "Invalid Name", message: "Please enter a stage name.")
-                return
-            }
-            
-            let author = authorInput.stringValue.trimmingCharacters(in: .whitespaces)
-            self?.createStage(from: imageURL, name: stageName, author: author.isEmpty ? "Unknown" : author)
-        }
-    }
-    
-    private func createStage(from imageURL: URL, name: String, author: String = "MacMugen") {
-        // Find the stages directory
-        guard let workingDir = ikemenBridge.workingDirectory else {
-            showAlert(title: "Error", message: "Ikemen GO directory not found.")
-            return
-        }
-        
-        let stagesDir = workingDir.appendingPathComponent("stages")
-        
-        // Create the stage with default options
-        var options = StageGenerator.StageOptions.withDefaults(name: name)
-        options.author = author
-        
-        let result = StageGenerator.generate(from: imageURL, in: stagesDir, options: options)
-        
-        switch result {
-        case .success(let generated):
-            // Register stage in select.def so it appears in Ikemen GO
-            let dataDir = workingDir.appendingPathComponent("data")
-            let relativePath = generated.stageDirectory.lastPathComponent + "/" + generated.defFile.lastPathComponent
-            StageGenerator.registerStageInSelectDef(stagePath: relativePath, dataDirectory: dataDir)
-            
-            // Refresh stages list
-            ikemenBridge.refreshStages()
-            stageBrowserView.refresh()
-            
-            // Show success message
-            showAlert(title: "Stage Created", message: "Successfully created stage '\(generated.stageName)' at:\n\(generated.stageDirectory.path)")
-            statusLabel.stringValue = "Created stage: \(generated.stageName)"
-            
-        case .failure(let error):
-            showAlert(title: "Stage Creation Failed", message: error.localizedDescription)
-        }
-    }
-    
-    private func showAlert(title: String, message: String) {
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.addButton(withTitle: "OK")
-        alert.beginSheetModal(for: window!, completionHandler: nil)
-    }
-    
-    // MARK: - Config File Helpers
-    
-    private var ikemenConfigPath: URL {
-        URL(fileURLWithPath: "/Users/davidphillips/Sites/macmame/Ikemen-GO/save/config.ini")
-    }
-    
-    private func loadIkemenConfig() -> [String: [String: String]]? {
-        guard FileManager.default.fileExists(atPath: ikemenConfigPath.path) else { return nil }
-        
-        do {
-            let content = try String(contentsOf: ikemenConfigPath, encoding: .utf8)
-            var config: [String: [String: String]] = [:]
-            var currentSection = ""
-            
-            for line in content.components(separatedBy: .newlines) {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.isEmpty || trimmed.hasPrefix(";") { continue }
-                
-                if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
-                    currentSection = String(trimmed.dropFirst().dropLast())
-                    if config[currentSection] == nil {
-                        config[currentSection] = [:]
-                    }
-                    continue
-                }
-                
-                if let equalsIndex = trimmed.firstIndex(of: "=") {
-                    let key = trimmed[..<equalsIndex].trimmingCharacters(in: .whitespaces)
-                    let value = trimmed[trimmed.index(after: equalsIndex)...].trimmingCharacters(in: .whitespaces)
-                    config[currentSection]?[key] = value
-                }
-            }
-            return config
-        } catch {
-            print("Error loading config: \(error)")
-            return nil
-        }
-    }
-    
-    private func saveIkemenConfigValue(section: String, key: String, value: String) {
-        guard FileManager.default.fileExists(atPath: ikemenConfigPath.path) else { return }
-        
-        do {
-            var content = try String(contentsOf: ikemenConfigPath, encoding: .utf8)
-            var lines = content.components(separatedBy: "\n")
-            var inSection = false
-            
-            for i in 0..<lines.count {
-                let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
-                
-                if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
-                    let sectionName = String(trimmed.dropFirst().dropLast())
-                    inSection = (sectionName == section)
-                    continue
-                }
-                
-                if inSection && trimmed.hasPrefix(key) {
-                    if let equalsIndex = trimmed.firstIndex(of: "=") {
-                        let keyPart = trimmed[..<equalsIndex].trimmingCharacters(in: .whitespaces)
-                        if keyPart == key {
-                            let leadingWhitespace = String(lines[i].prefix(while: { $0 == " " || $0 == "\t" }))
-                            lines[i] = "\(leadingWhitespace)\(key) = \(value)"
-                            break
-                        }
-                    }
-                }
-            }
-            
-            content = lines.joined(separator: "\n")
-            try content.write(to: ikemenConfigPath, atomically: true, encoding: .utf8)
-        } catch {
-            print("Error saving config: \(error)")
-        }
+    @objc private func createStageFromPNGAction(_ sender: NSButton) {
+        stageCreationController.createStageFromPNG()
     }
     
     // MARK: - Layout Constraints
@@ -2658,7 +2180,7 @@ class GameWindowController: NSWindowController {
     
     /// Install content from file/folder (File menu, ⌘I)
     @objc func installContent(_ sender: Any?) {
-        showInstallDialog()
+        installCoordinator.showInstallDialog()
     }
     
     /// Reveal IKEMEN GO folder in Finder (File menu)
@@ -2777,7 +2299,7 @@ class GameWindowController: NSWindowController {
     
     func loadGame(at url: URL) {
         if url.pathExtension.lowercased() == "zip" {
-            handleDroppedFiles([url])
+            installCoordinator.handleDroppedFiles([url])
         } else {
             do {
                 try ikemenBridge.launchEngine()
@@ -2799,389 +2321,6 @@ class GameWindowController: NSWindowController {
         ikemenBridge.terminateEngine()
     }
     
-    // MARK: - Drag & Drop
-    
-    private let supportedArchiveExtensions = ["zip", "rar", "7z", "ace"]
-    
-    private func showInstallDialog() {
-        let openPanel = NSOpenPanel()
-        openPanel.title = "Install Content"
-        openPanel.prompt = "Install"
-        openPanel.message = "Select ZIP archives or folders containing characters, stages, or screenpacks."
-        openPanel.allowsMultipleSelection = true
-        openPanel.canChooseDirectories = true
-        openPanel.canChooseFiles = true
-        
-        // Create accessory view with fullgame toggle
-        let accessoryView = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 32))
-        let fullgameToggle = NSButton(checkboxWithTitle: "Fullgame mode (import as collection)", target: nil, action: nil)
-        fullgameToggle.state = AppSettings.shared.fullgameImportEnabled ? .on : .off
-        fullgameToggle.toolTip = "Import entire MUGEN/IKEMEN packages as collections, including characters, stages, screenpack, fonts, and sounds."
-        fullgameToggle.frame = NSRect(x: 10, y: 4, width: 280, height: 24)
-        accessoryView.addSubview(fullgameToggle)
-        openPanel.accessoryView = accessoryView
-        
-        openPanel.beginSheetModal(for: window!) { [weak self] response in
-            guard response == .OK else { return }
-            
-            // Update setting based on toggle state
-            AppSettings.shared.fullgameImportEnabled = (fullgameToggle.state == .on)
-            
-            self?.handleDroppedFiles(openPanel.urls)
-        }
-    }
-
-    private func handleDroppedFiles(_ urls: [URL]) {
-        for url in urls {
-            let ext = url.pathExtension.lowercased()
-            
-            if supportedArchiveExtensions.contains(ext) {
-                installFromArchive(url)
-            } else if FileManager.default.fileExists(atPath: url.path) {
-                var isDirectory: ObjCBool = false
-                FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
-                
-                if isDirectory.boolValue {
-                    // Check if fullgame mode is enabled and this looks like a fullgame
-                    print("[GameWindowController] Dropped folder: \(url.path)")
-                    print("[GameWindowController] Fullgame mode enabled: \(AppSettings.shared.fullgameImportEnabled)")
-                    if AppSettings.shared.fullgameImportEnabled {
-                        let manifest = FullgameImporter.shared.scanFullgamePackage(at: url)
-                        print("[GameWindowController] Is fullgame: \(manifest.isFullgame)")
-                        if manifest.isFullgame {
-                            print("[GameWindowController] Starting fullgame install...")
-                            installFullgame(manifest: manifest)
-                            continue
-                        }
-                    }
-                    installFromFolder(url)
-                }
-            }
-        }
-    }
-    
-    private func installFromArchive(_ url: URL, overwrite: Bool = false) {
-        statusLabel.stringValue = "Installing..."
-        statusLabel.textColor = DesignColors.warning
-        
-        let fileName = url.deletingPathExtension().lastPathComponent
-        
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            do {
-                let result = try self?.ikemenBridge.installContent(from: url, overwrite: overwrite)
-                DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = result ?? "Installed!"
-                    self?.statusLabel.textColor = DesignColors.positive
-                    
-                    // Show success toast
-                    let contentName = result?.replacingOccurrences(of: "Installed ", with: "").replacingOccurrences(of: "!", with: "") ?? fileName
-                    ToastManager.shared.showSuccess(
-                        title: "Successfully installed!",
-                        subtitle: "\(contentName) has been added to your library."
-                    )
-                    
-                    // Refresh dashboard stats
-                    self?.dashboardView.refreshStats()
-                }
-            } catch let error as IkemenError {
-                if case .duplicateContent(let name) = error {
-                    DispatchQueue.main.async {
-                        self?.promptToOverwrite(name: name) { shouldOverwrite in
-                            if shouldOverwrite {
-                                self?.installFromArchive(url, overwrite: true)
-                            } else {
-                                self?.statusLabel.stringValue = "Cancelled"
-                                self?.statusLabel.textColor = DesignColors.textTertiary
-                            }
-                        }
-                    }
-                    return
-                }
-                
-                DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = "Failed"
-                    self?.statusLabel.textColor = DesignColors.redAccent
-                    
-                    // Show error toast
-                    ToastManager.shared.showError(
-                        title: "Installation failed",
-                        subtitle: error.localizedDescription
-                    )
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = "Failed"
-                    self?.statusLabel.textColor = DesignColors.redAccent
-                    
-                    // Show error toast
-                    ToastManager.shared.showError(
-                        title: "Installation failed",
-                        subtitle: error.localizedDescription
-                    )
-                }
-            }
-        }
-    }
-    
-    private func installFromFolder(_ url: URL, overwrite: Bool = false) {
-        statusLabel.stringValue = "Installing..."
-        statusLabel.textColor = DesignColors.warning
-        
-        let folderName = url.lastPathComponent
-        
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            do {
-                let result = try self?.ikemenBridge.installContentFolder(from: url, overwrite: overwrite)
-                DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = result ?? "Installed!"
-                    self?.statusLabel.textColor = DesignColors.positive
-                    
-                    // Show success toast
-                    let contentName = result?.replacingOccurrences(of: "Installed ", with: "").replacingOccurrences(of: "!", with: "") ?? folderName
-                    ToastManager.shared.showSuccess(
-                        title: "Successfully installed!",
-                        subtitle: "\(contentName) has been added to your library."
-                    )
-                    
-                    // Refresh dashboard stats
-                    self?.dashboardView.refreshStats()
-                }
-            } catch let error as IkemenError {
-                if case .duplicateContent(let name) = error {
-                    DispatchQueue.main.async {
-                        self?.promptToOverwrite(name: name) { shouldOverwrite in
-                            if shouldOverwrite {
-                                self?.installFromFolder(url, overwrite: true)
-                            } else {
-                                self?.statusLabel.stringValue = "Cancelled"
-                                self?.statusLabel.textColor = DesignColors.textTertiary
-                            }
-                        }
-                    }
-                    return
-                }
-                
-                DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = "Failed"
-                    self?.statusLabel.textColor = DesignColors.redAccent
-                    
-                    // Show error toast
-                    ToastManager.shared.showError(
-                        title: "Installation failed",
-                        subtitle: error.localizedDescription
-                    )
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = "Failed"
-                    self?.statusLabel.textColor = DesignColors.redAccent
-                    
-                    // Show error toast
-                    ToastManager.shared.showError(
-                        title: "Installation failed",
-                        subtitle: error.localizedDescription
-                    )
-                }
-            }
-        }
-    }
-    
-    // MARK: - Fullgame Installation
-    
-    private func installFullgame(manifest: FullgameManifest) {
-        guard let workingDir = ikemenBridge.workingDirectory else {
-            ToastManager.shared.showError(title: "No IKEMEN GO folder", subtitle: "Please set up IKEMEN GO first.")
-            return
-        }
-        
-        let totalItems = manifest.characters.count + manifest.stages.count + (manifest.screenpack != nil ? 1 : 0)
-        statusLabel.stringValue = "Installing fullgame (0/\(totalItems))..."
-        statusLabel.textColor = DesignColors.warning
-        
-        // Track duplicate handling choice
-        var duplicateAction: DuplicateAction = .ask
-        let duplicateLock = NSLock()
-        
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            do {
-                var itemsProcessed = 0
-                
-                let result = try FullgameImporter.shared.installFullgame(
-                    manifest: manifest,
-                    to: workingDir
-                ) { [weak self] itemName, itemType in
-                    // Duplicate handler - called on background thread, need to sync to main for UI
-                    var action: DuplicateAction = .ask
-                    
-                    duplicateLock.lock()
-                    let currentAction = duplicateAction
-                    duplicateLock.unlock()
-                    
-                    // If we already have a "all" decision, use it
-                    if currentAction == .overwriteAll || currentAction == .skipAll {
-                        return currentAction
-                    }
-                    
-                    // Otherwise, ask the user
-                    let semaphore = DispatchSemaphore(value: 0)
-                    
-                    DispatchQueue.main.async {
-                        self?.promptForDuplicateAction(name: itemName, type: itemType) { chosenAction in
-                            action = chosenAction
-                            
-                            // Store "all" decisions
-                            if chosenAction == .overwriteAll || chosenAction == .skipAll {
-                                duplicateLock.lock()
-                                duplicateAction = chosenAction
-                                duplicateLock.unlock()
-                            }
-                            
-                            semaphore.signal()
-                        }
-                    }
-                    
-                    semaphore.wait()
-                    return action
-                }
-                
-                DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = "Installed!"
-                    self?.statusLabel.textColor = DesignColors.positive
-                    
-                    // Show summary toast
-                    if result.totalInstalled > 0 {
-                        var title = "Fullgame imported!"
-                        if let collection = result.collectionCreated {
-                            title = "Created \"\(collection.name)\""
-                        }
-                        
-                        ToastManager.shared.showSuccess(
-                            title: title,
-                            subtitle: "Installed \(result.summary)"
-                        )
-                    }
-                    
-                    // Show warnings for failures
-                    if result.totalFailed > 0 {
-                        var failedItems: [String] = []
-                        failedItems.append(contentsOf: result.charactersFailed.map { "\($0.name) (character)" })
-                        failedItems.append(contentsOf: result.stagesFailed.map { "\($0.name) (stage)" })
-                        if let screenpackError = result.screenpackFailed {
-                            failedItems.append("Screenpack: \(screenpackError)")
-                        }
-                        
-                        ToastManager.shared.showError(
-                            title: "\(result.totalFailed) item(s) failed",
-                            subtitle: failedItems.prefix(3).joined(separator: ", ")
-                        )
-                    }
-                    
-                    // Refresh views
-                    self?.dashboardView.refreshStats()
-                    self?.ikemenBridge.loadContent()
-                    
-                    // Post notification for browsers to refresh
-                    NotificationCenter.default.post(name: .contentChanged, object: nil)
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self?.statusLabel.stringValue = "Failed"
-                    self?.statusLabel.textColor = DesignColors.redAccent
-                    
-                    ToastManager.shared.showError(
-                        title: "Fullgame import failed",
-                        subtitle: error.localizedDescription
-                    )
-                }
-            }
-        }
-    }
-    
-    private func promptForDuplicateAction(name: String, type: String, completion: @escaping (DuplicateAction) -> Void) {
-        let alert = NSAlert()
-        alert.messageText = "Duplicate \(type.capitalized)"
-        alert.informativeText = "'\(name)' is already installed. What would you like to do?"
-        alert.addButton(withTitle: "Overwrite")
-        alert.addButton(withTitle: "Skip")
-        alert.addButton(withTitle: "Overwrite All")
-        alert.addButton(withTitle: "Skip All")
-        alert.alertStyle = .warning
-        
-        alert.beginSheetModal(for: self.window!) { response in
-            switch response {
-            case .alertFirstButtonReturn:
-                completion(.overwrite)
-            case .alertSecondButtonReturn:
-                completion(.skip)
-            case .alertThirdButtonReturn:
-                completion(.overwriteAll)
-            default:
-                completion(.skipAll)
-            }
-        }
-    }
-    
-    private func promptToOverwrite(name: String, completion: @escaping (Bool) -> Void) {
-        let alert = NSAlert()
-        alert.messageText = "Duplicate Content"
-        alert.informativeText = "'\(name)' is already installed. Do you want to overwrite it?"
-        alert.addButton(withTitle: "Overwrite")
-        alert.addButton(withTitle: "Cancel")
-        alert.alertStyle = .warning
-        
-        // This is necessary because the installation happens on a background thread
-        // but the alert must be on the main thread
-        alert.beginSheetModal(for: self.window!) { response in
-            completion(response == .alertFirstButtonReturn)
-        }
-    }
-    
-    // MARK: - VRAM Monitoring
-    
-    private func updateVRAMUsage() {
-        guard let device = MTLCreateSystemDefaultDevice() else {
-            vramPercentLabel.stringValue = "N/A"
-            return
-        }
-        
-        // Get recommended working set size (available VRAM for this process)
-        let recommendedWorkingSet = device.recommendedMaxWorkingSetSize
-        // Get current allocated memory
-        let currentAllocated = device.currentAllocatedSize
-        
-        // Calculate percentage
-        let percentage: Double
-        if recommendedWorkingSet > 0 {
-            percentage = Double(currentAllocated) / Double(recommendedWorkingSet) * 100.0
-        } else {
-            percentage = 0
-        }
-        
-        // Update UI
-        let percentText = String(format: "%.0f%%", min(percentage, 100))
-        vramPercentLabel.stringValue = percentText
-        
-        // Update fill bar width
-        if let superview = vramFillView.superview {
-            let trackWidth = superview.bounds.width
-            let fillWidth = trackWidth * CGFloat(min(percentage, 100)) / 100.0
-            vramFillWidthConstraint.constant = fillWidth
-        }
-        
-        // Color based on usage
-        if percentage > 90 {
-            vramFillView.layer?.backgroundColor = DesignColors.redAccent.cgColor
-        } else if percentage > 70 {
-            vramFillView.layer?.backgroundColor = DesignColors.warning.cgColor
-        } else {
-            vramFillView.layer?.backgroundColor = AppSettings.shared.useLightTheme ? DesignColors.zinc400.cgColor : NSColor.white.withAlphaComponent(0.2).cgColor
-        }
-        
-        // Schedule next update (every 2 seconds)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            self?.updateVRAMUsage()
-        }
-    }
     
     // MARK: - Error Handling
     
@@ -3196,240 +2335,6 @@ class GameWindowController: NSWindowController {
             alert.beginSheetModal(for: window)
         } else {
             alert.runModal()
-        }
-    }
-}
-
-// MARK: - Nav Button with Hover Support
-
-class NavButton: NSButton {
-    
-    var isHovered = false {
-        didSet {
-            if isHovered != oldValue {
-                onHoverChanged?(isHovered)
-            }
-        }
-    }
-    
-    var onHoverChanged: ((Bool) -> Void)?
-    
-    private var trackingArea: NSTrackingArea?
-    
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        
-        if let existing = trackingArea {
-            removeTrackingArea(existing)
-        }
-        
-        trackingArea = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
-            owner: self,
-            userInfo: nil
-        )
-        addTrackingArea(trackingArea!)
-    }
-    
-    override func mouseEntered(with event: NSEvent) {
-        isHovered = true
-    }
-    
-    override func mouseExited(with event: NSEvent) {
-        isHovered = false
-    }
-    
-    override var acceptsFirstResponder: Bool { true }
-    
-    override func drawFocusRingMask() {
-        bounds.fill()
-    }
-    
-    override var focusRingMaskBounds: NSRect {
-        return bounds
-    }
-}
-
-// MARK: - Drop Zone View
-
-class DropZoneView: NSView {
-    
-    var onFilesDropped: (([URL]) -> Void)?
-    
-    private var isDragging = false {
-        didSet {
-            needsDisplay = true
-        }
-    }
-    
-    private var label: NSTextField!
-    private var sublineLabel: NSTextField!
-    private var dashedBorderLayer: CAShapeLayer?
-    
-    private var borderColor: NSColor = NSColor(red: 0xfd/255.0, green: 0x4e/255.0, blue: 0x5b/255.0, alpha: 1.0)
-    private var textColor: NSColor = NSColor(red: 0x7a/255.0, green: 0x84/255.0, blue: 0x8f/255.0, alpha: 1.0)
-    
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        setup()
-    }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setup()
-    }
-    
-    private func setup() {
-        wantsLayer = true
-        layer?.cornerRadius = 16
-        layer?.backgroundColor = NSColor.clear.cgColor
-        
-        // Create dashed border using a shape layer
-        let dashedBorder = CAShapeLayer()
-        dashedBorder.strokeColor = borderColor.cgColor
-        dashedBorder.fillColor = nil
-        dashedBorder.lineDashPattern = [12, 8]
-        dashedBorder.lineWidth = 4
-        layer?.addSublayer(dashedBorder)
-        self.dashedBorderLayer = dashedBorder
-        
-        // Register for drag types
-        registerForDraggedTypes([.fileURL])
-        
-        // Cream text color per Figma
-        let creamColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
-        
-        // Main label - Montserrat header style
-        label = NSTextField(labelWithString: "Drop characters or\nstages here")
-        label.font = DesignFonts.header(size: 20)
-        label.textColor = creamColor
-        label.alignment = .center
-        label.maximumNumberOfLines = 2
-        label.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(label)
-        
-        // Subline label - body style
-        sublineLabel = NSTextField(labelWithString: "(.zip, .rar, .7z or folder)")
-        sublineLabel.font = DesignFonts.body(size: 14)
-        sublineLabel.textColor = creamColor
-        sublineLabel.alignment = .center
-        sublineLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(sublineLabel)
-        
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -12),
-            label.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 40),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -40),
-            
-            sublineLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
-            sublineLabel.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 8),
-        ])
-    }
-    
-    override func layout() {
-        super.layout()
-        
-        // Update dashed border path to match bounds
-        let path = CGPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), cornerWidth: 16, cornerHeight: 16, transform: nil)
-        dashedBorderLayer?.path = path
-        dashedBorderLayer?.frame = bounds
-    }
-    
-    func applyFigmaStyle(borderColor: NSColor, textColor: NSColor, font: NSFont) {
-        self.borderColor = borderColor
-        self.textColor = textColor
-        
-        dashedBorderLayer?.strokeColor = borderColor.cgColor
-        // Keep cream color for text per Figma
-        let creamColor = NSColor(red: 0xff/255.0, green: 0xf0/255.0, blue: 0xe5/255.0, alpha: 1.0)
-        label.textColor = creamColor
-        label.font = DesignFonts.header(size: 20)
-        sublineLabel.textColor = creamColor
-        sublineLabel.font = DesignFonts.body(size: 14)
-    }
-    
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        
-        if isDragging {
-            dashedBorderLayer?.strokeColor = NSColor(calibratedRed: 0.4, green: 0.8, blue: 0.4, alpha: 1.0).cgColor
-            layer?.backgroundColor = NSColor(calibratedRed: 0.2, green: 0.3, blue: 0.2, alpha: 0.2).cgColor
-        } else {
-            dashedBorderLayer?.strokeColor = borderColor.cgColor
-            layer?.backgroundColor = NSColor.clear.cgColor
-        }
-    }
-    
-    // MARK: - Drag & Drop
-    
-    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if hasValidFiles(sender) {
-            isDragging = true
-            return .copy
-        }
-        return []
-    }
-    
-    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
-        return hasValidFiles(sender) ? .copy : []
-    }
-    
-    override func draggingExited(_ sender: NSDraggingInfo?) {
-        isDragging = false
-    }
-    
-    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        return hasValidFiles(sender)
-    }
-    
-    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        isDragging = false
-        
-        guard let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [
-            .urlReadingFileURLsOnly: true
-        ]) as? [URL] else {
-            return false
-        }
-        
-        let archiveExts = ["zip", "rar", "7z"]
-        let validURLs = urls.filter { url in
-            let ext = url.pathExtension.lowercased()
-            if archiveExts.contains(ext) { return true }
-            
-            var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) {
-                return isDirectory.boolValue
-            }
-            return false
-        }
-        
-        if !validURLs.isEmpty {
-            onFilesDropped?(validURLs)
-            return true
-        }
-        
-        return false
-    }
-    
-    private func hasValidFiles(_ sender: NSDraggingInfo) -> Bool {
-        guard let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [
-            .urlReadingFileURLsOnly: true
-        ]) as? [URL] else {
-            return false
-        }
-        
-        let archiveExts = ["zip", "rar", "7z"]
-        return urls.contains { url in
-            let ext = url.pathExtension.lowercased()
-            if archiveExts.contains(ext) { return true }
-            
-            var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) {
-                return isDirectory.boolValue
-            }
-            return false
         }
     }
 }
@@ -3483,61 +2388,5 @@ extension GameWindowController: NSWindowDelegate {
     
     func windowWillClose(_ notification: Notification) {
         stopEmulation()
-    }
-}
-
-// MARK: - NSView Extension
-
-extension NSView {
-    func viewWithIdentifier(_ identifier: NSUserInterfaceItemIdentifier) -> NSView? {
-        if self.identifier == identifier { return self }
-        for subview in subviews {
-            if let found = subview.viewWithIdentifier(identifier) {
-                return found
-            }
-        }
-        return nil
-    }
-}
-
-// MARK: - App Toggle Handler
-
-/// Helper class to handle app settings toggle callbacks with closures
-private class AppToggleHandler: NSObject {
-    static var associatedKey: UInt8 = 0
-    
-    let getValue: () -> Bool
-    let setValue: (Bool) -> Void
-    
-    init(getValue: @escaping () -> Bool, setValue: @escaping (Bool) -> Void) {
-        self.getValue = getValue
-        self.setValue = setValue
-    }
-    
-    @objc func toggleChanged(_ sender: NSSwitch) {
-        setValue(sender.state == .on)
-    }
-}
-
-// MARK: - Click Blocking View
-
-/// View that intercepts mouse events on empty areas to prevent clicks passing through to views below
-/// but allows clicks to reach subviews (like text fields, buttons, etc.)
-private class ClickBlockingView: NSView {
-    override func mouseDown(with event: NSEvent) {
-        // Consume the click - don't pass to superview
-    }
-    
-    override func mouseUp(with event: NSEvent) {
-        // Consume the click
-    }
-    
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        // First check if any subview should handle this
-        if let hitView = super.hitTest(point), hitView !== self {
-            return hitView
-        }
-        // If no subview hit, return self to block the click from going through
-        return bounds.contains(point) ? self : nil
     }
 }
