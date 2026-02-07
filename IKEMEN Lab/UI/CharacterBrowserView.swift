@@ -354,7 +354,7 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 let portrait = character.getPortraitImage()
                 
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
                     let finalImage = portrait ?? self?.createPlaceholderImage(for: character)
                     self?.portraitCache[character.id] = finalImage
                     

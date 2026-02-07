@@ -2647,7 +2647,7 @@ class RecentInstallRow: NSView, ThemeApplicable {
                 thumbnail = self?.loadStagePreview(defFileURL: folderURL)
             }
             
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 if let image = thumbnail {
                     ImageCache.shared.set(image, for: cacheKey)
                     self?.showThumbnail(image)

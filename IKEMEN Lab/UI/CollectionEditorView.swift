@@ -1743,7 +1743,7 @@ class StageEntryItem: NSCollectionViewItem {
             }
             
             // Update UI on main thread
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 if let finalImage = image {
                     ImageCache.shared.set(finalImage, for: cacheKey)
                     self?.showThumbnail(finalImage)

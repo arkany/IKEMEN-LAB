@@ -1821,8 +1821,8 @@ class FirstRunView: NSView {
             self.detectionStats = (characterCount, stageCount, screenpackCount)
             
             // Update UI on main thread
-            DispatchQueue.main.async {
-                self.updateContentDetectionUI(characters: characterCount, stages: stageCount, screenpacks: screenpackCount)
+            DispatchQueue.main.async { [weak self] in
+                self?.updateContentDetectionUI(characters: characterCount, stages: stageCount, screenpacks: screenpackCount)
             }
         }
     }

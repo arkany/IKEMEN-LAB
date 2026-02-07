@@ -1001,7 +1001,7 @@ class CharacterDetailsView: NSView {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let portrait = character.getPortraitImage()
             
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 if let portrait = portrait {
                     self?.heroImageView.image = portrait
                     ImageCache.shared.set(portrait, for: cacheKey)

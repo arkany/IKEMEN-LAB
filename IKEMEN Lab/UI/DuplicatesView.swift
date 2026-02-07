@@ -162,7 +162,8 @@ class DuplicatesView: NSView {
             let outdatedChars = DuplicateDetector.findOutdatedCharacters(characters)
             let outdatedStgs = DuplicateDetector.findOutdatedStages(stages)
             
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
                 self.characterDuplicates = charDupes
                 self.stageDuplicates = stageDupes
                 self.screenpackDuplicates = screenpackDupes

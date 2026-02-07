@@ -685,7 +685,7 @@ class ScreenpackGridItem: NSCollectionViewItem {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             if let image = screenpack.loadPreviewImage() {
                 ImageCache.shared.set(image, for: cacheKey)
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
                     self?.previewImageView.image = image
                     self?.placeholderLabel.isHidden = true
                 }
@@ -1158,7 +1158,7 @@ class ScreenpackListItem: NSCollectionViewItem {
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 if let image = screenpack.loadPreviewImage() {
                     ImageCache.shared.set(image, for: cacheKey)
-                    DispatchQueue.main.async {
+                    DispatchQueue.main.async { [weak self] in
                         self?.thumbnailView.image = image
                         self?.placeholderLabel.isHidden = true
                     }

@@ -925,7 +925,7 @@ class StageListItem: NSCollectionViewItem {
             if let image = stage.loadPreviewImage() {
                 // Store in cache
                 ImageCache.shared.set(image, for: cacheKey)
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
                     self?.previewImageView.image = image
                 }
             }
