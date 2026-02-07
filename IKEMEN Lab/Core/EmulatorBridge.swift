@@ -1016,7 +1016,3 @@ private extension IkemenBridge {
         return (active, disabled)
     }
 }
-
-// MARK: - Protocol Conformance
-
-extension IkemenBridge: IkemenBridgeProtocol {}
