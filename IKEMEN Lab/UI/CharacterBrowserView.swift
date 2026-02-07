@@ -94,6 +94,7 @@ class CharacterBrowserView: NSView {
         queue.qualityOfService = .userInitiated
         return queue
     }()
+    private var reloadDebounceTimer: Timer?
     
     // New collection sheet
     private var newCollectionOverlay: NSView?
@@ -261,7 +262,7 @@ class CharacterBrowserView: NSView {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] screenpacks in
                 self?.activeScreenpackSlotLimit = screenpacks.first(where: { $0.isActive })?.characterSlots ?? 0
-                self?.collectionView.reloadData()
+                self?.scheduleReload()
             }
             .store(in: &cancellables)
 
@@ -286,8 +287,6 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
                     item.applyTheme()
                 }
             }
-            // Also update the list view header and other components
-            self.collectionView.reloadData()
         }
     }
     
@@ -316,7 +315,7 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
         let ids = allCharacters.map { $0.id }
         customTagsById = (try? MetadataStore.shared.customTagsMap(for: ids)) ?? [:]
         if shouldReloadView {
-            collectionView.reloadData()
+            scheduleReload()
         }
     }
     
@@ -341,7 +340,15 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
         case .unregisteredOnly:
             characters = allCharacters.filter { $0.status == .unregistered }
         }
-        collectionView.reloadData()
+        scheduleReload()
+    }
+    
+    /// Coalesce rapid successive reloads into a single reload
+    private func scheduleReload() {
+        reloadDebounceTimer?.invalidate()
+        reloadDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: false) { [weak self] _ in
+            self?.collectionView.reloadData()
+        }
     }
     
     // MARK: - Portrait Loading
