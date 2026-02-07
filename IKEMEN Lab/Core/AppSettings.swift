@@ -162,7 +162,3 @@ public extension Notification.Name {
     static let settingsChanged = Notification.Name("AppSettingsChanged")
     static let themeChanged = Notification.Name("AppThemeChanged")
 }
-
-// MARK: - Protocol Conformance
-
-extension AppSettings: AppSettingsProtocol {}

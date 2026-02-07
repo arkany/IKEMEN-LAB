@@ -719,10 +719,6 @@ public final class MetadataStore {
     }
 }
 
-// MARK: - Protocol Conformance
-
-extension MetadataStore: MetadataStoreProtocol {}
-
 public extension Notification.Name {
     static let customTagsChanged = Notification.Name("CustomTagsChanged")
 }

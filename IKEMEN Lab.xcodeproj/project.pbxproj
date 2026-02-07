@@ -52,9 +52,6 @@
 		043 /* ScreenpackPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 144 /* ScreenpackPickerSheet.swift */; };
 		044 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145 /* UpdateChecker.swift */; };
 		045 /* AboutWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146 /* AboutWindowController.swift */; };
-		047 /* Services.swift in Sources */ = {isa = PBXBuildFile; fileRef = 147 /* Services.swift */; };
-		048 /* DependencyContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148 /* DependencyContainer.swift */; };
-		049 /* Injectable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 149 /* Injectable.swift */; };
 		050 /* NewCollectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150 /* NewCollectionSheet.swift */; };
 		051 /* FullgameImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151 /* FullgameImporter.swift */; };
 		10AF34FB2F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 10AF34E32F19FDAC00A8F377 /* IKEMEN Lab Browser Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -149,9 +146,6 @@
 		144 /* ScreenpackPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenpackPickerSheet.swift; sourceTree = "<group>"; };
 		145 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		146 /* AboutWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindowController.swift; sourceTree = "<group>"; };
-		147 /* Services.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services.swift; sourceTree = "<group>"; };
-		148 /* DependencyContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyContainer.swift; sourceTree = "<group>"; };
-		149 /* Injectable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Injectable.swift; sourceTree = "<group>"; };
 		150 /* NewCollectionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewCollectionSheet.swift; sourceTree = "<group>"; };
 		151 /* FullgameImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullgameImporter.swift; sourceTree = "<group>"; };
 		201 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
@@ -164,7 +158,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		10AF34FF2F19FDAC00A8F377 /* Exceptions for "IKEMEN Lab Browser Extension" folder in "IKEMEN Lab Browser Extension" target */ = {
+		10AF34FF2F19FDAC00A8F377 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -174,29 +168,8 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		1071BF212F10ABCB00D9D1CA /* IKEMEN Lab Tests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = "IKEMEN Lab Tests";
-			sourceTree = "<group>";
-		};
-		10AF34E42F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				10AF34FF2F19FDAC00A8F377 /* Exceptions for "IKEMEN Lab Browser Extension" folder in "IKEMEN Lab Browser Extension" target */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = "IKEMEN Lab Browser Extension";
-			sourceTree = "<group>";
-		};
+		1071BF212F10ABCB00D9D1CA /* IKEMEN Lab Tests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "IKEMEN Lab Tests"; sourceTree = "<group>"; };
+		10AF34E42F19FDAC00A8F377 /* IKEMEN Lab Browser Extension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (10AF34FF2F19FDAC00A8F377 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = "IKEMEN Lab Browser Extension"; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -297,7 +270,6 @@
 			isa = PBXGroup;
 			children = (
 				10EEA1572F26FD4F00830402 /* SmartCollectionEvaluator.swift */,
-				417 /* Protocols */,
 				104 /* EmulatorBridge.swift */,
 				138 /* CollectionStore.swift */,
 				139 /* SelectDefGenerator.swift */,
@@ -313,7 +285,6 @@
 				134 /* TagDetector.swift */,
 				135 /* DuplicateDetector.swift */,
 				145 /* UpdateChecker.swift */,
-				148 /* DependencyContainer.swift */,
 				151 /* FullgameImporter.swift */,
 			);
 			path = Core;
@@ -374,17 +345,8 @@
 			isa = PBXGroup;
 			children = (
 				120 /* UIHelpers.swift */,
-				149 /* Injectable.swift */,
 			);
 			path = Shared;
-			sourceTree = "<group>";
-		};
-		417 /* Protocols */ = {
-			isa = PBXGroup;
-			children = (
-				147 /* Services.swift */,
-			);
-			path = Protocols;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -585,9 +547,6 @@
 				043 /* ScreenpackPickerSheet.swift in Sources */,
 				044 /* UpdateChecker.swift in Sources */,
 				045 /* AboutWindowController.swift in Sources */,
-				047 /* Services.swift in Sources */,
-				048 /* DependencyContainer.swift in Sources */,
-				049 /* Injectable.swift in Sources */,
 				050 /* NewCollectionSheet.swift in Sources */,
 				051 /* FullgameImporter.swift in Sources */,
 				F9902EFF5EF06BC5A4F68C6F /* SmartCollectionSheet.swift in Sources */,
