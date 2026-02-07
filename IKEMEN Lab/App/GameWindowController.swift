@@ -2578,7 +2578,7 @@ class GameWindowController: NSWindowController {
         case .launching:
             updateLaunchButton(title: "Starting...", enabled: false, isRunning: false)
             statusLabel.stringValue = "Starting..."
-            statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
+            statusLabel.textColor = DesignColors.warning
             
         case .running:
             updateLaunchButton(title: "Stop IKEMEN GO", enabled: true, isRunning: true)
@@ -2862,7 +2862,7 @@ class GameWindowController: NSWindowController {
     
     private func installFromArchive(_ url: URL, overwrite: Bool = false) {
         statusLabel.stringValue = "Installing..."
-        statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
+        statusLabel.textColor = DesignColors.warning
         
         let fileName = url.deletingPathExtension().lastPathComponent
         
@@ -2925,7 +2925,7 @@ class GameWindowController: NSWindowController {
     
     private func installFromFolder(_ url: URL, overwrite: Bool = false) {
         statusLabel.stringValue = "Installing..."
-        statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
+        statusLabel.textColor = DesignColors.warning
         
         let folderName = url.lastPathComponent
         
@@ -2996,7 +2996,7 @@ class GameWindowController: NSWindowController {
         
         let totalItems = manifest.characters.count + manifest.stages.count + (manifest.screenpack != nil ? 1 : 0)
         statusLabel.stringValue = "Installing fullgame (0/\(totalItems))..."
-        statusLabel.textColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
+        statusLabel.textColor = DesignColors.warning
         
         // Track duplicate handling choice
         var duplicateAction: DuplicateAction = .ask
@@ -3172,7 +3172,7 @@ class GameWindowController: NSWindowController {
         if percentage > 90 {
             vramFillView.layer?.backgroundColor = DesignColors.redAccent.cgColor
         } else if percentage > 70 {
-            vramFillView.layer?.backgroundColor = NSColor(calibratedRed: 0.9, green: 0.7, blue: 0.2, alpha: 1.0).cgColor
+            vramFillView.layer?.backgroundColor = DesignColors.warning.cgColor
         } else {
             vramFillView.layer?.backgroundColor = AppSettings.shared.useLightTheme ? DesignColors.zinc400.cgColor : NSColor.white.withAlphaComponent(0.2).cgColor
         }

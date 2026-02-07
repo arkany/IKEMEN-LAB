@@ -209,6 +209,9 @@ public struct DesignColors {
     public static var info: NSColor {
         isLight ? NSColor(red: 0x25/255.0, green: 0x63/255.0, blue: 0xeb/255.0, alpha: 1.0) : NSColor(red: 0x3b/255.0, green: 0x82/255.0, blue: 0xf6/255.0, alpha: 1.0)
     }
+
+    /// Clickable link text color — alias for info blue
+    public static var link: NSColor { info }
     
     public static var toastBackground: NSColor {
         isLight ? NSColor.white : DarkThemeColors.zinc800
