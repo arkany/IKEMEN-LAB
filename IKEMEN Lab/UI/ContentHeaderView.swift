@@ -779,6 +779,13 @@ class ContentHeaderView: NSView {
         }
     }
 
+    override func mouseDown(with event: NSEvent) {
+        // Allow the header to act as a drag handle, like a standard macOS title bar.
+        // Interactive subviews (buttons, search field) consume their own mouse events
+        // and won't reach this handler, so dragging only fires from background areas.
+        window?.performDrag(with: event)
+    }
+
     deinit {
         if let themeObserver = themeObserver {
             NotificationCenter.default.removeObserver(themeObserver)

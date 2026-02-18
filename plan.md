@@ -31,7 +31,7 @@
 - [ ] **Collections: Character names incorrect** — Showing folder names instead of display names from DEF files
 - [ ] **Collections: Stage thumbnails not loading** — Some stages showing placeholder icon
 - [ ] **Characters: "UNREGISTERED" badge UX** — Replace with "In Roster" / "Available" section dividers
-- [ ] **Window header not draggable** — Custom header doesn't behave like standard macOS title bar
+- [x] **Window header not draggable** — Custom header doesn't behave like standard macOS title bar
 
 ### 📋 Up Next (Post-1.0)
 - [ ] **Drag & Drop to Collections** — Drag characters from Characters view onto a Collection in sidebar
