@@ -91,6 +91,10 @@ All alpha tasks complete!
 | ├─ Error handling refactor (Result types, typed errors) | ✅ Done |
 | ├─ IkemenConfigManager (eliminates hardcoded paths) | ✅ Done |
 | └─ Dependency injection infrastructure | ✅ Done |
+| **Code Signing & Notarization** | ✅ Done |
+| ├─ Developer ID Application signing (Release builds) | ✅ Done |
+| ├─ Hardened Runtime enabled | ✅ Done |
+| └─ Notarized DMG build script | ✅ Done |
 
 ### 🧩 v1.1 — Polish & Fixes
 | Feature | Status |
@@ -157,7 +161,6 @@ All alpha tasks complete!
 |---------|--------|
 | Custom app icon | 📋 Todo |
 | "Get Characters" resource links | 📋 Todo |
-| Code signing & notarization | 📋 Todo |
 | App Store sandboxing | 📋 Todo |
 | Sparkle auto-updater | 📋 Todo |
 | Crash reporting | 📋 Todo |
@@ -172,7 +175,6 @@ All alpha tasks complete!
 ### 🌌 v5 — Future Ideas
 | Feature | Status |
 |---------|--------|
-| Smart Collections (tag-based auto-population) | 💭 Future |
 | Collection export/import | 💭 Future |
 | Plugin system | 💭 Future |
 | Cloud sync for metadata | 💭 Future |
@@ -203,7 +205,6 @@ All alpha tasks complete!
 
 ### Nice-to-Have
 - [ ] SwiftUI migration path (see [agent prompt](docs/agent-prompts/swiftui-migration-path.md))
-- [ ] Dependency injection (see [agent prompt](docs/agent-prompts/dependency-injection.md))
 
 ---
 
