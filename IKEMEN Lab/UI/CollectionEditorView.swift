@@ -1456,20 +1456,30 @@ class RosterEntryItem: NSCollectionViewItem {
         
         switch entry.entryType {
         case .character:
-            // Look up character info for display name
-            var displayName = entry.characterFolder ?? "Unknown"
-            if let folder = entry.characterFolder,
-               let character = IkemenBridge.shared.characters.first(where: { $0.directory.lastPathComponent == folder }) {
-                displayName = character.displayName
+            // Resolve a display label by preferring the parsed DEF display name,
+            // falling back to the parsed name, then to the raw folder string.
+            let folder = entry.characterFolder
+            let character = folder.flatMap { f in
+                IkemenBridge.shared.characters.first(where: { $0.directory.lastPathComponent == f })
+            }
+            let trimmedDisplay = character?.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedName = character?.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let displayName: String
+            if let d = trimmedDisplay, !d.isEmpty {
+                displayName = d
+            } else if let n = trimmedName, !n.isEmpty {
+                displayName = n
+            } else {
+                displayName = folder ?? "Unknown"
             }
             nameLabel.stringValue = displayName
             nameLabel.textColor = DesignColors.textSecondary
             thumbnailView.image = NSImage(systemSymbolName: "person.fill", accessibilityDescription: nil)
             thumbnailView.contentTintColor = DesignColors.textSecondary
-            
+
             // Load actual thumbnail
-            if let folder = entry.characterFolder {
-                loadThumbnail(for: folder)
+            if let resolvedFolder = folder {
+                loadThumbnail(for: resolvedFolder)
             }
             
         case .randomSelect:
