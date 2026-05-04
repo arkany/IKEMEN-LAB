@@ -358,4 +358,32 @@ final class SmartCollectionEvaluatorTests: XCTestCase {
         XCTAssertEqual(result.characters.count, 0)
         XCTAssertEqual(result.stages.count, 0)
     }
+
+    // MARK: - Tag Normalization Tests
+
+    func testNormalizeTagLowercasesAndTrimsWhitespace() {
+        XCTAssertEqual(SmartCollectionEvaluator.normalizeTag(" HD "), "hd")
+        XCTAssertEqual(SmartCollectionEvaluator.normalizeTag("HD"), "hd")
+        XCTAssertEqual(SmartCollectionEvaluator.normalizeTag("Street Fighter"), "street fighter")
+    }
+
+    func testNormalizeTagStripsNewlines() {
+        // `.whitespaces` would leave \n/\r in place; `.whitespacesAndNewlines` removes them.
+        XCTAssertEqual(SmartCollectionEvaluator.normalizeTag("\nHD\n"), "hd")
+        XCTAssertEqual(SmartCollectionEvaluator.normalizeTag("\tHD\r\n"), "hd")
+    }
+
+    func testNormalizeTagReturnsNilForBlankInput() {
+        XCTAssertNil(SmartCollectionEvaluator.normalizeTag(""))
+        XCTAssertNil(SmartCollectionEvaluator.normalizeTag("   "))
+        XCTAssertNil(SmartCollectionEvaluator.normalizeTag("\n\t  \r"))
+    }
+
+    func testNormalizeTagDeduplicatesAcrossCaseAndWhitespace() {
+        // The evaluator builds `Set(tags.compactMap(normalizeTag))`; verify the
+        // canonical form collapses superficial differences.
+        let raw = ["HD", " hd ", "\nHD\n", "Hd"]
+        let normalized = Set(raw.compactMap(SmartCollectionEvaluator.normalizeTag))
+        XCTAssertEqual(normalized, ["hd"])
+    }
 }
