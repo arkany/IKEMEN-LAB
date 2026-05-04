@@ -194,6 +194,13 @@ class CharacterBrowserView: NSView {
             forSupplementaryViewOfKind: NSCollectionView.elementKindSectionHeader,
             withIdentifier: NSUserInterfaceItemIdentifier("CutoffDivider")
         )
+
+        // Register supplementary view for the registered/unregistered split.
+        collectionView.register(
+            RegistrationDividerView.self,
+            forSupplementaryViewOfKind: NSCollectionView.elementKindSectionHeader,
+            withIdentifier: NSUserInterfaceItemIdentifier("RegistrationDivider")
+        )
         
         // Set up context menu provider
         collectionView.menuProvider = { [weak self] indexPath in
@@ -334,13 +341,43 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
     private func applyFilters() {
         switch registrationFilter {
         case .all:
-            characters = allCharacters
+            // Group registered (active/disabled) before unregistered while
+            // preserving relative ordering inside each group. The section
+            // header in section 1 visually labels the unregistered group.
+            characters = allCharacters.sorted { lhs, rhs in
+                let lUnreg = (lhs.status == .unregistered)
+                let rUnreg = (rhs.status == .unregistered)
+                if lUnreg == rUnreg { return false }  // stable within group
+                return !lUnreg  // registered first
+            }
         case .registeredOnly:
             characters = allCharacters.filter { $0.status == .active || $0.status == .disabled }
         case .unregisteredOnly:
             characters = allCharacters.filter { $0.status == .unregistered }
         }
         scheduleReload()
+    }
+
+    // MARK: - Registration Section Grouping
+
+    /// Index of the first unregistered character in `characters`, if any
+    /// (and only when we should show the unregistered section divider).
+    private func unregisteredSectionStartIndex() -> Int? {
+        // Cutoff divider takes priority: it already uses sections, mixing
+        // the two would require more invasive layout changes.
+        if shouldShowCutoffDivider() { return nil }
+        // Only meaningful when the user is viewing all characters.
+        guard registrationFilter == .all else { return nil }
+        guard let firstUnreg = characters.firstIndex(where: { $0.status == .unregistered }) else {
+            return nil
+        }
+        // Only show the divider if there is at least one registered above it.
+        return firstUnreg > 0 ? firstUnreg : nil
+    }
+
+    /// Whether the registered/unregistered section divider should be shown.
+    private func shouldShowRegistrationDivider() -> Bool {
+        return unregisteredSectionStartIndex() != nil
     }
     
     /// Coalesce rapid successive reloads into a single reload
@@ -386,13 +423,7 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
                     // Find and update the item in the correct section
                     guard let self else { return }
                     if let index = self.characters.firstIndex(where: { $0.id == character.id }) {
-                        let indexPath: IndexPath
-                        if self.shouldShowCutoffDivider() && index >= self.activeScreenpackSlotLimit {
-                            indexPath = IndexPath(item: index - self.activeScreenpackSlotLimit, section: 1)
-                        } else {
-                            indexPath = IndexPath(item: index, section: 0)
-                        }
-                        
+                        let indexPath = self.indexPath(forCharacterAt: index)
                         if let item = self.collectionView.item(at: indexPath) as? CharacterCollectionViewItem {
                             item.setPortrait(self.portraitCache[character.id])
                         }
@@ -941,18 +972,9 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
     /// Show context menu from the more button in list view
     private func showContextMenuForListItem(_ character: CharacterInfo, sourceView: NSView) {
         guard let index = characters.firstIndex(where: { $0.id == character.id }) else { return }
-        
+
         // Determine the correct section and item index
-        let indexPath: IndexPath
-        if shouldShowCutoffDivider() {
-            if index < activeScreenpackSlotLimit {
-                indexPath = IndexPath(item: index, section: 0)
-            } else {
-                indexPath = IndexPath(item: index - activeScreenpackSlotLimit, section: 1)
-            }
-        } else {
-            indexPath = IndexPath(item: index, section: 0)
-        }
+        let indexPath = self.indexPath(forCharacterAt: index)
 
         if !collectionView.selectionIndexPaths.contains(indexPath) {
             collectionView.selectItems(at: [indexPath], scrollPosition: [])
@@ -972,13 +994,15 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
 extension CharacterBrowserView: NSCollectionViewDataSource {
     
     func numberOfSections(in collectionView: NSCollectionView) -> Int {
-        // Use 2 sections if there's a cutoff, otherwise 1
-        if shouldShowCutoffDivider() {
-            return 2  // Section 0: visible characters, Section 1: hidden characters
+        // Use 2 sections if there's a cutoff or registration split, otherwise 1.
+        // Cutoff and registration are mutually exclusive: when slot-cutoff
+        // applies it takes priority (see unregisteredSectionStartIndex()).
+        if shouldShowCutoffDivider() || shouldShowRegistrationDivider() {
+            return 2
         }
         return 1
     }
-    
+
     func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
         if shouldShowCutoffDivider() {
             // Section 0: visible characters (up to slot limit)
@@ -989,9 +1013,18 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
                 return max(0, characters.count - activeScreenpackSlotLimit)
             }
         }
+        if let split = unregisteredSectionStartIndex() {
+            // Section 0: registered (active/disabled) characters
+            // Section 1: unregistered characters
+            if section == 0 {
+                return split
+            } else {
+                return max(0, characters.count - split)
+            }
+        }
         return characters.count
     }
-    
+
     func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
         // Calculate actual character index based on section
         let characterIndex: Int
@@ -1001,68 +1034,93 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
             } else {
                 characterIndex = activeScreenpackSlotLimit + indexPath.item
             }
+        } else if let split = unregisteredSectionStartIndex() {
+            if indexPath.section == 0 {
+                characterIndex = indexPath.item
+            } else {
+                characterIndex = split + indexPath.item
+            }
         } else {
             characterIndex = indexPath.item
         }
-        
+
         let character = characters[characterIndex]
         let isDuplicate = duplicateIds.contains(character.id)
-        
+        let isInUnregisteredSection = (shouldShowCutoffDivider() && indexPath.section == 1)
+            || (unregisteredSectionStartIndex() != nil && indexPath.section == 1)
+
         if viewMode == .grid {
             let item = collectionView.makeItem(withIdentifier: CharacterCollectionViewItem.identifier, for: indexPath) as! CharacterCollectionViewItem
             let tags = mergedTags(for: character)
             item.configure(with: character, tags: tags, isDuplicate: isDuplicate)
-            
+
             if let cachedPortrait = portraitCache[character.id] {
                 item.setPortrait(cachedPortrait)
             }
-            
-            // Dim characters in section 1 (hidden) but keep interactions intact
-            item.view.alphaValue = shouldShowCutoffDivider() && indexPath.section == 1 ? 0.5 : 1.0
-            
+
+            // Dim characters in the secondary section (hidden or unregistered).
+            item.view.alphaValue = isInUnregisteredSection ? 0.6 : 1.0
+
             return item
         } else {
             let item = collectionView.makeItem(withIdentifier: CharacterListItem.identifier, for: indexPath) as! CharacterListItem
             item.configure(with: character, isDuplicate: isDuplicate)
-            
+
             // Wire up the toggle callback
             item.onStatusToggled = { [weak self] isEnabled in
                 // Toggle means we're changing the state - if toggled ON, we want to enable
                 self?.onCharacterDisableToggle?(character)
             }
-            
+
             // Wire up the more button callback
             item.onMoreClicked = { [weak self] char, sourceView in
                 self?.showContextMenuForListItem(char, sourceView: sourceView)
             }
-            
+
             if let cachedPortrait = portraitCache[character.id] {
                 item.setPortrait(cachedPortrait)
             }
-            
-            // Dim list rows in the hidden section while leaving them fully interactive
-            item.view.alphaValue = shouldShowCutoffDivider() && indexPath.section == 1 ? 0.5 : 1.0
-            
+
+            // Dim list rows in the secondary section while leaving them fully interactive.
+            item.view.alphaValue = isInUnregisteredSection ? 0.6 : 1.0
+
             return item
         }
     }
-    
+
     func collectionView(_ collectionView: NSCollectionView, viewForSupplementaryElementOfKind kind: NSCollectionView.SupplementaryElementKind, at indexPath: IndexPath) -> NSView {
-        // Only show header for section 1 (hidden characters)
-        if kind == NSCollectionView.elementKindSectionHeader && indexPath.section == 1 {
+        guard kind == NSCollectionView.elementKindSectionHeader, indexPath.section == 1 else {
+            return NSView()
+        }
+
+        if shouldShowCutoffDivider() {
             let view = collectionView.makeSupplementaryView(
                 ofKind: kind,
                 withIdentifier: NSUserInterfaceItemIdentifier("CutoffDivider"),
                 for: indexPath
             ) as! CutoffDividerView
-            
+
             let visibleCount = min(characters.count, activeScreenpackSlotLimit)
             let hiddenCount = max(0, characters.count - activeScreenpackSlotLimit)
             view.configure(visibleCount: visibleCount, hiddenCount: hiddenCount)
-            
+
             return view
         }
-        
+
+        if let split = unregisteredSectionStartIndex() {
+            let view = collectionView.makeSupplementaryView(
+                ofKind: kind,
+                withIdentifier: NSUserInterfaceItemIdentifier("RegistrationDivider"),
+                for: indexPath
+            ) as! RegistrationDividerView
+
+            let registeredCount = split
+            let unregisteredCount = max(0, characters.count - split)
+            view.configure(registeredCount: registeredCount, unregisteredCount: unregisteredCount)
+
+            return view
+        }
+
         return NSView()
     }
     
@@ -1083,10 +1141,34 @@ extension CharacterBrowserView: NSCollectionViewDataSource {
             } else {
                 index = activeScreenpackSlotLimit + indexPath.item
             }
+        } else if let split = unregisteredSectionStartIndex() {
+            if indexPath.section == 0 {
+                index = indexPath.item
+            } else {
+                index = split + indexPath.item
+            }
         } else {
             index = indexPath.item
         }
         return index < characters.count ? index : nil
+    }
+
+    /// Map a flat character index back into a section/item IndexPath, taking
+    /// the cutoff and registration dividers into account.
+    private func indexPath(forCharacterAt index: Int) -> IndexPath {
+        if shouldShowCutoffDivider() {
+            if index < activeScreenpackSlotLimit {
+                return IndexPath(item: index, section: 0)
+            }
+            return IndexPath(item: index - activeScreenpackSlotLimit, section: 1)
+        }
+        if let split = unregisteredSectionStartIndex() {
+            if index < split {
+                return IndexPath(item: index, section: 0)
+            }
+            return IndexPath(item: index - split, section: 1)
+        }
+        return IndexPath(item: index, section: 0)
     }
 
     private func selectedCharacters() -> [CharacterInfo] {
@@ -1177,44 +1259,28 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
             } else {
                 destinationIndex = activeScreenpackSlotLimit + indexPath.item
             }
+        } else if let split = unregisteredSectionStartIndex() {
+            if indexPath.section == 0 {
+                destinationIndex = indexPath.item
+            } else {
+                destinationIndex = split + indexPath.item
+            }
         } else {
             destinationIndex = indexPath.item
         }
-        
+
         // Adjust destination if moving down
         if sourceIndex < destinationIndex {
             destinationIndex -= 1
         }
-        
+
         // Don't do anything if not actually moving
         guard sourceIndex != destinationIndex else { return false }
-        
+
         // Perform the move in our data model
         let movedCharacter = characters.remove(at: sourceIndex)
         characters.insert(movedCharacter, at: destinationIndex)
-        
-        // Calculate source and destination IndexPaths for animation
-        let sourceIndexPath: IndexPath
-        let destIndexPath: IndexPath
-        
-        if shouldShowCutoffDivider() {
-            // Calculate section-based index paths
-            if sourceIndex < activeScreenpackSlotLimit {
-                sourceIndexPath = IndexPath(item: sourceIndex, section: 0)
-            } else {
-                sourceIndexPath = IndexPath(item: sourceIndex - activeScreenpackSlotLimit, section: 1)
-            }
-            
-            if destinationIndex < activeScreenpackSlotLimit {
-                destIndexPath = IndexPath(item: destinationIndex, section: 0)
-            } else {
-                destIndexPath = IndexPath(item: destinationIndex - activeScreenpackSlotLimit, section: 1)
-            }
-        } else {
-            sourceIndexPath = IndexPath(item: sourceIndex, section: 0)
-            destIndexPath = IndexPath(item: destinationIndex, section: 0)
-        }
-        
+
         // Reload data instead of animating move (safer with sections)
         collectionView.reloadData()
         
@@ -1246,9 +1312,14 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
 extension CharacterBrowserView: NSCollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: NSCollectionView, layout collectionViewLayout: NSCollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> NSSize {
-        // Only show header for section 1 (hidden characters section)
-        if section == 1 && shouldShowCutoffDivider() {
+        // Show header for section 1 when either the cutoff or registration
+        // section divider is active.
+        guard section == 1 else { return .zero }
+        if shouldShowCutoffDivider() {
             return NSSize(width: collectionView.bounds.width, height: 40)
+        }
+        if shouldShowRegistrationDivider() {
+            return NSSize(width: collectionView.bounds.width, height: 36)
         }
         return .zero
     }
@@ -1655,10 +1726,13 @@ class CharacterCollectionViewItem: NSCollectionViewItem {
         // Show status dot if this is the first character (placeholder logic - could be enhanced)
         statusDot.isHidden = true
         
-        // Show unregistered overlay and badge for unregistered characters
+        // Registered vs unregistered is now communicated via section grouping
+        // (see CharacterBrowserView). Keep the existing overlay/badge views for
+        // backward compatibility but never show them — the section header and
+        // sort order convey the same information without per-card chrome.
         let isUnregistered = (character.status == .unregistered)
-        unregisteredOverlay.isHidden = !isUnregistered
-        unregisteredBadge.isHidden = !isUnregistered
+        unregisteredOverlay.isHidden = true
+        unregisteredBadge.isHidden = true
         
         // Show duplicate badge
         duplicateBadge.isHidden = !isDuplicate
@@ -2537,5 +2611,93 @@ class CutoffDividerView: NSView, NSCollectionViewElement {
     override func prepareForReuse() {
         visibleCountLabel.stringValue = ""
         hiddenCountLabel.stringValue = ""
+    }
+}
+
+// MARK: - RegistrationDividerView
+
+/// A supplementary view that labels the boundary between registered (in
+/// select.def) and unregistered characters in the browser.
+///
+/// Note: this divider replaces the per-card "UNREGISTERED" badge overlay.
+/// The cutoff (slot-limit) divider takes priority — they are mutually
+/// exclusive in the data source.
+class RegistrationDividerView: NSView, NSCollectionViewElement {
+
+    private var containerView: NSView!
+    private var topLine: NSView!
+    private var titleLabel: NSTextField!
+    private var countLabel: NSTextField!
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupView()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupView()
+    }
+
+    private func setupView() {
+        wantsLayer = true
+        layer?.backgroundColor = DesignColors.panelBackground.cgColor
+
+        containerView = NSView()
+        containerView.wantsLayer = true
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(containerView)
+
+        topLine = NSView()
+        topLine.wantsLayer = true
+        topLine.layer?.backgroundColor = DesignColors.borderSubtle.cgColor
+        topLine.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(topLine)
+
+        titleLabel = NSTextField(labelWithString: "Available")
+        titleLabel.font = DesignFonts.caption(size: 11)
+        titleLabel.textColor = DesignColors.textSecondary
+        titleLabel.alignment = .left
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(titleLabel)
+
+        countLabel = NSTextField(labelWithString: "")
+        countLabel.font = DesignFonts.caption(size: 11)
+        countLabel.textColor = DesignColors.textDisabled
+        countLabel.alignment = .right
+        countLabel.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(countLabel)
+
+        NSLayoutConstraint.activate([
+            containerView.topAnchor.constraint(equalTo: topAnchor, constant: 6),
+            containerView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            containerView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
+
+            topLine.topAnchor.constraint(equalTo: containerView.topAnchor),
+            topLine.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            topLine.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            topLine.heightAnchor.constraint(equalToConstant: 1),
+
+            titleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            titleLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -2),
+
+            countLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            countLabel.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
+        ])
+    }
+
+    /// Configure with both counts. The header sits above the unregistered
+    /// section and labels the transition from registered → unregistered.
+    func configure(registeredCount: Int, unregisteredCount: Int) {
+        let unitReg = unregisteredCount == 1 ? "character" : "characters"
+        titleLabel.stringValue = "Available — not in select.def"
+        countLabel.stringValue = "\(unregisteredCount) \(unitReg) (\(registeredCount) in roster above)"
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        titleLabel.stringValue = "Available"
+        countLabel.stringValue = ""
     }
 }
