@@ -99,13 +99,14 @@ class SmartCollectionEvaluator {
                 author: character.author
             )
             let customTags = (try? metadataStore.customTags(for: character.id)) ?? []
-            
-            // Combine all tags, removing duplicates
-            var allTagsSet = Set<String>()
-            for tag in inferredTags + customTags {
-                allTagsSet.insert(tag.lowercased())
-            }
-            let allTags = allTagsSet.joined(separator: ",")
+
+            // Normalize all tags to lowercase, trimmed, deduplicated.
+            // Storing the canonical lowercase form keeps matching consistent
+            // end-to-end — `evaluateTagField` only needs to lowercase the rule input.
+            let normalizedTags = Set(
+                (inferredTags + customTags).compactMap(Self.normalizeTag)
+            )
+            let allTags = normalizedTags.joined(separator: ",")
             return evaluateTagField(allTags, rule: rule)
         case .installedAt:
             return evaluateDateField(character.installedAt, rule: rule)
@@ -179,14 +180,19 @@ class SmartCollectionEvaluator {
         }
     }
     
+    /// Canonicalize a tag: trim whitespace and newlines, lowercase, and
+    /// drop empties. Returns nil so callers can `compactMap` and skip blanks.
+    static func normalizeTag(_ tag: String) -> String? {
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     /// Evaluate a tag field (comma-separated tags)
     private func evaluateTagField(_ tagsString: String?, rule: FilterRule) -> Bool {
-        let characterTags = tagsString?.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() } ?? []
-        
+        let characterTags = tagsString?.components(separatedBy: ",").compactMap(Self.normalizeTag) ?? []
+
         // The rule value can be a single tag or comma-separated list of tags to search for
-        let searchTags = rule.value.components(separatedBy: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-            .filter { !$0.isEmpty }
+        let searchTags = rule.value.components(separatedBy: ",").compactMap(Self.normalizeTag)
         
         // Empty search tags = no match
         guard !searchTags.isEmpty else {
