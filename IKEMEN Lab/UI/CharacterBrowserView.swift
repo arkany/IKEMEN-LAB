@@ -342,14 +342,13 @@ NotificationCenter.default.publisher(for: .customTagsChanged)
         switch registrationFilter {
         case .all:
             // Group registered (active/disabled) before unregistered while
-            // preserving relative ordering inside each group. The section
-            // header in section 1 visually labels the unregistered group.
-            characters = allCharacters.sorted { lhs, rhs in
-                let lUnreg = (lhs.status == .unregistered)
-                let rUnreg = (rhs.status == .unregistered)
-                if lUnreg == rUnreg { return false }  // stable within group
-                return !lUnreg  // registered first
-            }
+            // preserving relative ordering inside each group. `Array.sorted`
+            // is not guaranteed stable in Swift; using two filters keeps
+            // input order intact within each group, which matters because
+            // select.def ordering is significant.
+            let registered = allCharacters.filter { $0.status != .unregistered }
+            let unregistered = allCharacters.filter { $0.status == .unregistered }
+            characters = registered + unregistered
         case .registeredOnly:
             characters = allCharacters.filter { $0.status == .active || $0.status == .disabled }
         case .unregisteredOnly:
@@ -1260,6 +1259,13 @@ extension CharacterBrowserView: NSCollectionViewDelegate {
                 destinationIndex = activeScreenpackSlotLimit + indexPath.item
             }
         } else if let split = unregisteredSectionStartIndex() {
+            // Reject drops that would cross the registered/unregistered split:
+            // moving a registered character into the unregistered group (or
+            // vice versa) would break the partition invariant the divider
+            // depends on, and unregistered items don't belong in select.def.
+            let sourceWasRegistered = sourceIndex < split
+            let dropTargetIsRegistered = (indexPath.section == 0)
+            guard sourceWasRegistered == dropTargetIsRegistered else { return false }
             if indexPath.section == 0 {
                 destinationIndex = indexPath.item
             } else {
