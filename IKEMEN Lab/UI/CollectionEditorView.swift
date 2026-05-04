@@ -1713,45 +1713,56 @@ class StageEntryItem: NSCollectionViewItem {
     
     func configure(with folder: String) {
         self.stageFolder = folder
-        
+
         // Normalize the folder string - remove .def extension if present
         let normalizedFolder = folder.lowercased().hasSuffix(".def")
             ? String(folder.dropLast(4))
             : folder
-        
-        // Look up stage info for display name
+        let needle = normalizedFolder.lowercased()
+
+        // Look up stage info, trying several keys because stored folder strings
+        // can be the DEF id (loose stages), the parent folder name (subfolder
+        // stages), or even the raw .def filename. Match against stage.id,
+        // stage.name, and the .def filename minus extension so all variants
+        // resolve to the same StageInfo.
         let stageInfo = IkemenBridge.shared.stages.first(where: { stage in
-            stage.id.lowercased() == normalizedFolder.lowercased()
+            if stage.id.lowercased() == needle { return true }
+            if stage.name.lowercased() == needle { return true }
+            let defBase = stage.defFile.deletingPathExtension().lastPathComponent.lowercased()
+            if defBase == needle { return true }
+            return false
         })
-        
+
         nameLabel.stringValue = stageInfo?.name ?? normalizedFolder
-        
+
         // Reset to placeholder state
         thumbnailView.image = nil
         thumbnailView.contentTintColor = nil
         placeholderStack.isHidden = true
-        
+
         // Try to load thumbnail
         loadThumbnail(for: normalizedFolder, stageInfo: stageInfo)
     }
     
     private func loadThumbnail(for folder: String, stageInfo: StageInfo?) {
-        // Check cache first
-        let cacheKey = ImageCache.stagePreviewKey(for: folder)
+        // Prefer the resolved stage's id for cache parity with StageBrowserView
+        // (which keys previews by stage.id). Fall back to the folder string when
+        // we couldn't resolve a stage so the call still has a stable key.
+        let cacheKey = ImageCache.stagePreviewKey(for: stageInfo?.id ?? folder)
         if let cached = ImageCache.shared.get(cacheKey) {
             showThumbnail(cached)
             return
         }
-        
+
         // Load asynchronously
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             var image: NSImage? = nil
-            
+
             // Try SFF extraction first (most common source)
             if let stage = stageInfo {
                 image = stage.loadPreviewImage()
             }
-            
+
             // Update UI on main thread
             DispatchQueue.main.async { [weak self] in
                 if let finalImage = image {
