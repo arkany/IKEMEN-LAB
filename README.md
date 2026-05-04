@@ -99,6 +99,10 @@ You can help us decide! Add your request in Issues or Discussions.
 
 ## 🛠️ Building from Source
 
+Requires Xcode 15+ and macOS 12.0+.
+
+### Development Build
+
 ```bash
 # Clone the repo
 git clone https://github.com/yourname/ikemen-lab.git
@@ -110,7 +114,37 @@ open "IKEMEN Lab.xcodeproj"
 # Build and run (⌘R)
 ```
 
-Requires Xcode 15+ and macOS 12.0+.
+### Release Builds
+
+`scripts/build-release.sh` produces a signed and notarized DMG for distribution.
+
+**Prerequisites:**
+
+- A "Developer ID Application" certificate installed in your login keychain
+- Your Apple Developer **Team ID**
+- An **app-specific password** for notarization, stored as a notarytool keychain profile:
+  ```bash
+  xcrun notarytool store-credentials "<NOTARY_PROFILE>" \
+      --apple-id "<your-apple-id>" --team-id "<TEAM_ID>"
+  ```
+
+**Configure and run:**
+
+```bash
+# Copy the env template and fill in TEAM_ID + NOTARY_PROFILE
+cp .env.example .env
+$EDITOR .env
+
+# Build, sign, notarize, and package into a DMG
+./scripts/build-release.sh
+
+# Skip notarization for local testing
+SKIP_NOTARIZE=1 ./scripts/build-release.sh
+```
+
+The output DMG lands at the repo root (e.g. `IKEMEN Lab-v1.0.0.dmg`).
+
+> **Note:** The release version string is currently hardcoded in `scripts/build-release.sh` (`VERSION="v1.0.0"`). Bump it there when cutting a new release.
 
 ---
 
