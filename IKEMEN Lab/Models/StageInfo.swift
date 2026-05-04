@@ -129,12 +129,16 @@ public struct StageInfo: Identifiable, Hashable {
                     self.sffFile = match
                 } else {
                     self.sffFile = nil
+                    #if DEBUG
                     print("[StageInfo] WARNING: SFF not found (case-insensitive): \(targetURL.path)")
+                    #endif
                 }
             }
         } else {
             self.sffFile = nil
+            #if DEBUG
             print("[StageInfo] WARNING: No spriteFile for \(defFile.lastPathComponent)")
+            #endif
         }
     }
 }

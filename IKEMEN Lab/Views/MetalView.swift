@@ -2,14 +2,17 @@ import Cocoa
 import Metal
 import MetalKit
 import QuartzCore
+import os.log
 
 /// Metal-backed view for rendering
 /// Currently minimal - Ikemen GO handles its own rendering
 /// Kept for future potential use (character previews, etc.)
 class MetalView: NSView {
-    
+
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.ikemenlab", category: "MetalView")
+
     // MARK: - Metal Objects
-    
+
     private var device: MTLDevice!
     private var commandQueue: MTLCommandQueue!
     private var metalLayer: CAMetalLayer!
@@ -41,14 +44,14 @@ class MetalView: NSView {
     private func setupMetal() {
         // Get default Metal device
         guard let device = MTLCreateSystemDefaultDevice() else {
-            print("Metal is not supported on this device")
+            Self.logger.error("Metal is not supported on this device")
             return
         }
         self.device = device
-        
+
         // Create command queue
         guard let commandQueue = device.makeCommandQueue() else {
-            print("Failed to create Metal command queue")
+            Self.logger.error("Failed to create Metal command queue")
             return
         }
         self.commandQueue = commandQueue
