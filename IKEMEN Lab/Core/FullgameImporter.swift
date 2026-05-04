@@ -1,6 +1,15 @@
 import Foundation
 import AppKit
 
+// MARK: - Debug Logging
+
+/// File-scoped debug logger; compiled out of release builds.
+private func dlog(_ msg: @autoclosure () -> String) {
+    #if DEBUG
+    print(msg())
+    #endif
+}
+
 // MARK: - Fullgame Import Types
 
 /// Result of scanning a folder for fullgame content
@@ -119,14 +128,14 @@ final class FullgameImporter {
     func scanFullgamePackage(at url: URL) -> FullgameManifest {
         var manifest = FullgameManifest(sourceURL: url, sourceFolderName: url.lastPathComponent)
         
-        print("[FullgameImporter] Scanning: \(url.path)")
+        dlog("[FullgameImporter] Scanning: \(url.path)")
         
         // Scan for characters (chars/ subfolder)
         let charsDir = url.appendingPathComponent("chars")
-        print("[FullgameImporter] Checking chars at: \(charsDir.path), exists: \(fileManager.fileExists(atPath: charsDir.path))")
+        dlog("[FullgameImporter] Checking chars at: \(charsDir.path), exists: \(fileManager.fileExists(atPath: charsDir.path))")
         if fileManager.fileExists(atPath: charsDir.path) {
             manifest.characters = scanCharactersFolder(charsDir)
-            print("[FullgameImporter] Found \(manifest.characters.count) characters: \(manifest.characters.map { $0.folderName })")
+            dlog("[FullgameImporter] Found \(manifest.characters.count) characters: \(manifest.characters.map { $0.folderName })")
         }
         
         // Scan for stages (stages/ subfolder)
@@ -290,12 +299,12 @@ final class FullgameImporter {
         var result = FullgameImportResult()
         var currentAction: DuplicateAction = .ask
         
-        print("[FullgameImporter] Starting installation to: \(workingDir.path)")
-        print("[FullgameImporter] Found \(manifest.characters.count) characters, \(manifest.stages.count) stages")
+        dlog("[FullgameImporter] Starting installation to: \(workingDir.path)")
+        dlog("[FullgameImporter] Found \(manifest.characters.count) characters, \(manifest.stages.count) stages")
         
         // 1. Install characters
         for character in manifest.characters {
-            print("[FullgameImporter] Installing character: \(character.folderName)")
+            dlog("[FullgameImporter] Installing character: \(character.folderName)")
             do {
                 let installed = try installCharacterWithDuplicateHandling(
                     character: character,
@@ -304,18 +313,18 @@ final class FullgameImporter {
                     duplicateHandler: duplicateHandler
                 )
                 if let name = installed {
-                    print("[FullgameImporter] Character installed as: \(name)")
+                    dlog("[FullgameImporter] Character installed as: \(name)")
                     result.charactersInstalled.append(name)
                 } else {
-                    print("[FullgameImporter] Character skipped")
+                    dlog("[FullgameImporter] Character skipped")
                 }
             } catch {
-                print("[FullgameImporter] Character failed: \(error.localizedDescription)")
+                dlog("[FullgameImporter] Character failed: \(error.localizedDescription)")
                 result.charactersFailed.append((character.folderName, error.localizedDescription))
             }
         }
         
-        print("[FullgameImporter] Characters installed: \(result.charactersInstalled)")
+        dlog("[FullgameImporter] Characters installed: \(result.charactersInstalled)")
         
         // Reset action for stages
         if currentAction != .overwriteAll && currentAction != .skipAll {
@@ -324,7 +333,7 @@ final class FullgameImporter {
         
         // 2. Install stages
         for stage in manifest.stages {
-            print("[FullgameImporter] Installing stage: \(stage.name), isLoose: \(stage.isLooseFile)")
+            dlog("[FullgameImporter] Installing stage: \(stage.name), isLoose: \(stage.isLooseFile)")
             do {
                 let installed = try installStageWithDuplicateHandling(
                     stage: stage,
@@ -334,53 +343,53 @@ final class FullgameImporter {
                     duplicateHandler: duplicateHandler
                 )
                 if let name = installed {
-                    print("[FullgameImporter] Stage installed as: \(name)")
+                    dlog("[FullgameImporter] Stage installed as: \(name)")
                     result.stagesInstalled.append(name)
                 } else {
-                    print("[FullgameImporter] Stage skipped")
+                    dlog("[FullgameImporter] Stage skipped")
                 }
             } catch {
-                print("[FullgameImporter] Stage failed: \(error.localizedDescription)")
+                dlog("[FullgameImporter] Stage failed: \(error.localizedDescription)")
                 result.stagesFailed.append((stage.name, error.localizedDescription))
             }
         }
         
-        print("[FullgameImporter] Stages installed: \(result.stagesInstalled)")
+        dlog("[FullgameImporter] Stages installed: \(result.stagesInstalled)")
         
         // 3. Install screenpack
         if let screenpack = manifest.screenpack {
             do {
                 // Use folder name based on manifest name for consistency
                 let screenpackFolderName = CollectionNameResolver.sanitizeForFolder(manifest.suggestedCollectionName)
-                print("[FullgameImporter] Installing screenpack to: \(screenpackFolderName)")
+                dlog("[FullgameImporter] Installing screenpack to: \(screenpackFolderName)")
                 let _ = try installScreenpack(from: screenpack.url, to: workingDir, folderName: screenpackFolderName)
                 result.screenpackInstalled = screenpack.displayName
-                print("[FullgameImporter] Screenpack installed")
+                dlog("[FullgameImporter] Screenpack installed")
             } catch {
-                print("[FullgameImporter] Screenpack failed: \(error.localizedDescription)")
+                dlog("[FullgameImporter] Screenpack failed: \(error.localizedDescription)")
                 result.screenpackFailed = error.localizedDescription
             }
         }
         
         // 4. Install fonts
         result.fontsInstalled = installFonts(manifest.fonts, to: workingDir)
-        print("[FullgameImporter] Fonts installed: \(result.fontsInstalled.count) - \(result.fontsInstalled)")
+        dlog("[FullgameImporter] Fonts installed: \(result.fontsInstalled.count) - \(result.fontsInstalled)")
         
         // 5. Install sounds
         result.soundsInstalled = installSounds(manifest.sounds, to: workingDir)
-        print("[FullgameImporter] Sounds installed: \(result.soundsInstalled.count) - \(result.soundsInstalled)")
+        dlog("[FullgameImporter] Sounds installed: \(result.soundsInstalled.count) - \(result.soundsInstalled)")
         
         // 6. Create collection
-        print("[FullgameImporter] Total installed: \(result.totalInstalled)")
+        dlog("[FullgameImporter] Total installed: \(result.totalInstalled)")
         if result.totalInstalled > 0 {
-            print("[FullgameImporter] Creating collection with \(result.charactersInstalled.count) chars, \(result.stagesInstalled.count) stages")
+            dlog("[FullgameImporter] Creating collection with \(result.charactersInstalled.count) chars, \(result.stagesInstalled.count) stages")
             let collection = createCollectionFromResult(
                 result: result,
                 name: manifest.suggestedCollectionName,
                 screenpackPath: manifest.screenpack != nil ? "data/\(CollectionNameResolver.sanitizeForFolder(manifest.suggestedCollectionName))" : nil
             )
             result.collectionCreated = collection
-            print("[FullgameImporter] Collection created: \(collection.name)")
+            dlog("[FullgameImporter] Collection created: \(collection.name)")
         }
         
         return result
@@ -474,15 +483,15 @@ final class FullgameImporter {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let stageFolder = tempDir.appendingPathComponent(stage.name)
         
-        print("[FullgameImporter] Restructuring loose stage: \(stage.name)")
-        print("[FullgameImporter] Source stages dir: \(stagesDir.path)")
+        dlog("[FullgameImporter] Restructuring loose stage: \(stage.name)")
+        dlog("[FullgameImporter] Source stages dir: \(stagesDir.path)")
         
         try fileManager.createDirectory(at: stageFolder, withIntermediateDirectories: true)
         
         // Copy the .def file
         let defFile = stage.url
         try fileManager.copyItem(at: defFile, to: stageFolder.appendingPathComponent(defFile.lastPathComponent))
-        print("[FullgameImporter] Copied .def file: \(defFile.lastPathComponent)")
+        dlog("[FullgameImporter] Copied .def file: \(defFile.lastPathComponent)")
         
         // Get all files in stages directory for case-insensitive matching
         let allStageFiles = (try? fileManager.contentsOfDirectory(at: stagesDir, includingPropertiesForKeys: nil)) ?? []
@@ -512,7 +521,7 @@ final class FullgameImporter {
                             continue
                         }
                         
-                        print("[FullgameImporter] DEF references SFF: '\(filename)'")
+                        dlog("[FullgameImporter] DEF references SFF: '\(filename)'")
                         
                         // Case-insensitive search for the file
                         let filenameLower = filename.lowercased()
@@ -520,10 +529,10 @@ final class FullgameImporter {
                             let destPath = stageFolder.appendingPathComponent(matchingFile.lastPathComponent)
                             if !fileManager.fileExists(atPath: destPath.path) {
                                 try fileManager.copyItem(at: matchingFile, to: destPath)
-                                print("[FullgameImporter] Copied SFF: \(matchingFile.lastPathComponent)")
+                                dlog("[FullgameImporter] Copied SFF: \(matchingFile.lastPathComponent)")
                             }
                         } else {
-                            print("[FullgameImporter] WARNING: SFF not found: \(filename)")
+                            dlog("[FullgameImporter] WARNING: SFF not found: \(filename)")
                         }
                     }
                 }
@@ -538,7 +547,7 @@ final class FullgameImporter {
                 let destPath = stageFolder.appendingPathComponent(file.lastPathComponent)
                 if !fileManager.fileExists(atPath: destPath.path) {
                     try? fileManager.copyItem(at: file, to: destPath)
-                    print("[FullgameImporter] Copied matching SFF: \(file.lastPathComponent)")
+                    dlog("[FullgameImporter] Copied matching SFF: \(file.lastPathComponent)")
                 }
             }
         }

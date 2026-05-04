@@ -392,7 +392,9 @@ class DashboardView: NSView {
         
         // Add click callback to entire card
         card.onClick = { [weak self] in
+            #if DEBUG
             print("[DashboardView] Launch card onClick triggered")
+            #endif
             self?.launchButtonClicked()
         }
         
@@ -638,7 +640,9 @@ class DashboardView: NSView {
             recentInstalls = try MetadataStore.shared.recentlyInstalled(limit: 10)
             updateRecentlyInstalledUI()
         } catch {
+            #if DEBUG
             print("Failed to load recent installs: \(error)")
+            #endif
         }
     }
     
