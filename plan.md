@@ -27,10 +27,10 @@
 ## Current Focus
 
 ### 🐛 Known Bugs (Backlog)
-- [ ] **Smart Collections: Tag matching inconsistent** — Some characters with detected tags not matching in smart collection rules
-- [ ] **Collections: Character names incorrect** — Showing folder names instead of display names from DEF files
-- [ ] **Collections: Stage thumbnails not loading** — Some stages showing placeholder icon
-- [ ] **Characters: "UNREGISTERED" badge UX** — Replace with "In Roster" / "Available" section dividers
+- [x] **Smart Collections: Tag matching inconsistent** — Resolved in v1.0.0 (consistent end-to-end normalization)
+- [x] **Collections: Character names incorrect** — Resolved in v1.0.0 (prefer DEF display names with name/folder fallback)
+- [x] **Collections: Stage thumbnails not loading** — Resolved in v1.0.0 (multi-key stage lookup + shared cache)
+- [x] **Characters: "UNREGISTERED" badge UX** — Resolved in v1.0.0 (replaced with section divider; cutoff divider takes priority)
 - [x] **Window header not draggable** — Custom header doesn't behave like standard macOS title bar
 
 ### 📋 Up Next (Post-1.0)
@@ -95,6 +95,11 @@ All alpha tasks complete!
 | ├─ Developer ID Application signing (Release builds) | ✅ Done |
 | ├─ Hardened Runtime enabled | ✅ Done |
 | └─ Notarized DMG build script | ✅ Done |
+| **Bug Fixes** | ✅ Done |
+| ├─ Smart Collection tag matching normalized end-to-end | ✅ Done |
+| ├─ Collection roster shows DEF display names (not folders) | ✅ Done |
+| ├─ Collection stage thumbnails resolve via id/name/defFile | ✅ Done |
+| └─ Replace UNREGISTERED badge with section divider | ✅ Done |
 
 ### 🧩 v1.1 — Polish & Fixes
 | Feature | Status |
@@ -105,7 +110,6 @@ All alpha tasks complete!
 | Existing installation import | 📋 Todo |
 | Drag & Drop to Collections | 📋 Todo |
 | Bulk Add to Collection | 📋 Todo |
-| Smart Collections tag matching fix | 📋 Todo |
 
 ### ⚡ v2 — Smart Features
 | Feature | Status |
