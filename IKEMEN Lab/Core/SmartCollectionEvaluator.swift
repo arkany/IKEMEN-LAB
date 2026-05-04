@@ -99,13 +99,16 @@ class SmartCollectionEvaluator {
                 author: character.author
             )
             let customTags = (try? metadataStore.customTags(for: character.id)) ?? []
-            
-            // Combine all tags, removing duplicates
-            var allTagsSet = Set<String>()
-            for tag in inferredTags + customTags {
-                allTagsSet.insert(tag.lowercased())
-            }
-            let allTags = allTagsSet.joined(separator: ",")
+
+            // Normalize all tags to lowercase, trimmed, deduplicated.
+            // Storing the canonical lowercase form keeps matching consistent
+            // end-to-end — `evaluateTagField` only needs to lowercase the rule input.
+            let normalizedTags = Set(
+                (inferredTags + customTags).map {
+                    $0.trimmingCharacters(in: .whitespaces).lowercased()
+                }
+            )
+            let allTags = normalizedTags.joined(separator: ",")
             return evaluateTagField(allTags, rule: rule)
         case .installedAt:
             return evaluateDateField(character.installedAt, rule: rule)
