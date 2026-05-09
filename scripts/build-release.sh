@@ -46,12 +46,16 @@ SIGNING_IDENTITY="Developer ID Application"
 echo "🚀 Starting release build for ${APP_NAME} ${VERSION}..."
 
 # 1. Archive for distribution
+# Note: Do NOT pass CODE_SIGN_IDENTITY as a global xcodebuild parameter — it
+# overrides all targets (including the Browser Extension and SPM packages) which
+# use Automatic signing. Per-target signing is configured in the Xcode project:
+#   - Main app (Release): Developer ID Application, Manual
+#   - Browser Extension:  Apple Development, Automatic
 echo "📦 Archiving project..."
 xcodebuild archive \
     -scheme "$SCHEME" \
     -configuration Release \
     -archivePath "$BUILD_DIR/${APP_NAME}.xcarchive" \
-    CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
     DEVELOPMENT_TEAM="$TEAM_ID" \
     -quiet
 
