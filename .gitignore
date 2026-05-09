@@ -58,6 +58,9 @@ Thumbs.db
 *~
 .vscode/
 
+# Claude Code agent worktrees / scratch
+.claude/
+
 # Test artifacts
 *.xcresult/
 coverage/
