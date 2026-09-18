@@ -52,10 +52,22 @@ public final class StageGenerator {
         /// Camera right bound (positive = wider view to right)
         public var boundRight: Int
         
-        /// Zoom level (1.0 = normal, higher = zoomed out)
+        /// `[Camera] zoomout` — the smallest scale the camera may reach.
+        ///
+        /// This is a divisor on the viewport, so **lower means further out**:
+        /// 0.75 shows `1 / 0.75` of the normal area. 1.0 disables zoom-out.
+        /// Values above 1 are meaningless and get clamped.
+        ///
+        /// A zoom-enabled stage needs a bigger backdrop — see
+        /// `StageGeometry.minimumImageSize`.
         public var zoomOut: Double
         
-        /// Floor level (Y position where characters stand)
+        /// Where the ground sits in the *artwork*, in pixels from the top of
+        /// the image. 0 means derive it from `StageGeometry.defaultFloorRatio`.
+        ///
+        /// This is an artwork coordinate, not a screen one; `StageGeometry`
+        /// converts it. It has to be per-image because a backdrop's horizon is
+        /// wherever it happens to be drawn.
         public var floorLevel: Int
         
         /// Whether to tile the background horizontally
@@ -271,34 +283,165 @@ public final class StageGenerator {
         ))
     }
     
+    // MARK: - Stage Geometry
+
+    /// The camera arithmetic, kept pure so it can be unit-tested without
+    /// touching AppKit or the filesystem.
+    ///
+    /// ## Screen space
+    ///
+    /// Everything here is measured in `localcoord` units, in the space a
+    /// `[BG ] start` is expressed in:
+    ///
+    /// - `y = 0` is the **top edge of the viewport**, not the floor.
+    /// - `y = screenHeight` is the bottom edge.
+    ///
+    /// A `[BG ]` element places the sprite's *axis point* at its `start`. This
+    /// generator writes sprites with axis `(0, 0)` and
+    /// `start = (-imgWidth/2, -(imgHeight - screenHeight))`, which mounts the
+    /// backdrop centred horizontally with its bottom edge flush against the
+    /// bottom of the screen. So its top edge lands at
+    /// `-(imgHeight - screenHeight)`, and that value — not the image height —
+    /// is what the camera values are measured against.
+    public enum StageGeometry {
+        /// Where the ground sits in the artwork, as a fraction of image height,
+        /// when the caller hasn't said. A backdrop's horizon is wherever the
+        /// artist (or the image model) happened to put it, so this is only a
+        /// starting point.
+        public static let defaultFloorRatio: Double = 0.88
+
+        /// Top edge of the backdrop in screen space, for a backdrop mounted
+        /// flush with the bottom of the viewport. Negative when the artwork is
+        /// taller than the screen, which is the usual case.
+        public static func backdropTop(imageHeight: Int, screenHeight: Int) -> Int {
+            -(imageHeight - screenHeight)
+        }
+
+        /// The `[StageInfo] zoffset` — where characters' feet land, measured
+        /// from the top of the screen.
+        ///
+        /// This is a *screen* coordinate, so it has to be derived from where
+        /// the backdrop was mounted. The previous implementation used
+        /// `imageHeight - 75`, which is a coordinate in the *artwork*: for a
+        /// 1024-tall backdrop it produced 949, some 229 units below the bottom
+        /// of a 720-tall viewport, putting characters off-screen entirely.
+        ///
+        /// - Parameters:
+        ///   - floorInImage: the ground line in artwork pixels from the top of
+        ///     the image. Pass `nil` to fall back to `defaultFloorRatio`.
+        public static func zoffset(
+            imageHeight: Int,
+            screenHeight: Int,
+            floorInImage: Int? = nil
+        ) -> Int {
+            let top = backdropTop(imageHeight: imageHeight, screenHeight: screenHeight)
+            let floor: Int
+            if let given = floorInImage, given > 0 {
+                floor = min(given, imageHeight)
+            } else {
+                floor = Int((Double(imageHeight) * defaultFloorRatio).rounded())
+            }
+            return top + floor
+        }
+
+        /// `zoomout` is a *divisor* on the viewport: at 0.75 the camera pulls
+        /// back to show `1 / 0.75` of the normal area. Values above 1 are not
+        /// meaningful, so they are clamped rather than written through.
+        public static func normalizedZoomOut(_ zoomOut: Double) -> Double {
+            guard zoomOut.isFinite, zoomOut > 0 else { return 1.0 }
+            return min(zoomOut, 1.0)
+        }
+
+        /// How far the camera may travel left/right before the edge of the
+        /// backdrop comes into view.
+        ///
+        /// Zooming out widens the visible area, so the slack between the
+        /// artwork and the frame shrinks. Computing this against `screenWidth`
+        /// while also writing a `zoomout` below 1 — which is what the previous
+        /// implementation did — lets the camera scroll past the artwork the
+        /// moment the stage zooms out.
+        public static func horizontalBound(
+            imageWidth: Int,
+            screenWidth: Int,
+            zoomOut: Double
+        ) -> Int {
+            let visibleWidth = Double(screenWidth) / normalizedZoomOut(zoomOut)
+            let slack = (Double(imageWidth) - visibleWidth) / 2
+            return max(0, Int(slack.rounded(.down)))
+        }
+
+        /// How far the camera may rise, as a negative number. Zero when the
+        /// backdrop is no taller than the frame.
+        ///
+        /// Zoom-out grows the frame around the camera, so half the extra height
+        /// eats into the headroom above.
+        public static func boundHigh(
+            imageHeight: Int,
+            screenHeight: Int,
+            zoomOut: Double
+        ) -> Int {
+            let visibleHeight = Double(screenHeight) / normalizedZoomOut(zoomOut)
+            let extraHeight = max(0, visibleHeight - Double(screenHeight))
+            let top = backdropTop(imageHeight: imageHeight, screenHeight: screenHeight)
+            let headroom = Double(-top) - extraHeight / 2
+            return -max(0, Int(headroom.rounded(.down)))
+        }
+
+        /// Smallest backdrop that still fills the frame at full zoom-out.
+        /// Anything smaller shows past the artwork as soon as the camera pulls
+        /// back.
+        public static func minimumImageSize(
+            screenWidth: Int,
+            screenHeight: Int,
+            zoomOut: Double
+        ) -> (width: Int, height: Int) {
+            let z = normalizedZoomOut(zoomOut)
+            return (
+                Int((Double(screenWidth) / z).rounded(.up)),
+                Int((Double(screenHeight) / z).rounded(.up))
+            )
+        }
+    }
+
     // MARK: - DEF File Generation
-    
+
     private static func generateDEFContent(options: StageOptions, sffFileName: String, imageSize: NSSize) -> String {
         // HD stage format: 1280x720 localcoord for widescreen
         let screenWidth = 1280
         let screenHeight = 720
-        
+
         let imgWidth = Int(imageSize.width)
         let imgHeight = Int(imageSize.height)
-        
-        // zoffset: floor position from top of screen
-        // Characters stand at this Y position on screen
-        // Higher value = characters appear lower on screen
-        // Formula: floor is typically ~75px from bottom of image
-        // zoffset = imgHeight - 75 (tested: 1024 - 75 = 949 ≈ 950 works)
-        let zoffset = imgHeight - 75
-        
-        // Camera bounds - how far camera can pan based on image size
-        // Can only pan as far as the image extends beyond the screen
-        let cameraPanX = max(0, (imgWidth - screenWidth) / 2)
+
+        // Values above 1 are not meaningful for zoomout, and every bound below
+        // is computed against this same number, so clamp once here.
+        let zoomOut = StageGeometry.normalizedZoomOut(options.zoomOut)
+
+        // Floor position on screen, derived from where the ground sits in the
+        // artwork rather than assumed to be a fixed distance from its bottom.
+        let zoffset = StageGeometry.zoffset(
+            imageHeight: imgHeight,
+            screenHeight: screenHeight,
+            floorInImage: options.floorLevel > 0 ? options.floorLevel : nil
+        )
+
+        // Camera bounds. Both account for zoomout: pulling the camera back
+        // enlarges the visible area, which shrinks the slack the camera has to
+        // move in before an edge of the backdrop shows.
+        let cameraPanX = StageGeometry.horizontalBound(
+            imageWidth: imgWidth,
+            screenWidth: screenWidth,
+            zoomOut: zoomOut
+        )
         let boundLeft = -cameraPanX
         let boundRight = cameraPanX
-        
-        // boundhigh: how high the camera can go (negative = up)
-        // Based on how much taller the image is than the screen
-        let cameraPanY = max(0, imgHeight - screenHeight)
-        let boundhigh = -cameraPanY
-        
+
+        let boundhigh = StageGeometry.boundHigh(
+            imageHeight: imgHeight,
+            screenHeight: screenHeight,
+            zoomOut: zoomOut
+        )
+
         // Player movement bounds - limit to where the background exists
         let leftbound = -imgWidth / 2 + 50  // Leave some margin
         let rightbound = imgWidth / 2 - 50
@@ -335,7 +478,7 @@ public final class StageGenerator {
         overdrawlow = 0
         cuthigh = 0
         cutlow = 0
-        zoomout = \(String(format: "%.1f", options.zoomOut))
+        zoomout = \(String(format: "%.2f", zoomOut))
         zoomin = 1.0
         
         [PlayerInfo]
