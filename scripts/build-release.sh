@@ -38,7 +38,17 @@ fi
 # Configuration
 APP_NAME="IKEMEN Lab"
 SCHEME="IKEMEN Lab"
-VERSION="v1.0.0"
+# Version comes from MARKETING_VERSION in the Xcode project so the DMG name
+# can never drift from the app's CFBundleShortVersionString (see issue #37).
+MARKETING_VERSION=$(xcodebuild -showBuildSettings \
+    -scheme "$SCHEME" \
+    -configuration Release 2>/dev/null \
+    | awk -F' = ' '/^ *MARKETING_VERSION = / { print $2; exit }')
+if [ -z "$MARKETING_VERSION" ]; then
+    echo "❌ Could not read MARKETING_VERSION from the Xcode project."
+    exit 1
+fi
+VERSION="v${MARKETING_VERSION}"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 BUILD_DIR="build"
 SIGNING_IDENTITY="Developer ID Application"
@@ -93,6 +103,14 @@ if [ ! -d "$APP_PATH" ]; then
 fi
 
 echo "✅ Export successful"
+
+# Guard against shipping a stale build under a new version name
+BUILT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
+if [ "$BUILT_VERSION" != "$MARKETING_VERSION" ]; then
+    echo "❌ Built app reports version $BUILT_VERSION, expected $MARKETING_VERSION"
+    exit 1
+fi
+echo "✅ App version: $BUILT_VERSION"
 
 # 3. Verify code signature
 echo "🔏 Verifying code signature..."
