@@ -36,14 +36,20 @@ jobs:
       # Build-only: the IKEMEN Lab Tests target is app-hosted (TEST_HOST set),
       # and `xcodebuild test` can't reliably launch the host app on GitHub's
       # macOS runners ("Test runner never began executing tests after launching",
-      # exit 65). Building still validates that the app and the test bundle
-      # compile cleanly. Tests can run locally in Xcode in the meantime; once
-      # the test target is restructured as a logic-only bundle (no TEST_HOST),
-      # this can switch back to `xcodebuild test`.
+      # exit 65). Tests can run locally in Xcode in the meantime; once the test
+      # target is restructured as a logic-only bundle (no TEST_HOST), this can
+      # switch back to `xcodebuild test`.
+      #
+      # `build-for-testing` rather than `build`: the scheme's BuildAction
+      # contains only the app target, so a plain `build` never compiled the
+      # test bundle — a test file could be syntactically broken, or reference
+      # an API that doesn't exist, and CI would stay green. `build-for-testing`
+      # compiles the test target too without trying to launch anything, which
+      # is what the comment above always claimed was happening.
       - name: Build
         run: |
           set -o pipefail
-          xcodebuild build \
+          xcodebuild build-for-testing \
             -project "IKEMEN Lab.xcodeproj" \
             -scheme "IKEMEN Lab" \
             -destination 'platform=macOS' \
